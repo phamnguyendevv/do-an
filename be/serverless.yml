@@ -1,0 +1,35 @@
+service: serverless-app
+
+plugins:
+  - serverless-offline
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  environment:
+    NODE_ENV: ${env:NODE_ENV}
+    DATABASE_ENGINE: ${env:DATABASE_ENGINE}
+    DATABASE_HOST: localhost
+    DATABASE_PORT: ${env:DATABASE_PORT}
+    DATABASE_USER: ${env:DATABASE_USER}
+    DATABASE_PASSWORD: ${env:DATABASE_PASSWORD}
+    DATABASE_NAME: ${env:DATABASE_NAME}
+    DATABASE_SCHEMA: ${env:DATABASE_SCHEMA}
+    DATABASE_SYNCHRONIZE: ${env:DATABASE_SYNCHRONIZE}
+
+custom:
+  serverless-offline:
+    httpPort: 4000
+
+functions:
+  main:
+    handler: dist/src/serverless.handler
+    events:
+      - http:
+          method: ANY
+          path: /
+      - http:
+          method: ANY
+          path: '{proxy+}'

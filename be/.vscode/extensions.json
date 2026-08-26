@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    // Prettier - Code formatter. Code formatter using prettier
+    "esbenp.prettier-vscode",
+
+    // ESLint. Integrates ESLint JavaScript into VS Code
+    "dbaeumer.vscode-eslint",
+
+    // SonarLint. Find and fix bugs and security vulnerabilities in your code
+    "SonarSource.sonarlint-vscode",
+
+    // Better Comments. Improve your code commenting by annotating with alert, informational, TODOs, and more
+    "aaron-bond.better-comments",
+
+    // Code Spell Checker. Spelling checker for source code
+    "streetsidesoftware.code-spell-checker",
+
+    // Turbo Console Log. Automate the process of writing meaningful log messages
+    "ChakrounAnas.turbo-console-log"
+  ]
+}

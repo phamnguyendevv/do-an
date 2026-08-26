@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    depends_on:
+      - db
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=nestjs
+      - DB_PASSWORD=secret
+      - DB_NAME=nestjs_db
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: nestjs
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: nestjs_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
