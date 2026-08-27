@@ -7,7 +7,7 @@ import { UserStatusEnum } from '@domain/entities/status.entity'
 import { IJwtServicePayload } from '@domain/services/jwt.interface'
 
 import { EnvironmentConfigService } from '@infrastructure/config/environment/environment-config.service'
-import { UserRepository } from '@infrastructure/databases/postgressql/repositories/user.repository'
+import { UserRepository } from '@infrastructure/databases/postgresql/repositories/user.repository'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { LoggerService } from '@infrastructure/logger/logger.service'
 
@@ -20,10 +20,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly userRepository: UserRepository,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: any) => {
+          return request?.cookies?.access_token || request?.cookies?.['access_token'] || null
+        },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: environmentConfigService.getJwtSecret(),
     })
+
   }
 
   async validate(payload: IJwtServicePayload) {

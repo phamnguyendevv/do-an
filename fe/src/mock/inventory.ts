@@ -1,5 +1,4 @@
 import type { ExportReceipt, ImportReceipt } from "@/types";
-import { mockOrders } from "./orders";
 
 export const suppliers: string[] = [];
 
@@ -12,14 +11,8 @@ export const mockImportReceipts: ImportReceipt[] = Array.from({ length: 12 }).ma
   note: i % 3 === 0 ? "Nhập bổ sung đầu tháng" : "",
 }));
 
-export const mockExportReceipts: ExportReceipt[] = Array.from({ length: 10 }).map((_, i) => ({
-  id: `EXP-${2000 + i + 1}`,
-  orderId: mockOrders[i]!.id,
-  date: new Date(2026, 7, ((i * 3) % 12) + 1).toISOString(),
-  totalItems: 1 + ((i * 5) % 24),
-  reason: i % 4 === 3 ? "Hàng lỗi / hủy" : "Xuất bán theo đơn",
-  note: "",
-}));
+export const mockExportReceipts: ExportReceipt[] = [];
+
 
 export const inventorySummary = {
   totalStock: 1250,

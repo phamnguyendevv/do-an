@@ -16,65 +16,42 @@ export type BookListApiResponse = {
   pagination: { total: number; page: number; size: number };
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
-const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api/v1";
-
-function getToken() {
-  if (typeof window === "undefined") return "";
-  try {
-    return localStorage.getItem("bookstock.token") ?? "";
-  } catch {
-    return "";
-  }
-}
-
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init.headers || {}),
-      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-    },
-  });
-
-  const text = await res.text();
-  const body = text ? JSON.parse(text) : null;
-  if (!res.ok) {
-    throw new Error(body?.message || body?.error?.message || "Request failed");
-  }
-
-  return body?.data ?? body;
-}
+import { apiRequest } from "./api-client";
 
 export const bookApi = {
-  async list(params?: { search?: string; category?: string; status?: string; page?: number; size?: number }) {
+  async list(params?: { search?: string; category?: string; status?: string; page?: number; size?: number; minPrice?: number; maxPrice?: number; startDate?: string; endDate?: string; sortBy?: string; sortOrder?: string }) {
     const search = new URLSearchParams();
     if (params?.search) search.set("search", params.search);
     if (params?.category) search.set("category", params.category);
     if (params?.status) search.set("status", params.status);
     if (params?.page) search.set("page", String(params.page));
     if (params?.size) search.set("size", String(params.size));
+    if (params?.minPrice !== undefined) search.set("minPrice", String(params.minPrice));
+    if (params?.maxPrice !== undefined) search.set("maxPrice", String(params.maxPrice));
+    if (params?.startDate) search.set("startDate", params.startDate);
+    if (params?.endDate) search.set("endDate", params.endDate);
+    if (params?.sortBy) search.set("sortBy", params.sortBy);
+    if (params?.sortOrder) search.set("sortOrder", params.sortOrder);
 
     const qs = search.toString();
-    return request<BookListApiResponse>(`/admin/books${qs ? `?${qs}` : ""}`);
+    return apiRequest<BookListApiResponse>(`/admin/books${qs ? `?${qs}` : ""}`);
   },
   async get(id: number | string) {
-    return request<BookApiItem>(`/admin/books/${id}`);
+    return apiRequest<BookApiItem>(`/admin/books/${id}`);
   },
   async create(payload: Partial<BookApiItem>) {
-    return request<BookApiItem>(`/admin/books`, {
+    return apiRequest<BookApiItem>(`/admin/books`, {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
   async update(id: number | string, payload: Partial<BookApiItem>) {
-    return request<BookApiItem>(`/admin/books/${id}`, {
+    return apiRequest<BookApiItem>(`/admin/books/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
   },
   async remove(id: number | string) {
-    return request<boolean>(`/admin/books/${id}`, { method: "DELETE" });
+    return apiRequest<boolean>(`/admin/books/${id}`, { method: "DELETE" });
   },
 };

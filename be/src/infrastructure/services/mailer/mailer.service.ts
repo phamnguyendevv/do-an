@@ -1,14 +1,8 @@
 import { MailerService } from '@nestjs-modules/mailer'
 import { Inject, Injectable } from '@nestjs/common'
 
-import Stripe from 'stripe'
-
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import { IMailerService } from '@domain/services/mailer.interface'
-import {
-  IStripeService,
-  STRIPE_SERVICE,
-} from '@domain/services/stripe.interface'
 
 @Injectable()
 export class NodeMailerService implements IMailerService {
@@ -16,9 +10,6 @@ export class NodeMailerService implements IMailerService {
     private readonly mailService: MailerService,
     @Inject(EXCEPTIONS)
     private readonly exceptionsService: IException,
-
-    @Inject(STRIPE_SERVICE)
-    private readonly stripeService: IStripeService,
   ) {}
 
   async sendMail(to: string, subject: string, text?: string): Promise<void> {
@@ -26,10 +17,10 @@ export class NodeMailerService implements IMailerService {
       await this.mailService.sendMail({
         to,
         subject: subject,
-        from: 'App Scheduling <kingisalwayme@gmail.com>',
+        from: 'BookStock <no-reply@bookstock.vn>',
         text: text,
       })
-    } catch (error) {
+    } catch {
       throw this.exceptionsService.internalServerErrorException({
         type: 'InternalServerError',
         message: 'Failed to send email',

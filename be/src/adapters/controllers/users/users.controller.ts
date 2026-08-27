@@ -2,8 +2,10 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
+  Post,
   Put,
   Query,
   UseGuards,
@@ -18,8 +20,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger'
 
-import { GetListProviderUseCase } from '@use-cases/provider/get-list-provider.use-case'
 import { ChangePasswordUseCase } from '@use-cases/users/change-password.use-case'
+import { CreateUserUseCase } from '@use-cases/users/create-user.use-case'
 import { GetListUsersUseCase } from '@use-cases/users/get-list-users.use-case'
 import { UpdateUsersUseCase } from '@use-cases/users/update-user.use-case'
 
@@ -29,11 +31,14 @@ import { User } from '../common/decorators/user.decorator'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import { PoliciesGuard } from '../common/guards/policies.guard'
 import { ChangePasswordDto } from './dto/change-password.dto'
-import { GetListProviderDto } from './dto/get-list-provider.dto'
+import { CreateAdminUserDto } from './dto/create-admin-user.dto'
 import { GetListUsersDto } from './dto/get-list-users.dto'
-import { AdminUpdateUserDto, UpdateUserDto } from './dto/update-users.dto'
+import {
+  AdminResetPasswordDto,
+  AdminUpdateUserDto,
+  UpdateUserDto,
+} from './dto/update-users.dto'
 import { SimpleUserPresenter } from './presenters/get-detail-user-presenters'
-import { GetListProviderPresenter } from './presenters/get-list-provider.presenters'
 import { GetListUserPresenter } from './presenters/get-list-users.presenter'
 
 @Controller()
@@ -49,16 +54,15 @@ export class UsersController {
     private readonly getListUserUseCase: GetListUsersUseCase,
     private readonly updateUserUseCase: UpdateUsersUseCase,
     private readonly changePasswordUseCase: ChangePasswordUseCase,
-    private readonly getListProviderUseCase: GetListProviderUseCase,
+    private readonly createUserUseCase: CreateUserUseCase,
   ) {}
 
   // ===== ADMIN OPERATIONS =====
-  // Admin can manage all users in the system
-
   @Get('admin/users')
+  @UseGuards(JwtAuthGuard, PoliciesGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'List users for admin ',
+    summary: 'List users for admin',
     description: 'Only admin can access this endpoint',
   })
   @ApiResponseType(GetListUserPresenter, true)
@@ -69,6 +73,18 @@ export class UsersController {
     const { data, pagination } =
       await this.getListUserUseCase.execute(querySearchParams)
     return new GetListUserPresenter(data, pagination)
+  }
+
+  @Post('admin/users')
+  @UseGuards(JwtAuthGuard, PoliciesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Create user by admin',
+    description: 'Admin creates a new user account (Staff / Admin)',
+  })
+  @CheckPolicies({ action: 'create', subject: 'User' })
+  async createAdminUser(@Body() dto: CreateAdminUserDto) {
+    return await this.createUserUseCase.execute(dto)
   }
 
   @Get('admin/users/:id')
@@ -92,15 +108,12 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, PoliciesGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Update user by admin ',
-    description: 'Update role or status or email_verified   a user',
+    summary: 'Update user by admin',
+    description: 'Update role or status of a user',
   })
   @ApiOkResponse({ description: 'User updated' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  @CheckPolicies(
-    { action: 'update', subject: 'User', field: 'role' },
-    { action: 'update', subject: 'User', field: 'status' },
-  )
+  @CheckPolicies({ action: 'update', subject: 'User' })
   async updateAdminUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() adminFields: AdminUpdateUserDto,
@@ -112,9 +125,28 @@ export class UsersController {
     return isUpdated
   }
 
-  // ===== USER PROFILE OPERATIONS =====
-  // Users can manage their own profile
+  @Put('admin/users/:id/reset-password')
+  @UseGuards(JwtAuthGuard, PoliciesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reset user password by admin',
+    description: 'Admin resets or re-issues a password for an employee or user',
+  })
+  @ApiOkResponse({ description: 'Password reset successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @CheckPolicies({ action: 'update', subject: 'User' })
+  async resetUserPasswordByAdmin(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AdminResetPasswordDto,
+  ) {
+    const isUpdated = await this.updateUserUseCase.execute(
+      { id: id },
+      { password: dto.password },
+    )
+    return isUpdated
+  }
 
+  // ===== USER PROFILE OPERATIONS =====
   @Get('users/profile')
   @UseGuards(JwtAuthGuard, PoliciesGuard)
   @ApiBearerAuth()
@@ -129,6 +161,9 @@ export class UsersController {
     const users = await this.getListUserUseCase.execute({
       id: userId,
     })
+    if (!users?.data?.[0]) {
+      throw new NotFoundException('User profile not found')
+    }
     return new SimpleUserPresenter(users.data[0])
   }
 
@@ -136,7 +171,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, PoliciesGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Update  user profile by user',
+    summary: 'Update user profile by user',
     description: 'Update user profile information',
   })
   @ApiOkResponse({ description: 'User updated' })
@@ -172,23 +207,5 @@ export class UsersController {
       changePasswordDto,
     )
     return isUpdated
-  }
-
-  // ===== PROVIDER OPERATIONS =====
-  // Public endpoint for users to browse providers
-
-  @Get('user/provider')
-  @ApiOperation({
-    summary: 'List users for provider ',
-    description: 'Only provider can access this endpoint',
-  })
-  @ApiResponseType(GetListProviderPresenter, true)
-  @ApiExtraModels(GetListProviderPresenter)
-  @ApiOkResponse({ type: GetListProviderPresenter })
-  @CheckPolicies({ action: 'search', subject: 'User' })
-  async getProvidersList(@Query() querySearchParams: GetListProviderDto) {
-    const { data, pagination } =
-      await this.getListProviderUseCase.execute(querySearchParams)
-    return new GetListProviderPresenter(data, pagination)
   }
 }

@@ -5,6 +5,10 @@ import {
   BOOK_REPOSITORY,
   IBookRepositoryInterface,
 } from '@domain/repositories/book.repository.interface'
+import {
+  IRedisCacheService,
+  REDIS_SERVICE,
+} from '@domain/services/redis.interface'
 
 @Injectable()
 export class DeleteBookUseCase {
@@ -13,6 +17,8 @@ export class DeleteBookUseCase {
     private readonly bookRepository: IBookRepositoryInterface,
     @Inject(EXCEPTIONS)
     private readonly exceptionsService: IException,
+    @Inject(REDIS_SERVICE)
+    private readonly redisService: IRedisCacheService,
   ) {}
 
   async execute(params: { id: number }): Promise<boolean> {
@@ -25,6 +31,12 @@ export class DeleteBookUseCase {
       })
     }
 
-    return await this.bookRepository.deleteBook(params)
+    const deleted = await this.bookRepository.deleteBook(params)
+    if (deleted) {
+      await this.redisService.delPattern('books:*')
+    }
+
+    return deleted
   }
 }
+

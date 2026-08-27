@@ -106,7 +106,7 @@ export function Header({
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>
               <UserIcon className="mr-2 h-4 w-4" /> Hồ sơ
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onLogout?.()}>

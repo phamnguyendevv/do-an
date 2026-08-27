@@ -1,119 +1,81 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiExtraModels, ApiOperation } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 
 import { GetDailyRevenueUseCase } from '@use-cases/revenue/get-daily-revenue.use-case'
 import { GetMonthlyRevenueUseCase } from '@use-cases/revenue/get-monthly-revenue.use-case'
 import { GetOverviewRevenueUseCase } from '@use-cases/revenue/get-overview-revenue.use-case'
-import { GetProviderRevenueUseCase } from '@use-cases/revenue/get-provider-revenue.use-case'
-import { GetRevenueByServiceUseCase } from '@use-cases/revenue/get-revenue-by-service.use-case'
+import { GetTopSellingBooksUseCase } from '@use-cases/revenue/get-top-books.use-case'
 
-import { ApiResponseType } from '../common/decorators/swagger-response.decorator'
-import { User } from '../common/decorators/user.decorator'
+import { CheckPolicies } from '../common/decorators/check-policies.decorator'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
-import { DailyRevenueDto } from './dto/daily-revenue.dto'
-import { MonthlyRevenueDto } from './dto/monthly-revenue.dto '
-import { ProviderRevenueDto } from './dto/provider-revenue.dto'
-import { RevenueByServiceDto } from './dto/revenue-by-service.dto '
-import { RevenueFilterDto } from './dto/revenue-filter.dto'
-import { AdminRevenueOverviewPresenter } from './presenters/admin-revenue-overview.presenters'
-import { DailyRevenuePresenter } from './presenters/daily-revenue.presenter'
-import { GetProviderRevenuePresenter } from './presenters/get-provider-revenue.presenter'
-import { MonthlyRevenuePresenter } from './presenters/monthly-revenue.presenter'
-import { RevenueByServicePresenter } from './presenters/revenue-by-service.presenter'
-import { RevenueOverviewPresenter } from './presenters/revenue-overview.presenter'
+import { PoliciesGuard } from '../common/guards/policies.guard'
 
-@Controller()
-@UseGuards(JwtAuthGuard)
+@Controller('admin/revenue')
+@ApiTags('Revenue & Analytics - Doanh Thu & Thống Kê')
+@ApiResponse({ status: 401, description: 'No authorization token was found' })
+@ApiResponse({ status: 403, description: 'Forbidden access' })
+@UseGuards(JwtAuthGuard, PoliciesGuard)
 export class RevenueController {
   constructor(
     private readonly getOverviewRevenueUseCase: GetOverviewRevenueUseCase,
     private readonly getMonthlyRevenueUseCase: GetMonthlyRevenueUseCase,
     private readonly getDailyRevenueUseCase: GetDailyRevenueUseCase,
-    private readonly getRevenueByServiceUseCase: GetRevenueByServiceUseCase,
-    private readonly getProviderRevenueUseCase: GetProviderRevenueUseCase,
+    private readonly getTopSellingBooksUseCase: GetTopSellingBooksUseCase,
   ) {}
 
-  @Get('providers/revenue/overview')
+  @Get('overview')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Overview', description: 'Overview revenue' })
-  @ApiExtraModels(RevenueOverviewPresenter)
-  @ApiResponseType(RevenueOverviewPresenter, false)
+  @ApiOperation({ summary: 'Tổng quan doanh thu, đơn hàng, sách bán ra' })
+  @CheckPolicies({ action: 'read', subject: 'Revenue' })
   async getOverview(
-    @Query() filter: RevenueFilterDto,
-    @User('id') userId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    const overview = await this.getOverviewRevenueUseCase.execute({
-      ...filter,
-      userId,
+    return await this.getOverviewRevenueUseCase.execute({
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
     })
-    return new RevenueOverviewPresenter(overview)
   }
 
-  @Get('providers/revenue/monthly')
+  @Get('monthly')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Monthly', description: 'Monthly revenue' })
-  @ApiExtraModels(MonthlyRevenueDto)
-  @ApiResponseType(MonthlyRevenueDto, false)
-  async getMonthly(
-    @Query() filter: MonthlyRevenueDto,
-    @User('id') userId: number,
+  @ApiOperation({ summary: 'Doanh thu theo từng tháng (cho biểu đồ cột/vùng)' })
+  @CheckPolicies({ action: 'read', subject: 'Revenue' })
+  async getMonthly(@Query('months') months?: number) {
+    return await this.getMonthlyRevenueUseCase.execute({
+      months: months ? Number(months) : 6,
+    })
+  }
+
+  @Get('daily')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Doanh thu theo từng ngày' })
+  @CheckPolicies({ action: 'read', subject: 'Revenue' })
+  async getDaily(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('days') days?: number,
   ) {
-    const overview = await this.getMonthlyRevenueUseCase.execute({
-      ...filter,
-      userId,
+    return await this.getDailyRevenueUseCase.execute({
+      startDate,
+      endDate,
+      days: days ? Number(days) : 30,
     })
-    return new MonthlyRevenuePresenter(overview, filter)
   }
 
-  @Get('providers/revenue/daily')
+  @Get('top-books')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Daily', description: 'Daily revenue' })
-  @ApiExtraModels(DailyRevenueDto)
-  @ApiResponseType(DailyRevenueDto, false)
-  async getDaily(@Query() filter: DailyRevenueDto, @User('id') userId: number) {
-    const overview = await this.getDailyRevenueUseCase.execute({
-      ...filter,
-      userId,
+  @ApiOperation({ summary: 'Top sách bán chạy nhất' })
+  @CheckPolicies({ action: 'read', subject: 'Revenue' })
+  async getTopBooks(
+    @Query('limit') limit?: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return await this.getTopSellingBooksUseCase.execute({
+      limit: limit ? Number(limit) : 10,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
     })
-    return new DailyRevenuePresenter(overview, filter)
-  }
-
-  @Get('admin/revenue/overview')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Overview', description: 'Overview revenue' })
-  @ApiExtraModels(AdminRevenueOverviewPresenter)
-  @ApiResponseType(AdminRevenueOverviewPresenter, false)
-  async getAdminOverview(@Query() filter: RevenueFilterDto) {
-    const overview = await this.getOverviewRevenueUseCase.execute({
-      ...filter,
-      userId: 0,
-    })
-    return new AdminRevenueOverviewPresenter(overview)
-  }
-
-  @Get('admin/revenue/providers')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Providers', description: 'Providers revenue' })
-  @ApiExtraModels(GetProviderRevenuePresenter)
-  @ApiResponseType(GetProviderRevenuePresenter, false)
-  async getAdminProviders(@Query() filter: ProviderRevenueDto) {
-    const { data, pagination } =
-      await this.getProviderRevenueUseCase.execute(filter)
-    return new GetProviderRevenuePresenter(data, pagination)
-  }
-
-  @Get('admin/revenue/top-services')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Top services',
-    description: 'Top services revenue',
-  })
-  @ApiExtraModels(RevenueByServiceDto)
-  @ApiResponseType(RevenueByServiceDto, false)
-  async getTopServices() {
-    const overview = await this.getRevenueByServiceUseCase.execute({
-      userId: 0,
-    })
-    return RevenueByServicePresenter.getTopServices(overview, 6)
   }
 }

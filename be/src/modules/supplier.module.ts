@@ -12,8 +12,8 @@ import { UpdateSupplierUseCase } from '@use-cases/suppliers/update-supplier.use-
 
 import { SuppliersController } from '@adapters/controllers/suppliers/suppliers.controller'
 
-import { Supplier } from '@infrastructure/databases/postgressql/entities/supplier.entity'
-import { SupplierRepository } from '@infrastructure/databases/postgressql/repositories/supplier.repository'
+import { Supplier } from '@infrastructure/databases/postgresql/entities/supplier.entity'
+import { SupplierRepository } from '@infrastructure/databases/postgresql/repositories/supplier.repository'
 import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { CaslModule } from '@infrastructure/services/casl/casl.module'

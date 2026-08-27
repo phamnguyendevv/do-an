@@ -14,11 +14,14 @@ import { useBooks } from "@/hooks/use-store";
 import { bookApi, type BookApiItem } from "@/lib/book-api";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
+import { Can } from "@/lib/ability";
 import type { Book } from "@/types";
 
 const mapApiBook = (book: BookApiItem): Book => {
   const stock = Number(book?.stock ?? 0);
   const minStock = Number(book?.minStock ?? 0);
+  const purchasePrice = Number(book?.purchasePrice ?? (book as any)?.importPrice ?? 0);
+  const sellingPrice = Number(book?.sellingPrice ?? (book as any)?.price ?? 0);
   const rawStatus = (book?.status as any) || (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
 
   return {
@@ -26,8 +29,10 @@ const mapApiBook = (book: BookApiItem): Book => {
     title: String(book?.title ?? ""),
     author: String(book?.author ?? ""),
     category: String(book?.category ?? ""),
-    purchasePrice: Number(book?.purchasePrice ?? 0),
-    sellingPrice: Number(book?.sellingPrice ?? 0),
+    purchasePrice,
+    sellingPrice,
+    price: sellingPrice,
+    importPrice: purchasePrice,
     stock,
     minStock,
     status: rawStatus,
@@ -74,8 +79,10 @@ function BookDetailPage() {
   const { book: loadedBook } = Route.useLoaderData();
   const books = useBooks();
   const book = books.find((b) => b.id === loadedBook.id) ?? loadedBook;
-  const margin = book.sellingPrice - book.purchasePrice;
-  const marginPct = ((margin / book.sellingPrice) * 100).toFixed(1);
+  const sellingPrice = book.sellingPrice ?? book.price ?? 0;
+  const purchasePrice = book.purchasePrice ?? book.importPrice ?? 0;
+  const margin = sellingPrice - purchasePrice;
+  const marginPct = sellingPrice > 0 ? ((margin / sellingPrice) * 100).toFixed(1) : "0";
 
   return (
     <AppShell
@@ -96,21 +103,23 @@ function BookDetailPage() {
           title={book.title}
           description={`${book.author} · ${book.category}`}
           actions={
-            <BookFormDialog
-              book={book}
-              trigger={
-                <Button size="sm" variant="outline">
-                  <Pencil className="mr-1.5 h-4 w-4" /> Chỉnh sửa
-                </Button>
-              }
-            />
+            <Can I="update" a="Book">
+              <BookFormDialog
+                book={book}
+                trigger={
+                  <Button size="sm" variant="outline">
+                    <Pencil className="mr-1.5 h-4 w-4" /> Chỉnh sửa
+                  </Button>
+                }
+              />
+            </Can>
           }
         />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Tồn kho" value={formatNumber(book.stock)} hint={`Tối thiểu ${book.minStock}`} />
-          <StatCard label="Giá bán" value={formatCurrency(book.sellingPrice)} />
-          <StatCard label="Giá nhập" value={formatCurrency(book.purchasePrice)} />
+          <StatCard label="Giá bán" value={formatCurrency(sellingPrice)} />
+          <StatCard label="Giá nhập" value={formatCurrency(purchasePrice)} />
           <StatCard label="Lợi nhuận / cuốn" value={formatCurrency(margin)} hint={`${marginPct}% biên lợi nhuận`} trend="up" />
         </div>
 
@@ -136,7 +145,7 @@ function BookDetailPage() {
                 <Row label="Trạng thái" value={<StatusBadge tone={bookStatusTone[book.status]}>{bookStatusLabel[book.status]}</StatusBadge>} />
                 <Row label="Tồn hiện tại" value={formatNumber(book.stock)} />
                 <Row label="Tồn tối thiểu" value={formatNumber(book.minStock)} />
-                <Row label="Giá trị tồn" value={formatCurrency(book.stock * book.purchasePrice)} />
+                <Row label="Giá trị tồn" value={formatCurrency(book.stock * purchasePrice)} />
               </div>
               <Separator className="my-4" />
               <div className="flex gap-2">

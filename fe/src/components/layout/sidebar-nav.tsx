@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { mainNav, footerNav, type NavItem, type Role } from "@/config/navigation";
+import { useAbility } from "@/lib/ability";
 
 interface SidebarNavProps {
   collapsed: boolean;
@@ -62,8 +63,18 @@ function NavLink({
 
 export function SidebarNav({ collapsed, onToggleCollapsed, role = "ADMIN", onNavigate }: SidebarNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const ability = useAbility();
 
-  const visible = (items: NavItem[]) => items.filter((i) => i.roles.includes(role));
+  const visible = (items: NavItem[]) =>
+    items.filter((i) => {
+      if (i.ability) {
+        return ability.can(i.ability.action, i.ability.subject);
+      }
+      if (i.roles) {
+        return i.roles.includes(role);
+      }
+      return true;
+    });
 
   return (
     <div className="flex h-full flex-col border-r border-sidebar-border bg-sidebar">

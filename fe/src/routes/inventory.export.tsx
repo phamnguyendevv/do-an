@@ -63,6 +63,7 @@ function ExportPage() {
 
   return (
     <AppShell
+      requiredAbility={{ action: "create", subject: "ExportReceipt" }}
       crumbs={[
         { label: "Dashboard", href: "/dashboard" },
         { label: "Kho hàng", href: "/inventory" },

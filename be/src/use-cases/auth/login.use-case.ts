@@ -1,15 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { UserRoleEnum } from '@domain/entities/role.entity'
-import {
-  ProviderStatusEnum,
-  UserStatusEnum,
-} from '@domain/entities/status.entity'
+import { UserStatusEnum } from '@domain/entities/status.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
-import {
-  IProviderProfileRepositoryInterface,
-  PROVIDER_PROFILE_REPOSITORY,
-} from '@domain/repositories/provider-profile.respository.interface'
 import {
   IUserRepositoryInterface,
   USER_REPOSITORY,
@@ -29,9 +21,6 @@ export class LoginUseCase {
     private readonly jwtService: IJwtService,
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepositoryInterface,
-
-    @Inject(PROVIDER_PROFILE_REPOSITORY)
-    private readonly providerProfileRepository: IProviderProfileRepositoryInterface,
     @Inject(EXCEPTIONS)
     private readonly exceptionsService: IException,
   ) {}
@@ -56,8 +45,8 @@ export class LoginUseCase {
       })
     if (user.status !== UserStatusEnum.Active) {
       throw this.exceptionsService.badRequestException({
-        type: 'BadRequest',
-        message: 'User is not active',
+        type: 'AccountDisabled',
+        message: 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên!',
       })
     }
 

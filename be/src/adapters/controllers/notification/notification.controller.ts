@@ -12,16 +12,18 @@ import { GetUnreadCountUseCase } from '@use-cases/notification/get-unread-count.
 import { MarkAllAsReadUseCase } from '@use-cases/notification/mark-all-as-read.use-case'
 import { MarkAsReadUseCase } from '@use-cases/notification/mark-as-read.use-case'
 
+import { CheckPolicies } from '../common/decorators/check-policies.decorator'
 import { ApiResponseType } from '../common/decorators/swagger-response.decorator'
 import { User } from '../common/decorators/user.decorator'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { PoliciesGuard } from '../common/guards/policies.guard'
 import { GetListNotificationDto } from './dto/get-list-notification.dto'
 import {
   GetListNotificationPresenter,
   NotificationPresenter,
 } from './presenters/get-list-pesenters'
 
-@Controller()
+@Controller('notifications')
 @ApiTags('Notifications')
 @ApiResponse({
   status: 401,
@@ -29,8 +31,7 @@ import {
 })
 @ApiResponse({ status: 500, description: 'Internal error' })
 @ApiResponse({ status: 403, description: 'Forbidden access' })
-@Controller('notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PoliciesGuard)
 export class NotificationController {
   constructor(
     private readonly getNotificationsUseCase: GetNotificationsUseCase,
@@ -39,7 +40,7 @@ export class NotificationController {
     private readonly markAllAsReadUseCase: MarkAllAsReadUseCase,
   ) {}
 
-  @Get('notifications')
+  @Get()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get notifications',
@@ -47,6 +48,7 @@ export class NotificationController {
   })
   @ApiExtraModels(GetListNotificationPresenter)
   @ApiResponseType(GetListNotificationPresenter, true)
+  @CheckPolicies({ action: 'read', subject: 'Notification' })
   async getNotifications(
     @Query() queryParams: GetListNotificationDto,
     @User('id') userId: number,
@@ -65,6 +67,7 @@ export class NotificationController {
     summary: 'Get unread notifications count',
     description: 'Retrieve the count of all unread notifications',
   })
+  @CheckPolicies({ action: 'read', subject: 'Notification' })
   async getUnreadCount(@User('id') userId: number) {
     return this.getUnreadCountUseCase.execute({ userId })
   }
@@ -77,6 +80,7 @@ export class NotificationController {
   })
   @ApiExtraModels(NotificationPresenter)
   @ApiResponseType(NotificationPresenter, false)
+  @CheckPolicies({ action: 'update', subject: 'Notification' })
   async markAsRead(@Param('id') id: number, @User('id') userId: number) {
     const notification = await this.markAsReadUseCase.execute({
       notificationId: id,
@@ -91,6 +95,7 @@ export class NotificationController {
     summary: 'Mark all notifications as read',
     description: 'Mark all notifications as read',
   })
+  @CheckPolicies({ action: 'update', subject: 'Notification' })
   async markAllAsRead(@User('id') userId: number) {
     await this.markAllAsReadUseCase.execute({ userId })
     return { message: 'All notifications marked as read' }

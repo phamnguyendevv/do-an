@@ -165,3 +165,105 @@ export class PrintTokenDto {
   @IsString({ each: true })
   orderCodes!: string[]
 }
+
+export class UpdateGhnOrderDto {
+  @ApiProperty({ example: '5F5NH3LN', description: 'Mã vận đơn GHN (bắt buộc)' })
+  @IsString()
+  @IsNotEmpty()
+  order_code!: string
+
+  @ApiProperty({ example: 'Nguyễn Văn B', required: false })
+  @IsOptional()
+  @IsString()
+  to_name?: string
+
+  @ApiProperty({ example: '0987654321', required: false })
+  @IsOptional()
+  @IsString()
+  to_phone?: string
+
+  @ApiProperty({ example: 'Số 123 Đường Cầu Giấy', required: false })
+  @IsOptional()
+  @IsString()
+  to_address?: string
+
+  @ApiProperty({ example: '20311', required: false })
+  @IsOptional()
+  @IsString()
+  to_ward_code?: string
+
+  @ApiProperty({ example: 1444, required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  to_district_id?: number
+
+  @ApiProperty({ example: 150000, required: false, description: 'Tiền thu hộ COD (max 10.000.000)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  cod_amount?: number
+
+  @ApiProperty({ example: 'Đơn hàng sách', required: false })
+  @IsOptional()
+  @IsString()
+  content?: string
+
+  @ApiProperty({ example: 600, required: false, description: 'Trọng lượng (gram, max 50.000)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  weight?: number
+
+  @ApiProperty({ example: 20, required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  length?: number
+
+  @ApiProperty({ example: 15, required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  width?: number
+
+  @ApiProperty({ example: 10, required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  height?: number
+
+  @ApiProperty({ example: 150000, required: false, description: 'Giá trị bảo hiểm (max 5.000.000)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  insurance_value?: number
+
+  @ApiProperty({ example: 2, required: false, description: '1: Shop trả, 2: Khách trả' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  payment_type_id?: number
+
+  @ApiProperty({ example: 'Nhớ gọi 30p khi giao', required: false })
+  @IsOptional()
+  @IsString()
+  note?: string
+
+  @ApiProperty({
+    example: 'CHOXEMHANGKHONGTHU',
+    enum: ['CHOTHUHANG', 'CHOXEMHANGKHONGTHU', 'KHONGCHOXEMHANG'],
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(['CHOTHUHANG', 'CHOXEMHANGKHONGTHU', 'KHONGCHOXEMHANG'])
+  required_note?: 'CHOTHUHANG' | 'CHOXEMHANGKHONGTHU' | 'KHONGCHOXEMHANG'
+
+  @ApiProperty({ type: [GhnItemDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GhnItemDto)
+  items?: GhnItemDto[]
+}
+

@@ -1,36 +1,66 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
+import { DataSource } from 'typeorm'
 
-import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
-import {
-  IOrderRepositoryInterface,
-  ISearchOrderParams,
-  ORDER_REPOSITORY,
-} from '@domain/repositories/order.repository.interface'
+import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 
 @Injectable()
 export class GetOverviewRevenueUseCase {
-  constructor(
-    @Inject(ORDER_REPOSITORY)
-    private readonly orderRepository: IOrderRepositoryInterface,
+  constructor(private readonly dataSource: DataSource) {}
 
-    @Inject(EXCEPTIONS)
-    private readonly exceptionsService: IException,
-  ) {}
+  async execute(params?: { startDate?: Date; endDate?: Date }) {
+    const orderRepo = this.dataSource.getRepository(BookstoreOrder)
 
-  async execute(queryParams: ISearchOrderParams & { userId: number }) {
-    const orders = await this.checkOrdersExits(queryParams)
-    return orders
-  }
-  private async checkOrdersExits(
-    queryParams: ISearchOrderParams & { userId: number },
-  ) {
-    const orders = await this.orderRepository.findOrders(queryParams)
-    if (!orders) {
-      throw this.exceptionsService.notFoundException({
-        type: 'OrderNotFoundException',
-        message: 'Order not found',
-      })
+    const query = orderRepo.createQueryBuilder('o')
+
+    if (params?.startDate) {
+      query.andWhere('o.createdAt >= :startDate', { startDate: params.startDate })
     }
-    return orders
+
+    if (params?.endDate) {
+      query.andWhere('o.createdAt <= :endDate', { endDate: params.endDate })
+    }
+
+    const orders = await query.getMany()
+
+    let totalRevenue = 0
+    let pendingRevenue = 0
+    let totalOrders = orders.length
+    let deliveredOrders = 0
+    let cancelledOrders = 0
+    let totalBooksSold = 0
+
+    for (const order of orders) {
+      if (order.status === 'CANCELLED') {
+        cancelledOrders++
+        continue
+      }
+
+      if (order.status === 'DELIVERED') {
+        deliveredOrders++
+      }
+
+      const totalVal = Number(order.total || 0)
+      if (order.payment === 'PAID') {
+        totalRevenue += totalVal
+      } else {
+        pendingRevenue += totalVal
+      }
+
+      if (order.items && Array.isArray(order.items)) {
+        for (const it of order.items) {
+          totalBooksSold += Number(it.quantity || 0)
+        }
+      }
+    }
+
+    return {
+      totalRevenue,
+      pendingRevenue,
+      totalOrders,
+      deliveredOrders,
+      cancelledOrders,
+      totalBooksSold,
+      averageOrderValue: totalOrders > 0 ? Math.round(totalRevenue / Math.max(1, totalOrders - cancelledOrders)) : 0,
+    }
   }
 }

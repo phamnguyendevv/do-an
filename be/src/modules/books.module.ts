@@ -6,8 +6,8 @@ import { BOOK_REPOSITORY } from '@domain/repositories/book.repository.interface'
 
 import { BooksController } from '@adapters/controllers/books/books.controller'
 
-import { Book } from '@infrastructure/databases/postgressql/entities/book.entity'
-import { BookRepository } from '@infrastructure/databases/postgressql/repositories/book.repository'
+import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
+import { BookRepository } from '@infrastructure/databases/postgresql/repositories/book.repository'
 import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { CaslModule } from '@infrastructure/services/casl/casl.module'

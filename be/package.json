@@ -42,6 +42,7 @@
     "@nestjs/platform-socket.io": "^11.1.6",
     "@nestjs/swagger": "^11.0.3",
     "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.6",
     "@types/bcrypt": "^5.0.2",
@@ -55,6 +56,7 @@
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
+    "helmet": "^8.3.0",
     "ioredis": "^5.6.1",
     "jwks-rsa": "^3.1.0",
     "keyv": "^5.3.4",
@@ -135,7 +137,9 @@
       "json",
       "ts"
     ],
-    "testRegex": "(\\/test\\/.*\\.spec\\.[jt]s?$)",
+    "testMatch": [
+      "<rootDir>/test/**/*.spec.[jt]s"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

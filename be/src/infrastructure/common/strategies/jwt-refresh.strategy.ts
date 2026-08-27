@@ -4,10 +4,11 @@ import { PassportStrategy } from '@nestjs/passport'
 import { Request } from 'express'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
+import { UserStatusEnum } from '@domain/entities/status.entity'
 import { IJwtServicePayload } from '@domain/services/jwt.interface'
 
 import { EnvironmentConfigService } from '@infrastructure/config/environment/environment-config.service'
-import { UserRepository } from '@infrastructure/databases/postgressql/repositories/user.repository'
+import { UserRepository } from '@infrastructure/databases/postgresql/repositories/user.repository'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { LoggerService } from '@infrastructure/logger/logger.service'
 
@@ -23,24 +24,40 @@ export class JwtRefreshStrategy extends PassportStrategy(
     private readonly userRepository: UserRepository,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: any) => {
+          return request?.cookies?.refresh_token || request?.cookies?.['refresh_token'] || null
+        },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       secretOrKey: environmentConfigService.getJwtRefreshSecret(),
       passReqToCallback: true,
     })
   }
 
   async validate(request: Request, payload: IJwtServicePayload) {
-    const refreshToken = request.headers['authorization']
-      ?.replace('Bearer', '')
-      .trim()
+    const refreshToken =
+      request?.cookies?.refresh_token ||
+      request.headers['authorization']?.replace('Bearer', '').trim()
+
 
     const user = await this.userRepository.getUserById(payload.id)
     if (!user) {
-      this.logger.warn('JwtStrategy', 'User not found')
+      this.logger.warn('JwtRefreshStrategy', 'User not found')
       this.exceptionService.unauthorizedException({
         type: 'Unauthorized',
         message: 'User not found',
       })
+      return
+    }
+
+    if (user.status !== UserStatusEnum.Active) {
+      this.logger.warn('JwtRefreshStrategy', 'User not active')
+      this.exceptionService.unauthorizedException({
+        type: 'Unauthorized',
+        message: 'Tài khoản đã bị vô hiệu hóa',
+      })
+      return
     }
 
     return { ...user, refreshToken }

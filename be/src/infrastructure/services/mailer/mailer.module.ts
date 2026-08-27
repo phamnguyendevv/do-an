@@ -13,13 +13,11 @@ import {
 import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 
-import { StripeModule } from '../stripe/stripe.module'
 import { NodeMailerService } from './mailer.service'
 
 @Module({
   imports: [
     EnvironmentConfigModule,
-    StripeModule,
     NestMailerModule,
     ExceptionsModule,
     NestMailerModule.forRootAsync({
@@ -36,7 +34,7 @@ import { NodeMailerService } from './mailer.service'
           },
         },
         defaults: {
-          from: `"No Reply" <${configService.getEmailUsername()}>`,
+          from: `"BookStock" <${configService.getEmailUsername()}>`,
         },
       }),
     }),

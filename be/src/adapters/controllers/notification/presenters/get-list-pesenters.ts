@@ -5,7 +5,16 @@ import {
   NotificationTypeEnum,
 } from '@domain/entities/notification.entity'
 
-import { Pagination } from '@adapters/controllers/appointments/presenters/get-list-appointment.presenters'
+export class Pagination {
+  @ApiProperty({ example: 100 })
+  total!: number
+
+  @ApiProperty({ example: 1 })
+  page!: number
+
+  @ApiProperty({ example: 10 })
+  size!: number
+}
 
 export class NotificationPresenter {
   @ApiProperty()

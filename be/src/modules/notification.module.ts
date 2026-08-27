@@ -14,15 +14,17 @@ import { MarkAsReadUseCase } from '@use-cases/notification/mark-as-read.use-case
 import { NotificationController } from '@adapters/controllers/notification/notification.controller'
 import { NotificationGateway } from '@adapters/gateways/notification/notification.gateway'
 
-import { Notification } from '@infrastructure/databases/postgressql/entities/notification.entity'
-import { NotificationRepository } from '@infrastructure/databases/postgressql/repositories/notification.repository'
+import { Notification } from '@infrastructure/databases/postgresql/entities/notification.entity'
+import { NotificationRepository } from '@infrastructure/databases/postgresql/repositories/notification.repository'
 import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
+import { CaslModule } from '@infrastructure/services/casl/casl.module'
 import { JwtModule } from '@infrastructure/services/jwt/jwt.module'
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification]),
     JwtModule,
+    CaslModule,
     ExceptionsModule,
   ],
   controllers: [NotificationController],

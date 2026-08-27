@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, Loader2, PackageCheck, Truck } from "lucide-react";
+import {
+  ArrowLeft,
+  BookUser,
+  Check,
+  CheckCircle2,
+  ChevronsUpDown,
+  ClipboardPaste,
+  Info,
+  Loader2,
+  MapPin,
+  PackageCheck,
+  Search,
+  Sparkles,
+  Truck,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -13,6 +28,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -20,10 +41,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { orderService } from "@/services/order-service";
-import { useBooks } from "@/hooks/use-store";
+import { useBooks, useOrders } from "@/hooks/use-store";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
+import { normalizeText, parseCustomerAndAddress } from "@/lib/vn-address-parser";
+import { parseProductList } from "@/lib/product-parser";
+import { AddressBookDialog, type AddressBookContact } from "@/components/orders/address-book-dialog";
 
 export const Route = createFileRoute("/orders/create")({
   head: () => ({
@@ -37,11 +62,31 @@ export const Route = createFileRoute("/orders/create")({
   component: CreateOrderPage,
 });
 
+type AddressType = "NEW_2_LEVEL" | "OLD_3_LEVEL";
+
+interface WardOption extends GhnWard {
+  districtName: string;
+}
+
 function CreateOrderPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const books = useBooks();
+  const orders = useOrders();
 
-  // Khách hàng & Địa chỉ 3 cấp GHN
+  // Chế độ địa chỉ: MỚI (2 cấp) vs CŨ (3 cấp)
+  const [addressType, setAddressType] = useState<AddressType>("NEW_2_LEVEL");
+  const [autoInputText, setAutoInputText] = useState("");
+  const [isAutoParsing, setIsAutoParsing] = useState(false);
+  const [addressBookOpen, setAddressBookOpen] = useState(false);
+  const [openWardCombobox, setOpenWardCombobox] = useState(false);
+  const [wardSearchFilter, setWardSearchFilter] = useState("");
+
+  // Gợi ý khách hàng cũ
+  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [showPhoneSuggestions, setShowPhoneSuggestions] = useState(false);
+
+  // Khách hàng & Địa chỉ GHN
   const [customer, setCustomer] = useState({ name: "", phone: "", detailAddress: "", note: "" });
   const [provinceId, setProvinceId] = useState<number | undefined>(undefined);
   const [districtId, setDistrictId] = useState<number | undefined>(undefined);
@@ -61,6 +106,8 @@ function CreateOrderPage() {
   const [discount, setDiscount] = useState(0);
 
   // Sản phẩm
+  const [autoProductText, setAutoProductText] = useState("");
+  const [isAutoParsingProducts, setIsAutoParsingProducts] = useState(false);
   const [lines, setLines] = useState<ProductLine[]>([{ bookId: "", quantity: 1, price: 0 }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +144,7 @@ function CreateOrderPage() {
     staleTime: 300_000,
   });
 
-  // 3. Tải danh sách Phường/Xã theo Quận
+  // 3. Tải danh sách Phường/Xã theo Quận (chế độ 3 cấp)
   const { data: wards = [], isLoading: loadingWards } = useQuery({
     queryKey: ["ghn-wards", districtId],
     queryFn: async () => {
@@ -114,6 +161,126 @@ function CreateOrderPage() {
     staleTime: 300_000,
   });
 
+  // 4. Tải và tổng hợp toàn bộ Phường/Xã trong Tỉnh (chế độ 2 cấp)
+  const { data: allProvinceWards = [], isLoading: loadingAllProvinceWards } = useQuery({
+    queryKey: ["ghn-all-wards-province", provinceId],
+    queryFn: async () => {
+      if (!provinceId) return [];
+      try {
+        const dists = await ghnApi.getDistricts(provinceId);
+        const wardPromises = dists.map(async (d) => {
+          try {
+            const ws = await ghnApi.getWards(d.DistrictID);
+            return (Array.isArray(ws) ? ws : []).map(
+              (w): WardOption => ({
+                ...w,
+                DistrictID: d.DistrictID,
+                districtName: d.DistrictName,
+              })
+            );
+          } catch {
+            return [];
+          }
+        });
+        const results = await Promise.all(wardPromises);
+        const flattened = results.flat();
+        flattened.sort((a, b) => a.WardName.localeCompare(b.WardName, "vi"));
+        return flattened;
+      } catch (e) {
+        console.error("Lỗi tải tổng hợp phường xã tỉnh GHN:", e);
+        return [];
+      }
+    },
+    enabled: Boolean(provinceId),
+    staleTime: 300_000,
+  });
+
+  // Lọc danh sách phường xã 2 cấp theo ô tìm kiếm (hỗ trợ có dấu và không dấu)
+  const filteredProvinceWards = useMemo(() => {
+    if (!wardSearchFilter.trim()) return allProvinceWards;
+    const q = normalizeText(wardSearchFilter);
+    return allProvinceWards.filter(
+      (w) =>
+        normalizeText(w.WardName).includes(q) ||
+        normalizeText(w.districtName).includes(q)
+    );
+  }, [allProvinceWards, wardSearchFilter]);
+
+  // Danh sách khách hàng unique từ orders cũ (dedup theo SĐT)
+  const pastCustomers = useMemo(() => {
+    const map = new Map<string, { name: string; phone: string; address: string }>();
+    for (const o of orders) {
+      if (o.customerPhone && !map.has(o.customerPhone)) {
+        map.set(o.customerPhone, {
+          name: o.customerName || "",
+          phone: o.customerPhone,
+          address: o.customerAddress || "",
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [orders]);
+
+  // Gợi ý theo tên
+  const nameSuggestions = useMemo(() => {
+    const q = customer.name.trim();
+    if (!q || q.length < 1) return [];
+    const qNorm = normalizeText(q);
+    return pastCustomers
+      .filter((c) => normalizeText(c.name).includes(qNorm) || normalizeText(c.phone).includes(qNorm))
+      .slice(0, 6);
+  }, [customer.name, pastCustomers]);
+
+  // Gợi ý theo số điện thoại
+  const phoneSuggestions = useMemo(() => {
+    const q = customer.phone.trim();
+    if (!q || q.length < 1) return [];
+    return pastCustomers
+      .filter((c) => c.phone.includes(q) || normalizeText(c.name).includes(normalizeText(q)))
+      .slice(0, 6);
+  }, [customer.phone, pastCustomers]);
+
+  // Chọn khách hàng từ gợi ý và auto-fill địa chỉ
+  const handleSelectPastCustomer = async (c: { name: string; phone: string; address: string }) => {
+    setCustomer((prev) => ({ ...prev, name: c.name, phone: c.phone }));
+    setShowNameSuggestions(false);
+    setShowPhoneSuggestions(false);
+    if (c.address) {
+      setIsAutoParsing(true);
+      try {
+        const parsed = await parseCustomerAndAddress(c.address, provinces, ghnApi.getDistricts, ghnApi.getWards);
+        setCustomer((prev) => ({ ...prev, name: c.name, phone: c.phone, detailAddress: parsed.detailAddress || c.address }));
+        if (parsed.provinceId) setProvinceId(parsed.provinceId);
+        if (parsed.districtId) setDistrictId(parsed.districtId);
+        if (parsed.wardCode) setWardCode(parsed.wardCode);
+        toast.success(`Đã điền thông tin khách hàng: ${c.name}`);
+      } catch {
+        setCustomer((prev) => ({ ...prev, name: c.name, phone: c.phone, detailAddress: c.address }));
+      } finally {
+        setIsAutoParsing(false);
+      }
+    }
+  };
+
+  // Thông tin tên Tỉnh, Huyện, Xã đang chọn
+  const currentProvinceName = useMemo(
+    () => provinces.find((p) => p.ProvinceID === provinceId)?.ProvinceName,
+    [provinces, provinceId]
+  );
+  const currentDistrictName = useMemo(() => {
+    const fromDist = districts.find((d) => d.DistrictID === districtId)?.DistrictName;
+    if (fromDist) return fromDist;
+    const fromAllWards = allProvinceWards.find((w) => w.DistrictID === districtId)?.districtName;
+    return fromAllWards;
+  }, [districts, districtId, allProvinceWards]);
+
+  const currentWardName = useMemo(() => {
+    const fromWards = wards.find((w) => w.WardCode === wardCode)?.WardName;
+    if (fromWards) return fromWards;
+    const fromAllWards = allProvinceWards.find((w) => w.WardCode === wardCode)?.WardName;
+    return fromAllWards;
+  }, [wards, allProvinceWards, wardCode]);
+
   // Tính tổng số lượng & trọng lượng ước tính (300g/cuốn)
   const totalItems = useMemo(() => lines.reduce((s, l) => s + (l.quantity || 0), 0), [lines]);
   const estimatedWeight = Math.max(300, totalItems * 300);
@@ -122,7 +289,7 @@ function CreateOrderPage() {
     [lines],
   );
 
-  // 4. Tự động tính cước GHN khi đã chọn District + Ward + Sách
+  // Tự động tính cước GHN khi đã chọn District + Ward + Sách
   useEffect(() => {
     if (carrierType !== "GHN" || !districtId || !wardCode || totalItems === 0) {
       if (carrierType !== "GHN") setGhnShippingFee(null);
@@ -150,7 +317,7 @@ function CreateOrderPage() {
           if (feeRes.status === "fulfilled" && feeRes.value?.total) {
             setGhnShippingFee(feeRes.value.total);
           } else {
-            setGhnShippingFee(32000); // fallback hợp lý
+            setGhnShippingFee(32000); // fallback
           }
 
           if (leadTimeRes.status === "fulfilled" && leadTimeRes.value?.leadtime) {
@@ -183,12 +350,239 @@ function CreateOrderPage() {
 
   // Ghép chuỗi địa chỉ đầy đủ
   const fullAddress = useMemo(() => {
-    const pName = provinces.find((p) => p.ProvinceID === provinceId)?.ProvinceName;
-    const dName = districts.find((d) => d.DistrictID === districtId)?.DistrictName;
-    const wName = wards.find((w) => w.WardCode === wardCode)?.WardName;
-    const parts = [customer.detailAddress, wName, dName, pName].filter(Boolean);
+    if (addressType === "NEW_2_LEVEL") {
+      const parts = [
+        customer.detailAddress,
+        currentDistrictName,
+        currentProvinceName,
+      ].filter(Boolean);
+      return parts.join(", ");
+    }
+    const parts = [
+      customer.detailAddress,
+      currentWardName,
+      currentDistrictName,
+      currentProvinceName,
+    ].filter(Boolean);
     return parts.join(", ");
-  }, [customer.detailAddress, provinces, provinceId, districts, districtId, wards, wardCode]);
+  }, [addressType, customer.detailAddress, currentWardName, currentDistrictName, currentProvinceName]);
+
+  // Xử lý Phân tích và Dán tự động từ Textarea / Clipboard
+  const handleAutoParseAndPaste = async () => {
+    setIsAutoParsing(true);
+    try {
+      let textToParse = autoInputText.trim();
+
+      // Nếu ô textarea đang trống, thử đọc từ clipboard
+      if (!textToParse && typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+        try {
+          const clipboardContent = await navigator.clipboard.readText();
+          if (clipboardContent?.trim()) {
+            textToParse = clipboardContent.trim();
+            setAutoInputText(textToParse);
+          }
+        } catch {
+          // Trình duyệt chặn quyền truy cập clipboard, tiếp tục với dữ liệu ô nhập
+        }
+      }
+
+      if (!textToParse) {
+        toast.info("Vui lòng nhập hoặc dán nội dung thông tin khách hàng vào ô.");
+        setIsAutoParsing(false);
+        return;
+      }
+
+      const parsed = await parseCustomerAndAddress(
+        textToParse,
+        provinces,
+        ghnApi.getDistricts,
+        ghnApi.getWards
+      );
+
+      // Cập nhật thông tin khách hàng
+      setCustomer((prev) => ({
+        ...prev,
+        name: parsed.customerName || prev.name,
+        phone: parsed.customerPhone || prev.phone,
+        detailAddress: parsed.detailAddress || prev.detailAddress,
+      }));
+
+      // Cập nhật Tỉnh/Thành, Quận/Huyện, Phường/Xã
+      if (parsed.provinceId) {
+        setProvinceId(parsed.provinceId);
+      }
+      if (parsed.districtId) {
+        setDistrictId(parsed.districtId);
+      }
+      if (parsed.wardCode) {
+        setWardCode(parsed.wardCode);
+      }
+
+      if (addressType === "NEW_2_LEVEL") {
+        // Chế độ 2 cấp: Chỉ yêu cầu Tỉnh/TP và Khu vực (Quận/Huyện)
+        if (!parsed.provinceId) {
+          toast.warning("Cảnh báo: Chưa nhận diện được Tỉnh / Thành phố!", {
+            description: "Vui lòng chọn Tỉnh / Thành phố thủ công.",
+          });
+        } else if (!parsed.districtId) {
+          toast.warning("Cảnh báo: Chưa nhận diện được Khu vực!", {
+            description: `Không tìm thấy Khu vực phù hợp trong ${parsed.provinceName || ""}. Vui lòng chọn Khu vực thủ công.`,
+          });
+        } else {
+          const summaryParts = [
+            parsed.customerName && `Tên: ${parsed.customerName}`,
+            parsed.customerPhone && `SĐT: ${parsed.customerPhone}`,
+            parsed.provinceName && `Tỉnh/TP: ${parsed.provinceName}`,
+            parsed.districtName && `Khu vực: ${parsed.districtName}`,
+          ].filter(Boolean);
+
+          toast.success("Đã tự động nhận diện thông tin khách hàng!", {
+            description: summaryParts.join(" • "),
+          });
+        }
+      } else {
+        // Chế độ 3 cấp: Yêu cầu đủ Tỉnh/TP, Quận/Huyện và Phường/Xã
+        if (!parsed.provinceId) {
+          toast.warning("Cảnh báo: Chưa nhận diện được Tỉnh / Thành phố!", {
+            description: "Vui lòng chọn Tỉnh / Thành phố thủ công.",
+          });
+        } else if (!parsed.districtId) {
+          toast.warning("Cảnh báo: Chưa nhận diện được Quận / Huyện!", {
+            description: `Không tìm thấy Quận/Huyện phù hợp trong ${parsed.provinceName || ""}. Vui lòng chọn Quận/Huyện thủ công.`,
+          });
+        } else if (!parsed.wardCode) {
+          toast.warning(
+            parsed.unmatchedWardCandidate
+              ? `Cảnh báo: Không tìm thấy "${parsed.unmatchedWardCandidate}"!`
+              : "Cảnh báo: Chưa nhận diện được Phường / Xã!",
+            {
+              description:
+                parsed.warningMessage ||
+                `Không tìm thấy Phường/Xã trong ${parsed.districtName ? `${parsed.districtName}, ` : ""}${parsed.provinceName || ""}. Vui lòng kiểm tra và chọn Phường / Xã thủ công.`,
+              duration: 8000,
+            }
+          );
+        } else {
+          const summaryParts = [
+            parsed.customerName && `Tên: ${parsed.customerName}`,
+            parsed.customerPhone && `SĐT: ${parsed.customerPhone}`,
+            parsed.provinceName && `Tỉnh/TP: ${parsed.provinceName}`,
+            parsed.districtName && `Quận/Huyện: ${parsed.districtName}`,
+            parsed.wardName && `Phường/Xã: ${parsed.wardName}`,
+          ].filter(Boolean);
+
+          toast.success("Đã tự động nhận diện và điền thông tin khách hàng!", {
+            description: summaryParts.join(" • "),
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error("Lỗi phân tích địa chỉ tự động:", e);
+      toast.error("Không thể phân tích dữ liệu địa chỉ tự động.");
+    } finally {
+      setIsAutoParsing(false);
+    }
+  };
+
+  // Xử lý Phân tích và Dán tự động Danh sách Sản phẩm
+  const handleAutoParseProducts = async () => {
+    setIsAutoParsingProducts(true);
+    try {
+      let textToParse = autoProductText.trim();
+
+      // Nếu ô nhập trống, thử đọc từ Clipboard
+      if (!textToParse && typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+        try {
+          const clipboardContent = await navigator.clipboard.readText();
+          if (clipboardContent?.trim()) {
+            textToParse = clipboardContent.trim();
+            setAutoProductText(textToParse);
+          }
+        } catch {
+          // Quyền clipboard bị chặn
+        }
+      }
+
+      if (!textToParse) {
+        toast.info("Vui lòng nhập hoặc dán danh sách sản phẩm (ví dụ: 2 bản xanh lá + zhenti + tinh giảng).");
+        return;
+      }
+
+      const parsed = parseProductList(textToParse, books);
+
+      if (parsed.lines.length === 0) {
+        toast.warning("Không tìm thấy sản phẩm nào phù hợp trong kho!", {
+          description:
+            parsed.unmatchedTokens.length > 0
+              ? `Không tìm thấy: ${parsed.unmatchedTokens.join(", ")}`
+              : "Vui lòng kiểm tra lại tên sách trong kho.",
+        });
+        return;
+      }
+
+      // Cập nhật trực tiếp danh sách sản phẩm theo kết quả nhận diện từ ô nhập
+      setLines(parsed.lines);
+
+      // Thông báo kết quả
+      const matchedNames = parsed.matchedItems
+        .filter((m) => m.isMatched && m.book)
+        .map((m) => `${m.book!.title} (x${m.quantity})`);
+
+      if (parsed.unmatchedTokens.length > 0) {
+        toast.warning(
+          `Đã thêm ${parsed.matchedItems.filter((m) => m.isMatched).length} sản phẩm, chưa tìm thấy ${parsed.unmatchedTokens.length} mục!`,
+          {
+            description: `Đã thêm: ${matchedNames.join(", ")}. Không tìm thấy: ${parsed.unmatchedTokens.join(", ")}`,
+            duration: 7000,
+          }
+        );
+      } else {
+        toast.success(`Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
+          description: matchedNames.join(" • "),
+        });
+      }
+    } catch (e: any) {
+      console.error("Lỗi phân tích sản phẩm tự động:", e);
+      toast.error("Không thể phân tích dữ liệu sản phẩm.");
+    } finally {
+      setIsAutoParsingProducts(false);
+    }
+  };
+
+  // Xử lý chọn từ Sổ địa chỉ
+  const handleSelectAddressBookContact = async (contact: AddressBookContact) => {
+    setIsAutoParsing(true);
+    try {
+      setCustomer((prev) => ({
+        ...prev,
+        name: contact.name,
+        phone: contact.phone,
+      }));
+      setAutoInputText(`${contact.name}, ${contact.phone}, ${contact.address}`);
+
+      const parsed = await parseCustomerAndAddress(
+        contact.address,
+        provinces,
+        ghnApi.getDistricts,
+        ghnApi.getWards
+      );
+
+      setCustomer((prev) => ({
+        ...prev,
+        detailAddress: parsed.detailAddress || contact.address,
+      }));
+
+      if (parsed.provinceId) setProvinceId(parsed.provinceId);
+      if (parsed.districtId) setDistrictId(parsed.districtId);
+      if (parsed.wardCode) setWardCode(parsed.wardCode);
+
+      toast.success(`Đã áp dụng thông tin của ${contact.name}`);
+    } catch (e) {
+      console.error("Lỗi tải địa chỉ từ sổ địa chỉ:", e);
+    } finally {
+      setIsAutoParsing(false);
+    }
+  };
 
   const submit = async () => {
     setError(null);
@@ -255,6 +649,9 @@ function CreateOrderPage() {
       customerName: customer.name,
       customerPhone: customer.phone,
       customerAddress: fullAddress || customer.detailAddress,
+      provinceId,
+      districtId,
+      wardCode,
       shippingMethod: carrierType === "GHN" ? "Giao Hàng Nhanh (GHN)" : carrierType === "STORE" ? "Tại cửa hàng" : "Vận chuyển khác",
       shippingFee,
       discount,
@@ -270,12 +667,17 @@ function CreateOrderPage() {
       return;
     }
 
-    toast.success(`Tạo đơn hàng ${res.data?.id} thành công — tồn kho đã được trừ`);
+    // Invalidate react-query cache for orders and audit logs
+    queryClient.invalidateQueries({ queryKey: ["orders"] });
+    queryClient.invalidateQueries({ queryKey: ["order-audit-logs"] });
+
+    toast.success(`Tạo đơn hàng ${res.data?.orderCode || res.data?.id} thành công — tồn kho đã được trừ`);
     navigate({ to: "/orders" });
   };
 
   return (
     <AppShell
+      requiredAbility={{ action: "create", subject: "BookstoreOrder" }}
       crumbs={[
         { label: "Dashboard", href: "/dashboard" },
         { label: "Đơn hàng", href: "/orders" },
@@ -296,116 +698,363 @@ function CreateOrderPage() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
-            {/* 1. Thông tin khách hàng & Địa chỉ GHN */}
+            {/* 1. Địa chỉ người nhận & Phân loại Mới (2 cấp) / Cũ (3 cấp) */}
             <Card className="shadow-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Thông tin khách hàng & Địa chỉ nhận</CardTitle>
+              <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <span>1. Địa chỉ người nhận</span>
+                </CardTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAddressBookOpen(true)}
+                  className="h-8 text-primary hover:text-primary hover:bg-primary/10 gap-1.5 text-xs font-medium"
+                >
+                  <BookUser className="h-4 w-4" /> Sổ địa chỉ
+                </Button>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cname">
+
+              <CardContent className="space-y-4 pt-4">
+                {/* KHUNG CHỌN LOẠI ĐỊA CHỈ (Màu vàng theo thiết kế mẫu) */}
+                <div className="rounded-lg border border-amber-300/80 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/25">
+                  <Label className="mb-2.5 block text-xs font-semibold text-amber-900 dark:text-amber-300">
+                    Chọn loại địa chỉ
+                  </Label>
+                  <RadioGroup
+                    value={addressType}
+                    onValueChange={(v) => setAddressType(v as AddressType)}
+                    className="flex flex-wrap items-center gap-6"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="NEW_2_LEVEL" id="addr-new-2" />
+                      <Label htmlFor="addr-new-2" className="cursor-pointer text-sm font-medium text-amber-950 dark:text-amber-200">
+                        Địa chỉ MỚI (2 cấp)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="OLD_3_LEVEL" id="addr-old-3" />
+                      <Label htmlFor="addr-old-3" className="cursor-pointer text-sm font-medium text-amber-950 dark:text-amber-200">
+                        Địa chỉ CŨ (3 cấp)
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* KHUNG NHẬP TỰ ĐỘNG (Textarea & Button Dán và nhập tự động) */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-foreground">
+                    Nhập tự động
+                  </Label>
+                  <Textarea
+                    rows={3}
+                    value={autoInputText}
+                    onChange={(e) => setAutoInputText(e.target.value)}
+                    placeholder="Nhập toàn bộ thông tin và hệ thống sẽ tự động điền tên, số điện thoại và địa chỉ."
+                    className="resize-none text-sm focus-visible:ring-primary"
+                  />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                    <p className="text-[12px] text-muted-foreground leading-tight">
+                      Ví dụ: Nguyen Van A, 0908888888, 12 Le Duan, Phuong Ben Nghe, Quan 1, TP. Ho Chi Minh
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoParseAndPaste}
+                      disabled={isAutoParsing}
+                      className="shrink-0 border-rose-400 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950/40 h-8 text-xs font-medium gap-1.5"
+                    >
+                      {isAutoParsing ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang phân tích...
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán và nhập tự động
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* THÔNG TIN HỌ TÊN & SỐ ĐIỆN THOẠI */}
+                <div className="grid gap-3 sm:grid-cols-2 pt-2">
+                  {/* Tên khách hàng với gợi ý */}
+                  <div className="space-y-1.5 relative">
+                    <Label htmlFor="cname" className="text-xs font-medium">
                       Họ và tên khách hàng <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="cname"
                       value={customer.name}
-                      onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+                      onChange={(e) => {
+                        setCustomer({ ...customer, name: e.target.value });
+                        setShowNameSuggestions(true);
+                        setShowPhoneSuggestions(false);
+                      }}
+                      onFocus={() => {
+                        if (customer.name.trim()) setShowNameSuggestions(true);
+                      }}
+                      onBlur={() => setTimeout(() => setShowNameSuggestions(false), 200)}
                       placeholder="Nguyễn Văn A"
+                      autoComplete="off"
                     />
+                    {/* Dropdown gợi ý tên */}
+                    {showNameSuggestions && nameSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+                        <div className="px-2.5 py-1.5 border-b border-border/60">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Khách hàng cũ</p>
+                        </div>
+                        <ul className="py-1 max-h-52 overflow-y-auto">
+                          {nameSuggestions.map((c) => (
+                            <li key={c.phone}>
+                              <button
+                                type="button"
+                                onMouseDown={() => handleSelectPastCustomer(c)}
+                                className="w-full flex flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                              >
+                                <span className="font-medium leading-none">{c.name}</span>
+                                <span className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                                  <span>{c.phone}</span>
+                                  {c.address && (
+                                    <>
+                                      <span className="text-border">·</span>
+                                      <span className="truncate max-w-[160px]">{c.address}</span>
+                                    </>
+                                  )}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cphone">
+
+                  {/* Số điện thoại với gợi ý */}
+                  <div className="space-y-1.5 relative">
+                    <Label htmlFor="cphone" className="text-xs font-medium">
                       Số điện thoại nhận hàng <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="cphone"
                       value={customer.phone}
-                      onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+                      onChange={(e) => {
+                        setCustomer({ ...customer, phone: e.target.value });
+                        setShowPhoneSuggestions(true);
+                        setShowNameSuggestions(false);
+                      }}
+                      onFocus={() => {
+                        if (customer.phone.trim()) setShowPhoneSuggestions(true);
+                      }}
+                      onBlur={() => setTimeout(() => setShowPhoneSuggestions(false), 200)}
                       placeholder="0987654321"
+                      autoComplete="off"
                     />
+                    {/* Dropdown gợi ý SĐT */}
+                    {showPhoneSuggestions && phoneSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+                        <div className="px-2.5 py-1.5 border-b border-border/60">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Khách hàng cũ</p>
+                        </div>
+                        <ul className="py-1 max-h-52 overflow-y-auto">
+                          {phoneSuggestions.map((c) => (
+                            <li key={c.phone}>
+                              <button
+                                type="button"
+                                onMouseDown={() => handleSelectPastCustomer(c)}
+                                className="w-full flex flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                              >
+                                <span className="font-medium leading-none">{c.phone}</span>
+                                <span className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                                  <span>{c.name}</span>
+                                  {c.address && (
+                                    <>
+                                      <span className="text-border">·</span>
+                                      <span className="truncate max-w-[160px]">{c.address}</span>
+                                    </>
+                                  )}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="border-t pt-3">
-                  <Label className="mb-2 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Địa chỉ giao hàng (Chuẩn GHN 3 Cấp)
-                  </Label>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {/* Tỉnh / Thành phố */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Tỉnh / Thành phố <span className="text-destructive">*</span></Label>
-                      <Select
-                        value={provinceId ? String(provinceId) : ""}
-                        onValueChange={(v) => {
-                          const id = Number(v);
-                          setProvinceId(id);
-                          setDistrictId(undefined);
-                          setWardCode("");
-                        }}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder={loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {provinces.map((p) => (
-                            <SelectItem key={p.ProvinceID} value={String(p.ProvinceID)}>
-                              {p.ProvinceName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Quận / Huyện */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Quận / Huyện <span className="text-destructive">*</span></Label>
-                      <Select
-                        value={districtId ? String(districtId) : ""}
-                        disabled={!provinceId || loadingDistricts}
-                        onValueChange={(v) => {
-                          const id = Number(v);
-                          setDistrictId(id);
-                          setWardCode("");
-                        }}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder={loadingDistricts ? "Đang tải quận/huyện..." : "Chọn Quận / Huyện"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {districts.map((d) => (
-                            <SelectItem key={d.DistrictID} value={String(d.DistrictID)}>
-                              {d.DistrictName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Phường / Xã */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Phường / Xã <span className="text-destructive">*</span></Label>
-                      <Select
-                        value={wardCode}
-                        disabled={!districtId || loadingWards}
-                        onValueChange={setWardCode}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder={loadingWards ? "Đang tải phường/xã..." : "Chọn Phường / Xã"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {wards.map((w) => (
-                            <SelectItem key={w.WardCode} value={w.WardCode}>
-                              {w.WardName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                {/* KHU VỰC CHỌN ĐỊA CHỈ HÀNH CHÍNH (THEO 2 CẤP HOẶC 3 CẤP) */}
+                <div className="border-t pt-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {addressType === "NEW_2_LEVEL"
+                        ? "Địa chỉ hành chính Mới (2 Cấp: Tỉnh/TP → Khu vực)"
+                        : "Địa chỉ hành chính Cũ (3 Cấp: Tỉnh/TP → Quận/Huyện → Phường/Xã)"}
+                    </Label>
                   </div>
 
-                  <div className="mt-3 space-y-1.5">
-                    <Label htmlFor="caddr" className="text-xs">Số nhà, tên tòa nhà, tên đường</Label>
+                  {addressType === "NEW_2_LEVEL" ? (
+                    /* GIAO DIỆN ĐỊA CHỈ MỚI (2 CẤP: TỈNH/TP → KHU VỰC) */
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {/* 1. Tỉnh / Thành phố */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">
+                          1. Tỉnh / Thành phố <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={provinceId ? String(provinceId) : ""}
+                          onValueChange={(v) => {
+                            const id = Number(v);
+                            setProvinceId(id);
+                            setDistrictId(undefined);
+                            setWardCode("");
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {provinces.map((p) => (
+                              <SelectItem key={p.ProvinceID} value={String(p.ProvinceID)}>
+                                {p.ProvinceName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 2. Khu vực (Quận / Huyện) */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">
+                          2. Khu vực <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={districtId ? String(districtId) : ""}
+                          disabled={!provinceId || loadingDistricts}
+                          onValueChange={async (v) => {
+                            const id = Number(v);
+                            setDistrictId(id);
+                            // Tự động gán mã phường mặc định của quận/huyện để tính cước GHN
+                            try {
+                              const ws = await ghnApi.getWards(id);
+                              if (ws && ws.length > 0) {
+                                setWardCode(ws[0].WardCode);
+                              }
+                            } catch {
+                              // fallback
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue
+                              placeholder={
+                                !provinceId
+                                  ? "Chọn Tỉnh / TP trước"
+                                  : loadingDistricts
+                                  ? "Đang tải khu vực..."
+                                  : "Chọn Khu vực"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {districts.map((d) => (
+                              <SelectItem key={d.DistrictID} value={String(d.DistrictID)}>
+                                {d.DistrictName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ) : (
+                    /* GIAO DIỆN ĐỊA CHỈ CŨ (3 CẤP) */
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {/* 1. Tỉnh / Thành phố */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Tỉnh / Thành phố <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={provinceId ? String(provinceId) : ""}
+                          onValueChange={(v) => {
+                            const id = Number(v);
+                            setProvinceId(id);
+                            setDistrictId(undefined);
+                            setWardCode("");
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {provinces.map((p) => (
+                              <SelectItem key={p.ProvinceID} value={String(p.ProvinceID)}>
+                                {p.ProvinceName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 2. Quận / Huyện */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Quận / Huyện <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={districtId ? String(districtId) : ""}
+                          disabled={!provinceId || loadingDistricts}
+                          onValueChange={(v) => {
+                            const id = Number(v);
+                            setDistrictId(id);
+                            setWardCode("");
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={loadingDistricts ? "Đang tải quận/huyện..." : "Chọn Quận / Huyện"} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {districts.map((d) => (
+                              <SelectItem key={d.DistrictID} value={String(d.DistrictID)}>
+                                {d.DistrictName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 3. Phường / Xã */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Phường / Xã <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={wardCode}
+                          disabled={!districtId || loadingWards}
+                          onValueChange={setWardCode}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={loadingWards ? "Đang tải phường/xã..." : "Chọn Phường / Xã"} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {wards.map((w) => (
+                              <SelectItem key={w.WardCode} value={w.WardCode}>
+                                {w.WardName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SỐ NHÀ, ĐƯỜNG */}
+                  <div className="pt-1 space-y-1.5">
+                    <Label htmlFor="caddr" className="text-xs font-medium">
+                      Số nhà, tên tòa nhà, tên đường
+                    </Label>
                     <Input
                       id="caddr"
                       value={customer.detailAddress}
@@ -414,10 +1063,21 @@ function CreateOrderPage() {
                     />
                   </div>
 
+                  {/* ĐỊA CHỈ TỔNG HỢP PREVIEW */}
                   {fullAddress && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      📍 <strong>Địa chỉ giao:</strong> {fullAddress}
-                    </p>
+                    <div className="rounded-md border bg-muted/40 p-2.5 text-xs text-foreground flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>
+                          <strong>Địa chỉ nhận hàng đầy đủ:</strong> {fullAddress}
+                        </span>
+                      </div>
+                      {districtId && wardCode && (
+                        <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-medium px-2 py-0.5 rounded-full shrink-0 ml-2">
+                          ✓ Chuẩn GHN
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -426,9 +1086,60 @@ function CreateOrderPage() {
             {/* 2. Danh sách sản phẩm */}
             <Card className="shadow-none">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Sản phẩm xuất bán</CardTitle>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>2. Sản phẩm xuất bán</span>
+                  {lines.some((l) => l.bookId) && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Tổng số lượng: <strong className="text-foreground">{lines.reduce((s, l) => s + (l.bookId ? Number(l.quantity) || 0 : 0), 0)}</strong> cuốn
+                    </span>
+                  )}
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* KHUNG NHẬP NHANH DANH SÁCH SẢN PHẨM */}
+                <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3.5 dark:bg-primary/10">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="quick-product-input" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Nhập nhanh danh sách sản phẩm
+                    </Label>
+                    <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                      Cú pháp: <code>[Số lượng] [Tên sách]</code>
+                    </span>
+                  </div>
+                  <Textarea
+                    id="quick-product-input"
+                    rows={2}
+                    value={autoProductText}
+                    onChange={(e) => setAutoProductText(e.target.value)}
+                    placeholder="Ví dụ: 2 bản xanh lá + zhenti + tinh giảng + 25 tian (hoặc dán nhiều dòng)..."
+                    className="resize-none text-sm focus-visible:ring-primary bg-background"
+                  />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                    <p className="text-[12px] text-muted-foreground leading-tight">
+                      Phân tách bằng dấu cộng (<code>+</code>), dấu phẩy (<code>,</code>) hoặc xuống dòng.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoParseProducts}
+                      disabled={isAutoParsingProducts}
+                      className="shrink-0 border-primary/40 text-primary hover:bg-primary/10 h-8 text-xs font-medium gap-1.5"
+                    >
+                      {isAutoParsingProducts ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang nhận diện...
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán & Thêm sản phẩm
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Danh sách các dòng sản phẩm chi tiết */}
                 <ProductLines lines={lines} onChange={setLines} checkStock priceLabel="Giá bán" />
               </CardContent>
             </Card>
@@ -437,7 +1148,7 @@ function CreateOrderPage() {
             <Card className="shadow-none">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center justify-between">
-                  <span>Cấu hình vận chuyển</span>
+                  <span>3. Cấu hình vận chuyển</span>
                   {carrierType === "GHN" && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-normal text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
                       <Truck className="h-3.5 w-3.5" /> GHN Sandbox Connected
@@ -661,6 +1372,13 @@ function CreateOrderPage() {
           </Card>
         </div>
       </PageContainer>
+
+      {/* MODAL SỔ ĐỊA CHỈ */}
+      <AddressBookDialog
+        open={addressBookOpen}
+        onOpenChange={setAddressBookOpen}
+        onSelectContact={handleSelectAddressBookContact}
+      />
     </AppShell>
   );
 }

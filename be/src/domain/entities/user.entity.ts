@@ -1,4 +1,3 @@
-import { ProviderProfileEntity } from './provider-profile.entity'
 import { UserRoleEnum } from './role.entity'
 import { UserStatusEnum } from './status.entity'
 
@@ -18,16 +17,6 @@ export class UserEntity {
   public addressDistrict?: string
   public addressWard?: string
   public addressDetail?: string
-  public isProvider?: boolean
-  public providerProfile?: ProviderProfileEntity
-
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
-}
-
-export class UserWithProfileEntity extends UserEntity {
-  public businessName?: string
-  public businessDescription?: string
-  public bankAccountInfo?: object
-  public commissionRate?: number
 }

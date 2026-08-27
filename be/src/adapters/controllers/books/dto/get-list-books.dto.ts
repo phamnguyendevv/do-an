@@ -32,4 +32,38 @@ export class GetListBooksDto {
   @IsOptional()
   @IsString()
   status?: string
+
+  @ApiProperty({ required: false, description: 'Minimum selling price' })
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
+  @IsNumber()
+  @Min(0)
+  minPrice?: number
+
+  @ApiProperty({ required: false, description: 'Maximum selling price' })
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number
+
+  @ApiProperty({ required: false, description: 'Created at start date (ISO or YYYY-MM-DD)' })
+  @IsOptional()
+  @IsString()
+  startDate?: string
+
+  @ApiProperty({ required: false, description: 'Created at end date (ISO or YYYY-MM-DD)' })
+  @IsOptional()
+  @IsString()
+  endDate?: string
+
+  @ApiProperty({ required: false, description: 'Sort field (e.g. createdAt, sellingPrice, title, stock)' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string
+
+  @ApiProperty({ required: false, enum: ['ASC', 'DESC'], description: 'Sort direction' })
+  @IsOptional()
+  @IsString()
+  sortOrder?: 'ASC' | 'DESC'
 }

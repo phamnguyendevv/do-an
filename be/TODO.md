@@ -11,5 +11,5 @@
 9. [x] remove everything related to AWS cognito for authentication and replace with JWT
 10. [ ] Fix typing from postgressql to postgresql
 11. [ ] fix unit tests
-12. [ ] add authorization: https://docs.nestjs.com/security/authorization#integrating-casl - **WIP**
+12. [x] add authorization: https://docs.nestjs.com/security/authorization#integrating-casl - **Completed**
 13. [ ] create branch only server (remove serverless)

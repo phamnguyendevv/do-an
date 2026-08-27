@@ -43,8 +43,17 @@ describe('BooksController', () => {
           provide: DeleteBookUseCase,
           useValue: { execute: jest.fn() },
         },
+        {
+          provide: 'ABILITY_FACTORY_INTERFACE',
+          useValue: {
+            createForUser: jest.fn().mockReturnValue({
+              can: jest.fn().mockReturnValue(true),
+            }),
+          },
+        },
       ],
     }).compile()
+
 
     controller = module.get<BooksController>(BooksController)
     getListBooksUseCase = module.get<GetListBooksUseCase>(GetListBooksUseCase)
@@ -58,7 +67,7 @@ describe('BooksController', () => {
     const query: GetListBooksDto = { page: 1, size: 10, search: 'Clean' }
     const response = { data: [{ id: 1, title: 'Clean Code' }], pagination: { total: 1, page: 1, size: 10 } }
 
-    jest.spyOn(getListBooksUseCase, 'execute').mockResolvedValue(response)
+    jest.spyOn(getListBooksUseCase, 'execute').mockResolvedValue(response as any)
 
     await expect(controller.getBooks(query)).resolves.toEqual(response)
     expect(getListBooksUseCase.execute).toHaveBeenCalledWith(query)
@@ -66,19 +75,18 @@ describe('BooksController', () => {
 
   it('should create a book', async () => {
     const dto: CreateBookDto = {
-      isbn: '978-1-234',
       title: 'Clean Code',
       author: 'Robert C. Martin',
-      publisher: 'Alpha Books',
       category: 'Công nghệ',
       purchasePrice: 210000,
       sellingPrice: 349000,
       stock: 64,
       minStock: 20,
     }
-    const created = { id: 1, ...dto }
+    const created = { id: 1, ...dto, status: 'ACTIVE' }
 
-    jest.spyOn(createBookUseCase, 'execute').mockResolvedValue(created)
+
+    jest.spyOn(createBookUseCase, 'execute').mockResolvedValue(created as any)
 
     await expect(controller.createBook(dto)).resolves.toEqual(created)
     expect(createBookUseCase.execute).toHaveBeenCalledWith(dto)
@@ -86,11 +94,12 @@ describe('BooksController', () => {
 
   it('should get a book by id', async () => {
     const book = { id: 1, title: 'Clean Code' }
-    jest.spyOn(getDetailBookUseCase, 'execute').mockResolvedValue(book)
+    jest.spyOn(getDetailBookUseCase, 'execute').mockResolvedValue(book as any)
 
     await expect(controller.getBookById(1)).resolves.toEqual(book)
     expect(getDetailBookUseCase.execute).toHaveBeenCalledWith({ id: 1 })
   })
+
 
   it('should update a book', async () => {
     const dto: UpdateBookDto = { title: 'Updated title' }

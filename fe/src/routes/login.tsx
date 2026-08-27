@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BookMarked, Loader2 } from "lucide-react";
+import { BookMarked, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,16 @@ function LoginPage() {
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("disabled") === "1") {
+        setError("Tài khoản của bạn đã bị vô hiệu hóa bởi Quản trị viên. Bạn đã bị đăng xuất khỏi hệ thống.");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (hydrated && user) navigate({ to: "/dashboard", replace: true });
@@ -76,7 +86,10 @@ function LoginPage() {
                   type="email"
                   autoComplete="username"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError(null);
+                  }}
                   placeholder="admin@example.com"
                 />
               </div>
@@ -89,11 +102,19 @@ function LoginPage() {
                   type="password"
                   autoComplete="current-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError(null);
+                  }}
                   placeholder="••••••••"
                 />
               </div>
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-0.5 leading-relaxed font-medium">{error}</div>
+                </div>
+              ) : null}
               <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? (
                   <>
@@ -115,6 +136,7 @@ function LoginPage() {
                   onClick={() => {
                     setEmail(a.email);
                     setPassword(a.password);
+                    if (error) setError(null);
                   }}
                 >
                   <span className="font-mono">{a.email}</span>

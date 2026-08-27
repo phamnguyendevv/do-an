@@ -305,4 +305,78 @@ export class GhnService {
       withShopId: true,
     })
   }
+
+  /**
+   * 10. Update order on GHN (API docs id=75)
+   */
+  async updateShippingOrder(input: {
+    order_code: string
+    to_name?: string
+    to_phone?: string
+    to_address?: string
+    to_ward_code?: string
+    to_district_id?: number
+    cod_amount?: number
+    content?: string
+    weight?: number
+    length?: number
+    width?: number
+    height?: number
+    insurance_value?: number
+    payment_type_id?: number
+    note?: string
+    required_note?: 'CHOTHUHANG' | 'CHOXEMHANGKHONGTHU' | 'KHONGCHOXEMHANG'
+    items?: Array<{
+      name: string
+      code?: string
+      quantity: number
+      price: number
+      weight?: number
+      length?: number
+      width?: number
+      height?: number
+      category?: { level1?: string }
+    }>
+  }) {
+    const payload: Record<string, unknown> = {
+      order_code: input.order_code,
+    }
+    if (input.to_name) payload.to_name = input.to_name
+    if (input.to_phone) payload.to_phone = input.to_phone
+    if (input.to_address) payload.to_address = input.to_address
+    if (input.to_ward_code) payload.to_ward_code = String(input.to_ward_code)
+    if (input.to_district_id) payload.to_district_id = Number(input.to_district_id)
+    if (input.cod_amount !== undefined) payload.cod_amount = Number(input.cod_amount)
+    if (input.content) payload.content = input.content
+    if (input.weight) payload.weight = Number(input.weight)
+    if (input.length) payload.length = Number(input.length)
+    if (input.width) payload.width = Number(input.width)
+    if (input.height) payload.height = Number(input.height)
+    if (input.insurance_value !== undefined) payload.insurance_value = Number(input.insurance_value)
+    if (input.payment_type_id) payload.payment_type_id = Number(input.payment_type_id)
+    if (input.note) payload.note = input.note
+    if (input.required_note) payload.required_note = input.required_note
+    if (input.items && Array.isArray(input.items)) {
+      payload.items = input.items.map((item) => ({
+        name: item.name,
+        code: item.code || '',
+        quantity: Number(item.quantity || 1),
+        price: Number(item.price || 0),
+        weight: Number(item.weight || 300),
+        length: Number(item.length || 20),
+        width: Number(item.width || 15),
+        height: Number(item.height || 3),
+        category: {
+          level1: item.category?.level1 || 'Sách',
+        },
+      }))
+    }
+
+    return this.request<{ code: number; message: string }>('/v2/shipping-order/update', {
+      method: 'POST',
+      body: payload,
+      withShopId: true,
+    })
+  }
 }
+

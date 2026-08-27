@@ -184,3 +184,33 @@
     letter-spacing: -0.015em;
   }
 }
+
+/* Print Styles for K80 Receipt */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #k80-print-area,
+  #k80-print-area * {
+    visibility: visible;
+  }
+
+  #k80-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+}

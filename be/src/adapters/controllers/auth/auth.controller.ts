@@ -11,13 +11,11 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiExtraModels,
-  ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger'
-
+import { Throttle } from '@nestjs/throttler'
 import { Response } from 'express'
 
 import { LoginOauthUseCase } from '@use-cases/auth/login-oauth.use-case'
@@ -26,17 +24,14 @@ import { RefreshUseCase } from '@use-cases/auth/refresh.use-case'
 import { RegisterUseCase } from '@use-cases/auth/register.use-case'
 import { SendVerifyEmailUseCase } from '@use-cases/auth/send-verify-email.use-case'
 import { VerifyEmailUseCase } from '@use-cases/auth/verify-email.use-case'
-import { CreateProviderUseCase } from '@use-cases/provider/create-provider.use-case'
 import { ForgotPasswordUseCase } from '@use-cases/users/forgot-password.use-case'
 import { ResetPasswordUseCase } from '@use-cases/users/reset-password.use-case'
 
-import { CheckPolicies } from '../common/decorators/check-policies.decorator'
 import { ApiResponseType } from '../common/decorators/swagger-response.decorator'
 import { User } from '../common/decorators/user.decorator'
 import { GoogleOauthGuard } from '../common/guards/google-oauth.guard'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import JwtRefreshGuard from '../common/guards/jwt-refresh.guard'
-import { RegisterProviderDto } from '../users/dto/create-provider.dto'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
@@ -46,6 +41,13 @@ import { GetMePresenter } from './presenters/get-me.presenter'
 import { LoginPresenter, TokenPresenter } from './presenters/login.presenter'
 import { RefreshPresenter } from './presenters/refresh.presenter'
 import { RegisterPresenter } from './presenters/register.presenter'
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  path: '/',
+}
 
 @Controller('auth')
 @ApiTags('Auth')
@@ -65,16 +67,33 @@ export class AuthController {
     private readonly loginOauthUseCase: LoginOauthUseCase,
     private readonly verifyEmailUseCase: VerifyEmailUseCase,
     private readonly sendVerifyEmailUseCase: SendVerifyEmailUseCase,
-    private readonly createProviderUseCase: CreateProviderUseCase,
   ) {}
 
   @Post('login')
+  @Throttle({ medium: { limit: 10, ttl: 60000 } })
   @ApiBody({ type: LoginDto })
-  @ApiOperation({ summary: 'Login', description: 'Login a user' })
+  @ApiOperation({ summary: 'Login', description: 'Login a user with rate limit (10/min)' })
   @ApiExtraModels(LoginPresenter)
   @ApiResponseType(LoginPresenter, false)
-  async login(@Body() loginDto: LoginDto) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { user, tokens } = await this.loginUseCase.execute(loginDto)
+
+    if (tokens?.accessToken) {
+      res.cookie('access_token', tokens.accessToken, {
+        ...COOKIE_OPTIONS,
+        maxAge: 24 * 60 * 60 * 1000,
+      })
+    }
+    if (tokens?.refreshToken) {
+      res.cookie('refresh_token', tokens.refreshToken, {
+        ...COOKIE_OPTIONS,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+    }
+
     return new LoginPresenter(
       new GetMePresenter(user),
       new TokenPresenter(tokens),
@@ -82,31 +101,17 @@ export class AuthController {
   }
 
   @Post('register')
+  @Throttle({ medium: { limit: 5, ttl: 60000 } })
   @ApiBody({ type: RegisterDto })
   @ApiOperation({
     summary: 'Register',
-    description:
-      'Register a user ( user name có thể không truyền nên, role( 1 là admin, 2 là provider, 3 là client) mặc định là client và status(1 là ative, 2 là inactive, 3 là pending, 4 là banned) mặc định là inactive và emailVerified mặc định là false) ',
+    description: 'Register a user in BookStock system with rate limit (5/min)',
   })
   @ApiExtraModels(RegisterPresenter)
   @ApiResponseType(RegisterPresenter, false)
   async register(@Body() registerDto: RegisterDto) {
-    const tokens = await this.registerUseCase.execute(registerDto)
-    return new RegisterPresenter(tokens)
-  }
-
-  @Post('register/provider')
-  @ApiOperation({
-    summary: ' Create provider',
-    description: 'Create provider account with business information',
-  })
-  @ApiOkResponse({ description: 'register provider successfully' })
-  @ApiNotFoundResponse({ description: 'User not found' })
-  @CheckPolicies({ action: 'create', subject: 'User' })
-  async updateUserProvider(@Body() registerProviderDto: RegisterProviderDto) {
-    const isUpdated =
-      await this.createProviderUseCase.execute(registerProviderDto)
-    return isUpdated
+    const result = await this.registerUseCase.execute(registerDto)
+    return new RegisterPresenter(result)
   }
 
   @Post('refresh')
@@ -118,16 +123,41 @@ export class AuthController {
   })
   @ApiExtraModels(RefreshPresenter)
   @ApiResponseType(RefreshPresenter, false)
-  async refresh(@User('id') userId: number) {
+  async refresh(
+    @User('id') userId: number,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const tokens = await this.refreshUseCase.execute({ userId })
+
+    if (tokens?.accessToken) {
+      res.cookie('access_token', tokens.accessToken, {
+        ...COOKIE_OPTIONS,
+        maxAge: 24 * 60 * 60 * 1000,
+      })
+    }
+    if (tokens?.refreshToken) {
+      res.cookie('refresh_token', tokens.refreshToken, {
+        ...COOKIE_OPTIONS,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+    }
 
     return new RefreshPresenter(tokens)
   }
 
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout', description: 'Clear auth cookies' })
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token', COOKIE_OPTIONS)
+    res.clearCookie('refresh_token', COOKIE_OPTIONS)
+    return { success: true, message: 'Đăng xuất thành công' }
+  }
+
   @Get('fogot-password')
+  @Throttle({ medium: { limit: 3, ttl: 60000 } })
   @ApiOperation({
     summary: 'Forgot password',
-    description: 'Send email to reset password',
+    description: 'Send email to reset password with rate limit (3/min)',
   })
   @ApiResponse({ status: 200, description: 'Email sent successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })

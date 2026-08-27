@@ -15,11 +15,15 @@ import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PosRouteImport } from './routes/pos'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as BooksIndexRouteImport } from './routes/books.index'
 import { Route as BooksBookIdRouteImport } from './routes/books.$bookId'
 import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
+import { Route as InventoryAuditRouteImport } from './routes/inventory.audit'
 import { Route as InventoryExportRouteImport } from './routes/inventory.export'
 import { Route as InventoryImportRouteImport } from './routes/inventory.import'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
@@ -58,6 +62,21 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PosRoute = PosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuppliersRoute = SuppliersRouteImport.update({
   id: '/suppliers',
   path: '/suppliers',
@@ -81,6 +100,11 @@ const BooksBookIdRoute = BooksBookIdRouteImport.update({
 const InventoryIndexRoute = InventoryIndexRouteImport.update({
   id: '/inventory/',
   path: '/inventory/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryAuditRoute = InventoryAuditRouteImport.update({
+  id: '/inventory/audit',
+  path: '/inventory/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryExportRoute = InventoryExportRouteImport.update({
@@ -126,9 +150,13 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/pos': typeof PosRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
   '/books/$bookId': typeof BooksBookIdRoute
+  '/inventory/audit': typeof InventoryAuditRoute
   '/inventory/export': typeof InventoryExportRoute
   '/inventory/import': typeof InventoryImportRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -146,9 +174,13 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/pos': typeof PosRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
   '/books/$bookId': typeof BooksBookIdRoute
+  '/inventory/audit': typeof InventoryAuditRoute
   '/inventory/export': typeof InventoryExportRoute
   '/inventory/import': typeof InventoryImportRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -167,9 +199,13 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/pos': typeof PosRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
   '/books/$bookId': typeof BooksBookIdRoute
+  '/inventory/audit': typeof InventoryAuditRoute
   '/inventory/export': typeof InventoryExportRoute
   '/inventory/import': typeof InventoryImportRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -189,9 +225,13 @@ export interface FileRouteTypes {
     | '/categories'
     | '/dashboard'
     | '/login'
+    | '/pos'
+    | '/profile'
+    | '/settings'
     | '/suppliers'
     | '/users'
     | '/books/$bookId'
+    | '/inventory/audit'
     | '/inventory/export'
     | '/inventory/import'
     | '/orders/$orderId'
@@ -209,9 +249,13 @@ export interface FileRouteTypes {
     | '/categories'
     | '/dashboard'
     | '/login'
+    | '/pos'
+    | '/profile'
+    | '/settings'
     | '/suppliers'
     | '/users'
     | '/books/$bookId'
+    | '/inventory/audit'
     | '/inventory/export'
     | '/inventory/import'
     | '/orders/$orderId'
@@ -229,9 +273,13 @@ export interface FileRouteTypes {
     | '/categories'
     | '/dashboard'
     | '/login'
+    | '/pos'
+    | '/profile'
+    | '/settings'
     | '/suppliers'
     | '/users'
     | '/books/$bookId'
+    | '/inventory/audit'
     | '/inventory/export'
     | '/inventory/import'
     | '/orders/$orderId'
@@ -250,9 +298,13 @@ export interface RootRouteChildren {
   CategoriesRoute: typeof CategoriesRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  PosRoute: typeof PosRoute
+  ProfileRoute: typeof ProfileRoute
+  SettingsRoute: typeof SettingsRoute
   SuppliersRoute: typeof SuppliersRoute
   UsersRoute: typeof UsersRoute
   BooksBookIdRoute: typeof BooksBookIdRoute
+  InventoryAuditRoute: typeof InventoryAuditRoute
   InventoryExportRoute: typeof InventoryExportRoute
   InventoryImportRoute: typeof InventoryImportRoute
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
@@ -308,6 +360,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pos': {
+      id: '/pos'
+      path: '/pos'
+      fullPath: '/pos'
+      preLoaderRoute: typeof PosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/suppliers': {
       id: '/suppliers'
       path: '/suppliers'
@@ -341,6 +414,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/inventory/'
       preLoaderRoute: typeof InventoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/audit': {
+      id: '/inventory/audit'
+      path: '/inventory/audit'
+      fullPath: '/inventory/audit'
+      preLoaderRoute: typeof InventoryAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory/export': {
@@ -402,9 +482,13 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesRoute: CategoriesRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  PosRoute: PosRoute,
+  ProfileRoute: ProfileRoute,
+  SettingsRoute: SettingsRoute,
   SuppliersRoute: SuppliersRoute,
   UsersRoute: UsersRoute,
   BooksBookIdRoute: BooksBookIdRoute,
+  InventoryAuditRoute: InventoryAuditRoute,
   InventoryExportRoute: InventoryExportRoute,
   InventoryImportRoute: InventoryImportRoute,
   OrdersOrderIdRoute: OrdersOrderIdRoute,

@@ -47,6 +47,12 @@ export class SimpleUserPresenter {
   @ApiProperty()
   isProvider?: boolean
 
+  @ApiProperty()
+  createdAt?: Date
+
+  @ApiProperty()
+  updatedAt?: Date
+
   constructor(partial: SimpleUserPresenter) {
     this.id = partial.id
     this.username = partial.username
@@ -63,5 +69,7 @@ export class SimpleUserPresenter {
     this.addressWard = partial.addressWard
     this.addressDetail = partial.addressDetail
     this.isProvider = partial.isProvider
+    this.createdAt = partial.createdAt
+    this.updatedAt = partial.updatedAt
   }
 }

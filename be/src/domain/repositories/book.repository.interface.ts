@@ -7,6 +7,12 @@ export interface ISearchBooksParams {
   page?: number
   category?: string
   status?: string
+  minPrice?: number
+  maxPrice?: number
+  startDate?: string
+  endDate?: string
+  sortBy?: string
+  sortOrder?: 'ASC' | 'DESC'
 }
 
 export const BOOK_REPOSITORY = 'BOOK_REPOSITORY_INTERFACE'

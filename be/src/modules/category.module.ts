@@ -12,15 +12,14 @@ import { UpdateCategoryUseCase } from '@use-cases/categories/update-category.use
 
 import { CategoriesController } from '@adapters/controllers/categories/categories.controller'
 
-import { Category } from '@infrastructure/databases/postgressql/entities/category.entity'
-import { CategoryRepository } from '@infrastructure/databases/postgressql/repositories/category.repository'
+import { Category } from '@infrastructure/databases/postgresql/entities/category.entity'
+import { CategoryRepository } from '@infrastructure/databases/postgresql/repositories/category.repository'
 import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { CaslModule } from '@infrastructure/services/casl/casl.module'
 
 @Module({
   imports: [TypeOrmModule.forFeature([Category]), CaslModule, ExceptionsModule],
-
   controllers: [CategoriesController],
   providers: [
     {
@@ -37,6 +36,6 @@ import { CaslModule } from '@infrastructure/services/casl/casl.module'
     DeleteCategoryUseCase,
     GetDetailCategoryUseCase,
   ],
-  exports: [CATEGORY_REPOSITORY], 
+  exports: [CATEGORY_REPOSITORY],
 })
 export class CategoriesModule {}

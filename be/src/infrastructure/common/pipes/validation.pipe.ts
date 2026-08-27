@@ -36,7 +36,10 @@ export class ValidationPipe implements PipeTransform<unknown> {
 
   private toValidate(metatype: unknown): boolean {
     const types: unknown[] = [String, Boolean, Number, Array, Object]
-    return !types.includes(metatype)
+    if (types.includes(metatype)) return false
+    const name = (metatype as any)?.name
+    if (name === 'UserEntity' || name === 'User') return false
+    return true
   }
 
   private formatErrors(errors: ValidationError[]): IValidationError[] {

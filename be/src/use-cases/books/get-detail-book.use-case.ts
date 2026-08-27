@@ -6,6 +6,10 @@ import {
   BOOK_REPOSITORY,
   IBookRepositoryInterface,
 } from '@domain/repositories/book.repository.interface'
+import {
+  IRedisCacheService,
+  REDIS_SERVICE,
+} from '@domain/services/redis.interface'
 
 @Injectable()
 export class GetDetailBookUseCase {
@@ -14,9 +18,18 @@ export class GetDetailBookUseCase {
     private readonly bookRepository: IBookRepositoryInterface,
     @Inject(EXCEPTIONS)
     private readonly exceptionsService: IException,
+    @Inject(REDIS_SERVICE)
+    private readonly redisService: IRedisCacheService,
   ) {}
 
   async execute(params: { id: number }): Promise<BookEntity> {
+    const cacheKey = `books:detail:${params.id}`
+
+    const cached = await this.redisService.getValue<BookEntity>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const book = await this.bookRepository.findBookById(params.id)
 
     if (!book) {
@@ -26,6 +39,9 @@ export class GetDetailBookUseCase {
       })
     }
 
+    await this.redisService.setValue(cacheKey, book, 300)
+
     return book
   }
 }
+

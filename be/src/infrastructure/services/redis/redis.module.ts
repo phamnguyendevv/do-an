@@ -15,9 +15,11 @@ import { RedisService } from './redis.service'
     {
       provide: REDIS_CLIENT,
       useFactory: () => {
-        return new Redis(
-          'redis://default:SsrVXI2aTA6UuUdFBH0KOCSHLdJ6nP0o@redis-16947.c245.us-east-1-3.ec2.redns.redis-cloud.com:16947',
-        )
+        return new Redis({
+          host: process.env.REDIS_HOST || 'localhost',
+          port: parseInt(process.env.REDIS_PORT || '6379', 10),
+          password: process.env.REDIS_PASSWORD || undefined,
+        })
       },
     },
     {

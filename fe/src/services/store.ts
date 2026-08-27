@@ -1,4 +1,5 @@
 import type { Book, ExportReceipt, ImportReceipt, Order, Shipping } from "@/types";
+import { mockBooks } from "@/mock/books";
 import { mockOrders } from "@/mock/orders";
 import { mockExportReceipts, mockImportReceipts } from "@/mock/inventory";
 import { mockShipments } from "@/mock/shipping";
@@ -11,12 +12,45 @@ export interface AppState {
   shipments: Shipping[];
 }
 
+const STORAGE_KEY = "bookstock_app_state_v2";
+
+function loadSavedState(): Partial<AppState> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Lỗi đọc state từ localStorage:", e);
+    return {};
+  }
+}
+
+function saveState(s: AppState) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        orders: s.orders,
+        imports: s.imports,
+        exports: s.exports,
+        // shipments are auto-generated from orders via useShipments hook, no need to persist
+      })
+    );
+  } catch (e) {
+    console.error("Lỗi lưu state vào localStorage:", e);
+  }
+}
+
+const saved = loadSavedState();
+
 const initialState: AppState = {
-  books: [],
-  orders: mockOrders,
-  imports: mockImportReceipts,
-  exports: mockExportReceipts,
-  shipments: mockShipments,
+  books: mockBooks,
+  orders: saved.orders ?? [],
+  imports: saved.imports ?? [],
+  exports: saved.exports ?? [],
+  shipments: [], // auto-generated from DB orders via useShipments hook
 };
 
 let state: AppState = initialState;
@@ -31,6 +65,7 @@ export const store = {
   getServerSnapshot: () => initialState,
   setState(patch: Partial<AppState>) {
     state = { ...state, ...patch };
+    saveState(state);
     listeners.forEach((l) => l());
   },
 };

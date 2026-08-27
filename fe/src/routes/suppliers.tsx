@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supplierApi, type SupplierApiItem } from "@/lib/supplier-api";
+import { Can } from "@/lib/ability";
 
 export const Route = createFileRoute("/suppliers")({
   head: () => ({
@@ -273,31 +274,37 @@ function SupplierRowActions({ supplier }: { supplier: SupplierApiItem }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
-            <SupplierFormDialog
-              supplier={supplier}
-              trigger={
-                <button className="flex w-full items-center px-2 py-1.5 text-sm">
-                  <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
-                </button>
-              }
-            />
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmOpen(true)}>
-            <Trash2 className="mr-2 h-4 w-4" /> Xóa
-          </DropdownMenuItem>
+          <Can I="update" a="Supplier">
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
+              <SupplierFormDialog
+                supplier={supplier}
+                trigger={
+                  <button className="flex w-full items-center px-2 py-1.5 text-sm">
+                    <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+                  </button>
+                }
+              />
+            </DropdownMenuItem>
+          </Can>
+          <Can I="delete" a="Supplier">
+            <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Xóa
+            </DropdownMenuItem>
+          </Can>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title="Xác nhận xóa nhà cung cấp?"
-        description={`Nhà cung cấp "${supplier.name}" sẽ bị xóa khỏi hệ thống.`}
-        confirmLabel="Xóa"
-        destructive
-        onConfirm={handleDelete}
-      />
+      <Can I="delete" a="Supplier">
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title="Xác nhận xóa nhà cung cấp?"
+          description={`Nhà cung cấp "${supplier.name}" sẽ bị xóa khỏi hệ thống.`}
+          confirmLabel="Xóa"
+          destructive
+          onConfirm={handleDelete}
+        />
+      </Can>
     </>
   );
 }
@@ -427,13 +434,15 @@ function SuppliersPage() {
           title="Quản lý nhà cung cấp"
           description="Danh sách đối tác xuất bản và phân phối sách cho kho hàng."
           actions={
-            <SupplierFormDialog
-              trigger={
-                <Button size="sm">
-                  <Plus className="mr-1.5 h-4 w-4" /> Thêm nhà cung cấp
-                </Button>
-              }
-            />
+            <Can I="create" a="Supplier">
+              <SupplierFormDialog
+                trigger={
+                  <Button size="sm">
+                    <Plus className="mr-1.5 h-4 w-4" /> Thêm nhà cung cấp
+                  </Button>
+                }
+              />
+            </Can>
           }
         />
 

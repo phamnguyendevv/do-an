@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common'
@@ -24,7 +25,7 @@ export class PoliciesGuard implements CanActivate {
     private readonly caslAbilityFactory: IAbilityFactory,
   ) {}
 
-  canActivate(context: ExecutionContext) {
+  canActivate(context: ExecutionContext): boolean {
     const policyHandlers =
       this.reflector.get<IPolicyHandler[]>(
         CHECK_POLICIES_KEY,
@@ -35,11 +36,22 @@ export class PoliciesGuard implements CanActivate {
       return true
     }
 
-    const { user } = context.switchToHttp().getRequest<{ user: UserEntity }>()
+    const request = context.switchToHttp().getRequest<{ user?: UserEntity }>()
+    const user = request.user
+    if (!user) {
+      throw new ForbiddenException('Không tìm thấy thông tin xác thực người dùng')
+    }
+
     const ability = this.caslAbilityFactory.createForUser(user)
 
-    return policyHandlers.every((handler) => {
+    const hasPermission = policyHandlers.every((handler) => {
       return this.caslAbilityFactory.can(ability, handler)
     })
+
+    if (!hasPermission) {
+      throw new ForbiddenException('Bạn không có quyền thực hiện hành động này')
+    }
+
+    return true
   }
 }

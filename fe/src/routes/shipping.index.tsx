@@ -60,11 +60,14 @@ function ShippingPage() {
     () =>
       shipments.filter((s) => {
         const q = search.trim().toLowerCase();
+        const orderId = (s.orderId || "").toLowerCase();
+        const customerName = (s.customerName || "").toLowerCase();
+        const trackingNumber = (s.trackingNumber || "").toLowerCase();
         const matchQ =
           !q ||
-          s.orderId.toLowerCase().includes(q) ||
-          s.customerName.toLowerCase().includes(q) ||
-          s.trackingNumber.toLowerCase().includes(q);
+          orderId.includes(q) ||
+          customerName.includes(q) ||
+          trackingNumber.includes(q);
         return (
           matchQ &&
           (status === "all" || s.status === status) &&
@@ -79,25 +82,25 @@ function ShippingPage() {
       key: "orderId",
       header: "Mã đơn",
       sortable: true,
-      value: (s) => s.orderId,
+      value: (s) => s.orderId || "",
       cell: (s) => (
         <Link to="/shipping/$shippingId" params={{ shippingId: s.id }} className="font-mono text-xs hover:text-primary">
-          {s.orderId}
+          {s.orderId || "—"}
         </Link>
       ),
     },
-    { key: "customer", header: "Khách hàng", sortable: true, value: (s) => s.customerName, cell: (s) => <span className="font-medium">{s.customerName}</span> },
+    { key: "customer", header: "Khách hàng", sortable: true, value: (s) => s.customerName || "", cell: (s) => <span className="font-medium">{s.customerName || "—"}</span> },
     {
       key: "carrier",
       header: "Đơn vị VC",
       cell: (s) => (
         <div className="flex items-center gap-1.5 text-xs">
-          {s.carrier.includes("GHN") ? (
+          {s.carrier?.includes("GHN") ? (
             <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
               <Truck className="h-3.5 w-3.5" /> GHN
             </span>
           ) : (
-            <span>{s.carrier}</span>
+            <span>{s.carrier || "Tiêu chuẩn"}</span>
           )}
         </div>
       ),
@@ -107,8 +110,8 @@ function ShippingPage() {
       header: "Mã vận đơn",
       cell: (s) => (
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-xs font-semibold text-foreground">{s.trackingNumber}</span>
-          {s.carrier.includes("GHN") ? (
+          <span className="font-mono text-xs font-semibold text-foreground">{s.trackingNumber || "—"}</span>
+          {s.carrier?.includes("GHN") && s.trackingNumber ? (
             <Button
               variant="ghost"
               size="icon"

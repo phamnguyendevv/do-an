@@ -1,21 +1,20 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
 import { PassportModule } from '@nestjs/passport'
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import { MailerModule } from '@infrastructure/services/mailer/mailer.module'
 import { RedisModule } from '@infrastructure/services/redis/redis.module'
-import { StripeModule } from '@infrastructure/services/stripe/stripe.module'
 
-import { AppointmentsModule } from '@modules/appointment.module'
 import { BooksModule } from '@modules/books.module'
 import { CategoriesModule } from '@modules/category.module'
 import { GhnModule } from '@modules/ghn.module'
-import { InvoiceModule } from '@modules/invoice.module'
+import { InventoryModule } from '@modules/inventory.module'
 import { NotificationModule } from '@modules/notification.module'
-import { PaymentsModule } from '@modules/payment.module'
+import { OrdersModule } from '@modules/orders.module'
 import { RevenueModule } from '@modules/revenue.module'
-import { ReviewsModule } from '@modules/review.module'
-import { ServicesModule } from '@modules/service.module'
+import { SePayModule } from '@modules/sepay.module'
 import { SuppliersModule } from '@modules/supplier.module'
 import { UsersModule } from '@modules/user.module'
 
@@ -23,19 +22,30 @@ import { MaintenanceMiddleware } from './infrastructure/common/middlewares/maint
 import { JwtRefreshStrategy } from './infrastructure/common/strategies/jwt-refresh.strategy'
 import { JwtStrategy } from './infrastructure/common/strategies/jwt.strategy'
 import { EnvironmentConfigModule } from './infrastructure/config/environment/environment-config.module'
-import { User } from './infrastructure/databases/postgressql/entities/user.entity'
-import { UserRepository } from './infrastructure/databases/postgressql/repositories/user.repository'
-import { TypeOrmConfigModule } from './infrastructure/databases/postgressql/typeorm.module'
+import { User } from './infrastructure/databases/postgresql/entities/user.entity'
+import { UserRepository } from './infrastructure/databases/postgresql/repositories/user.repository'
+import { TypeOrmConfigModule } from './infrastructure/databases/postgresql/typeorm.module'
 import { ExceptionsModule } from './infrastructure/exceptions/exceptions.module'
 import { LoggerModule } from './infrastructure/logger/logger.module'
 import { AuthModule } from './modules/auth.module'
 import { HealthModule } from './modules/health.module'
-import { PromotionsModule } from './modules/promotion.module'
 
 @Module({
   imports: [
     EnvironmentConfigModule,
     MailerModule,
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 1000,
+        limit: 15,
+      },
+      {
+        name: 'medium',
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
     PassportModule.register({
       defaultStrategy: 'jwt',
     }),
@@ -50,19 +60,24 @@ import { PromotionsModule } from './modules/promotion.module'
     BooksModule,
     CategoriesModule,
     SuppliersModule,
-    ServicesModule,
-    AppointmentsModule,
-    PromotionsModule,
-    ReviewsModule,
-    PaymentsModule,
-    StripeModule,
-    NotificationModule,
-    RevenueModule,
-    InvoiceModule,
+    InventoryModule,
+    OrdersModule,
     GhnModule,
+    SePayModule,
+    RevenueModule,
+    NotificationModule,
   ],
-  providers: [UserRepository, JwtStrategy, JwtRefreshStrategy],
+  providers: [
+    UserRepository,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
+
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer

@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { categoryApi, type CategoryApiItem } from "@/lib/category-api";
+import { Can } from "@/lib/ability";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -200,31 +201,37 @@ function CategoryRowActions({ category }: { category: CategoryApiItem }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
-            <CategoryFormDialog
-              category={category}
-              trigger={
-                <button className="flex w-full items-center px-2 py-1.5 text-sm">
-                  <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
-                </button>
-              }
-            />
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmOpen(true)}>
-            <Trash2 className="mr-2 h-4 w-4" /> Xóa
-          </DropdownMenuItem>
+          <Can I="update" a="Category">
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
+              <CategoryFormDialog
+                category={category}
+                trigger={
+                  <button className="flex w-full items-center px-2 py-1.5 text-sm">
+                    <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+                  </button>
+                }
+              />
+            </DropdownMenuItem>
+          </Can>
+          <Can I="delete" a="Category">
+            <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Xóa
+            </DropdownMenuItem>
+          </Can>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title="Xác nhận xóa danh mục?"
-        description={`Danh mục "${category.name}" sẽ bị xóa khỏi hệ thống.`}
-        confirmLabel="Xóa"
-        destructive
-        onConfirm={handleDelete}
-      />
+      <Can I="delete" a="Category">
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title="Xác nhận xóa danh mục?"
+          description={`Danh mục "${category.name}" sẽ bị xóa khỏi hệ thống.`}
+          confirmLabel="Xóa"
+          destructive
+          onConfirm={handleDelete}
+        />
+      </Can>
     </>
   );
 }
@@ -305,13 +312,15 @@ function CategoriesPage() {
           title="Quản lý danh mục sách"
           description="Phân loại các đầu sách trong kho giúp dễ dàng quản lý và tìm kiếm."
           actions={
-            <CategoryFormDialog
-              trigger={
-                <Button size="sm">
-                  <Plus className="mr-1.5 h-4 w-4" /> Thêm danh mục
-                </Button>
-              }
-            />
+            <Can I="create" a="Category">
+              <CategoryFormDialog
+                trigger={
+                  <Button size="sm">
+                    <Plus className="mr-1.5 h-4 w-4" /> Thêm danh mục
+                  </Button>
+                }
+              />
+            </Can>
           }
         />
 

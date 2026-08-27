@@ -10,6 +10,7 @@ export type TAction =
   | 'approve'
   | 'reject'
   | 'search'
+
 /**
  * Available subjects (resources) in the system
  */
@@ -18,16 +19,18 @@ export type TSubject =
   | 'Task'
   | 'User'
   | 'Book'
+  | 'BookstoreOrder'
+  | 'Category'
+  | 'Supplier'
+  | 'ImportReceipt'
+  | 'ExportReceipt'
+  | 'StockMovement'
+  | 'Revenue'
+  | 'Notification'
   | 'Service'
   | 'Appointment'
   | 'Promotion'
-  | 'Notification'
-  | 'Category'
-  | 'Supplier'
   | 'Review'
-  | 'ServiceFavorite'
-  | 'Client'
-  | 'Provider'
-  | 'ProviderProfile'
   | 'Payment'
   | 'Invoice'
+  | 'Shipping'

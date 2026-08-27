@@ -6,6 +6,10 @@ import {
   BOOK_REPOSITORY,
   IBookRepositoryInterface,
 } from '@domain/repositories/book.repository.interface'
+import {
+  IRedisCacheService,
+  REDIS_SERVICE,
+} from '@domain/services/redis.interface'
 
 @Injectable()
 export class CreateBookUseCase {
@@ -14,6 +18,8 @@ export class CreateBookUseCase {
     private readonly bookRepository: IBookRepositoryInterface,
     @Inject(EXCEPTIONS)
     private readonly exceptionsService: IException,
+    @Inject(REDIS_SERVICE)
+    private readonly redisService: IRedisCacheService,
   ) {}
 
   async execute(book: Partial<BookEntity>): Promise<BookEntity> {
@@ -29,7 +35,10 @@ export class CreateBookUseCase {
       })
     }
 
-    return await this.bookRepository.createBook(normalized)
+    const created = await this.bookRepository.createBook(normalized)
+    await this.redisService.delPattern('books:*')
+
+    return created
   }
 
   private resolveStatus(stock: number, minStock: number): string {
@@ -38,3 +47,4 @@ export class CreateBookUseCase {
     return 'IN_STOCK'
   }
 }
+

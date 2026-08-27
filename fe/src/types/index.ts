@@ -5,8 +5,12 @@ export interface Book {
   title: string;
   author: string;
   category: string;
+  publisher?: string | undefined;
+  isbn?: string | undefined;
   purchasePrice: number;
   sellingPrice: number;
+  price?: number | undefined;
+  importPrice?: number | undefined;
   stock: number;
   minStock: number;
   status: BookStatus;
@@ -34,9 +38,13 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderCode?: string | undefined;
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  provinceId?: number | undefined;
+  districtId?: number | undefined;
+  wardCode?: string | undefined;
   items: OrderItem[];
   subtotal: number;
   discount: number;
@@ -44,9 +52,9 @@ export interface Order {
   total: number;
   payment: PaymentStatus;
   shippingMethod: string;
-  trackingCode?: string;
+  trackingCode?: string | undefined;
   status: OrderStatus;
-  note?: string;
+  note?: string | undefined;
   createdAt: string;
 }
 
@@ -56,7 +64,7 @@ export interface ImportReceipt {
   date: string;
   totalItems: number;
   totalValue: number;
-  note?: string;
+  note?: string | undefined;
 }
 
 export interface ExportReceipt {
@@ -65,7 +73,7 @@ export interface ExportReceipt {
   date: string;
   totalItems: number;
   reason: string;
-  note?: string;
+  note?: string | undefined;
 }
 
 export type ShippingStatus =
@@ -97,5 +105,42 @@ export interface User {
   email: string;
   role: UserRole;
   active: boolean;
-  lastLogin: string;
+  avatar?: string | undefined;
+  phone?: string | undefined;
+  lastLogin?: string | undefined;
+  addressProvince?: string | undefined;
+  addressDistrict?: string | undefined;
+  addressWard?: string | undefined;
+  addressDetail?: string | undefined;
+  emailVerified?: boolean | undefined;
+  createdAt?: string | undefined;
+  updatedAt?: string | undefined;
+}
+
+export type OrderHistoryAction =
+  | "CREATED"
+  | "STATUS_CHANGE"
+  | "PAYMENT_CHANGE"
+  | "UPDATED_INFO"
+  | "SEPAY_PAYMENT"
+  | "GHN_SYNC"
+  | "NOTE_ADDED"
+  | "CANCELLED"
+  | string;
+
+export interface OrderHistoryItem {
+  id: number;
+  orderId: number;
+  orderCode: string;
+  action: OrderHistoryAction;
+  fromStatus?: string | undefined;
+  toStatus?: string | undefined;
+  fromPayment?: string | undefined;
+  toPayment?: string | undefined;
+  title: string;
+  note?: string | undefined;
+  actor: string;
+  actorRole?: string | undefined;
+  metadata?: Record<string, any> | undefined;
+  createdAt: string;
 }
