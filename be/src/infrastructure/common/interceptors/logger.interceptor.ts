@@ -21,15 +21,16 @@ export class LoggingInterceptor implements NestInterceptor {
     const request = httpContext.getRequest<Request>()
 
     const ip = this.getIP(request)
+    const requestPath = request.path || request.url || ''
 
-    this.logger.log(`Incoming Request on ${request.path}`, {
+    this.logger.log(`Incoming Request on ${requestPath}`, {
       method: request.method,
       ip,
     })
 
     return next.handle().pipe(
       tap(() => {
-        this.logger.log(`End Request for ${request.path}`, {
+        this.logger.log(`End Request for ${requestPath}`, {
           method: request.method,
           ip,
           duration: `${Date.now() - now}ms`,
@@ -40,7 +41,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
   private getIP(request: Request): string {
     let ip: string
-    const ipAddr = request.headers['x-forwarded-for']
+    const ipAddr = request.headers?.['x-forwarded-for']
     if (ipAddr) {
       const list = typeof ipAddr === 'string' ? ipAddr.split(',') : ipAddr
       ip = list[list.length - 1]
