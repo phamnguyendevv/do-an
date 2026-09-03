@@ -47,6 +47,7 @@ describe('AllExceptionFilter', () => {
         url: '/test-url',
         path: '/test-url',
         method: 'GET',
+        headers: {},
       }
       const mockArgumentsHost = {
         switchToHttp: jest.fn().mockReturnThis(),
@@ -70,7 +71,12 @@ describe('AllExceptionFilter', () => {
       expect(mockResponse.json).toHaveBeenCalledWith(expectedResponseData)
       expect(loggerService.warn).toHaveBeenCalledWith(
         `End Request for ${mockRequest.url}`,
-        `method=${mockRequest.method} status=${HttpStatus.FORBIDDEN} type=${mockHttpException.name} message=${mockHttpException.message}`,
+        {
+          method: mockRequest.method,
+          ip: '',
+          status: HttpStatus.FORBIDDEN,
+          error: expectedResponseData.error,
+        },
       )
     })
 
@@ -84,6 +90,7 @@ describe('AllExceptionFilter', () => {
         url: '/test-url',
         path: '/test-url',
         method: 'GET',
+        headers: {},
       }
       const mockArgumentsHost = {
         switchToHttp: jest.fn().mockReturnThis(),
@@ -109,7 +116,12 @@ describe('AllExceptionFilter', () => {
       expect(mockResponse.json).toHaveBeenCalledWith(expectedResponseData)
       expect(loggerService.error).toHaveBeenCalledWith(
         `End Request for ${mockRequest.url}`,
-        `method=${mockRequest.method} status=${HttpStatus.INTERNAL_SERVER_ERROR} type=${mockError.name} message=${mockError.message}`,
+        {
+          method: mockRequest.method,
+          ip: '',
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: expectedResponseData.error,
+        },
         expect.any(String),
       )
     })
