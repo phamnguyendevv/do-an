@@ -1,117 +1,77 @@
-import { Test, TestingModule } from '@nestjs/testing'
-
-import {
-  ID_TOKEN_MOCK,
-  REFRESH_TOKEN_MOCK,
-  awsCognitoServiceMock,
-} from 'test/mocks/services/aws-cognito.service.mock'
-
-import { EXCEPTIONS } from '@domain/exceptions/exceptions.interface'
-import { AWS_COGNITO_SERVICE } from '@domain/services/aws-cognito.interface'
-
-import { GetNewIdTokenUseCase } from '@use-cases/auth/get-new-id-token.use-case'
-import { LoginUseCase } from '@use-cases/auth/login.use-case'
+import { HttpException, HttpStatus } from '@nestjs/common'
 
 import { AuthController } from '@adapters/controllers/auth/auth.controller'
 import { LoginDto } from '@adapters/controllers/auth/dto/login.dto'
-import { RefreshDto } from '@adapters/controllers/auth/dto/refresh.dto'
-import { LoginPresenter } from '@adapters/controllers/auth/presenters/login.presenter'
-import { RefreshPresenter } from '@adapters/controllers/auth/presenters/refresh.presenter'
+import { UserRoleEnum } from '@domain/entities/role.entity'
+import { UserStatusEnum } from '@domain/entities/status.entity'
 
 describe('AuthController', () => {
-  let controller: AuthController
-  let loginUseCase: LoginUseCase
-  let getNewIdTokenUseCase: GetNewIdTokenUseCase
+  const user = {
+    id: 1,
+    username: 'admin',
+    email: 'admin@example.com',
+    role: UserRoleEnum.Admin,
+    status: UserStatusEnum.Active,
+    emailVerified: true,
+  }
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController],
-      providers: [
-        {
-          provide: AWS_COGNITO_SERVICE,
-          useValue: awsCognitoServiceMock,
-        },
-        {
-          provide: EXCEPTIONS,
-          useValue: {
-            unauthorizedException: jest.fn(),
-          },
-        },
-        LoginUseCase,
-        GetNewIdTokenUseCase,
-      ],
-    }).compile()
+  const tokens = {
+    accessToken: 'access-token',
+    refreshToken: 'refresh-token',
+  }
 
-    controller = module.get<AuthController>(AuthController)
-    loginUseCase = module.get<LoginUseCase>(LoginUseCase)
-    getNewIdTokenUseCase =
-      module.get<GetNewIdTokenUseCase>(GetNewIdTokenUseCase)
-  })
+  const createController = (loginResult: unknown = { user, tokens }) => {
+    const loginUseCase = {
+      execute: loginResult instanceof Error
+        ? jest.fn().mockRejectedValue(loginResult)
+        : jest.fn().mockResolvedValue(loginResult),
+    }
+
+    return new AuthController(
+      { execute: jest.fn() } as any,
+      loginUseCase as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+    )
+  }
 
   it('should be defined', () => {
-    expect(controller).toBeDefined()
+    expect(createController()).toBeDefined()
   })
 
-  describe('login', () => {
-    it('should return a LoginPresenter', async () => {
-      const loginDto: LoginDto = {
-        email: 'user@example.com',
-        password: 'password',
-      }
-      const loginPresenter = new LoginPresenter({
-        accessToken: ID_TOKEN_MOCK,
-        refreshToken: REFRESH_TOKEN_MOCK,
-      })
-      jest.spyOn(loginUseCase, 'execute').mockResolvedValue({
-        idToken: ID_TOKEN_MOCK,
-        refreshToken: REFRESH_TOKEN_MOCK,
-      })
+  it('should login and set auth cookies', async () => {
+    const controller = createController()
+    const response = { cookie: jest.fn() }
 
-      const result = await controller.login(loginDto)
+    const result = await controller.login(
+      { email: user.email, password: 'admin123' } as LoginDto,
+      response as any,
+    )
 
-      expect(result).toEqual(loginPresenter)
-    })
-
-    it('should throw an error if loginUseCase.execute throws an error', async () => {
-      const loginDto: LoginDto = {
-        email: 'user@example.com',
-        password: 'password',
-      }
-      jest.spyOn(loginUseCase, 'execute').mockImplementation(() => {
-        throw new Error('Test error')
-      })
-
-      await expect(controller.login(loginDto)).rejects.toThrow('Test error')
-    })
+    expect(result.data.email).toBe(user.email)
+    expect(result.token).toEqual(tokens)
+    expect(response.cookie).toHaveBeenCalledTimes(2)
+    expect(response.cookie).toHaveBeenNthCalledWith(
+      1,
+      'access_token',
+      tokens.accessToken,
+      expect.objectContaining({ httpOnly: true }),
+    )
   })
 
-  describe('refresh', () => {
-    it('should return a RefreshPresenter', async () => {
-      const refreshDto: RefreshDto = {
-        refreshToken: 'refresh-token',
-      }
-      const refreshPresenter = new RefreshPresenter({
-        accessToken: 'access-token',
-      })
-      jest
-        .spyOn(getNewIdTokenUseCase, 'execute')
-        .mockResolvedValue(refreshPresenter.accessToken)
+  it('should propagate login errors', async () => {
+    const error = new HttpException('Test error', HttpStatus.BAD_REQUEST)
+    const controller = createController(error)
 
-      const result = await controller.refresh(refreshDto)
-
-      expect(result).toEqual(refreshPresenter)
-    })
-
-    it('should throw an error if getNewIdTokenUseCase.execute throws an error', async () => {
-      const refreshDto: RefreshDto = {
-        refreshToken: 'refresh-token',
-      }
-
-      jest.spyOn(getNewIdTokenUseCase, 'execute').mockImplementation(() => {
-        throw new Error('Test error')
-      })
-
-      await expect(controller.refresh(refreshDto)).rejects.toThrow('Test error')
-    })
+    await expect(
+      controller.login(
+        { email: user.email, password: 'wrong' } as LoginDto,
+        { cookie: jest.fn() } as any,
+      ),
+    ).rejects.toThrow('Test error')
   })
 })
