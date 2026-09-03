@@ -38,7 +38,7 @@ export class AllExceptionFilter implements ExceptionFilter {
     const responseData: IFormatExceptionResponse = {
       statusCode: status,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: request.url || request.path || '',
       error: error,
     }
 
@@ -57,7 +57,7 @@ export class AllExceptionFilter implements ExceptionFilter {
 
     if (status === 500) {
       this.logger.error(
-        `End Request for ${request.path}`,
+        `End Request for ${request.path || request.url || ''}`,
         {
           method: request.method,
           ip,
@@ -67,7 +67,7 @@ export class AllExceptionFilter implements ExceptionFilter {
         exception.stack,
       )
     } else {
-      this.logger.warn(`End Request for ${request.path}`, {
+      this.logger.warn(`End Request for ${request.path || request.url || ''}`, {
         method: request.method,
         ip,
         status,
@@ -78,7 +78,7 @@ export class AllExceptionFilter implements ExceptionFilter {
 
   private getIP(request: Request): string {
     let ip: string
-    const ipAddr = request.headers['x-forwarded-for']
+    const ipAddr = request.headers?.['x-forwarded-for']
     if (ipAddr) {
       const list = typeof ipAddr === 'string' ? ipAddr.split(',') : ipAddr
       ip = list[list.length - 1]
