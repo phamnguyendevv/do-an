@@ -10,13 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivityLogsRouteImport } from './routes/activity-logs'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PromotionsRouteImport } from './routes/promotions'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as UsersRouteImport } from './routes/users'
@@ -37,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivityLogsRoute = ActivityLogsRouteImport.update({
+  id: '/activity-logs',
+  path: '/activity-logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -50,6 +58,11 @@ const AssistantRoute = AssistantRouteImport.update({
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -70,6 +83,11 @@ const PosRoute = PosRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PromotionsRoute = PromotionsRouteImport.update({
+  id: '/promotions',
+  path: '/promotions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -145,13 +163,16 @@ const ShippingShippingIdRoute = ShippingShippingIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activity-logs': typeof ActivityLogsRoute
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/categories': typeof CategoriesRoute
+  '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
+  '/promotions': typeof PromotionsRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
@@ -169,13 +190,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activity-logs': typeof ActivityLogsRoute
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/categories': typeof CategoriesRoute
+  '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
+  '/promotions': typeof PromotionsRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
@@ -194,13 +218,16 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activity-logs': typeof ActivityLogsRoute
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/categories': typeof CategoriesRoute
+  '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
+  '/promotions': typeof PromotionsRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
@@ -220,13 +247,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activity-logs'
     | '/analytics'
     | '/assistant'
     | '/categories'
+    | '/customers'
     | '/dashboard'
     | '/login'
     | '/pos'
     | '/profile'
+    | '/promotions'
     | '/settings'
     | '/suppliers'
     | '/users'
@@ -244,13 +274,16 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activity-logs'
     | '/analytics'
     | '/assistant'
     | '/categories'
+    | '/customers'
     | '/dashboard'
     | '/login'
     | '/pos'
     | '/profile'
+    | '/promotions'
     | '/settings'
     | '/suppliers'
     | '/users'
@@ -268,13 +301,16 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/activity-logs'
     | '/analytics'
     | '/assistant'
     | '/categories'
+    | '/customers'
     | '/dashboard'
     | '/login'
     | '/pos'
     | '/profile'
+    | '/promotions'
     | '/settings'
     | '/suppliers'
     | '/users'
@@ -293,13 +329,16 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivityLogsRoute: typeof ActivityLogsRoute
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   CategoriesRoute: typeof CategoriesRoute
+  CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   PosRoute: typeof PosRoute
   ProfileRoute: typeof ProfileRoute
+  PromotionsRoute: typeof PromotionsRoute
   SettingsRoute: typeof SettingsRoute
   SuppliersRoute: typeof SuppliersRoute
   UsersRoute: typeof UsersRoute
@@ -325,6 +364,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activity-logs': {
+      id: '/activity-logs'
+      path: '/activity-logs'
+      fullPath: '/activity-logs'
+      preLoaderRoute: typeof ActivityLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -344,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/categories'
       preLoaderRoute: typeof CategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -372,6 +425,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/promotions': {
+      id: '/promotions'
+      path: '/promotions'
+      fullPath: '/promotions'
+      preLoaderRoute: typeof PromotionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -477,13 +537,16 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityLogsRoute: ActivityLogsRoute,
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   CategoriesRoute: CategoriesRoute,
+  CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   PosRoute: PosRoute,
   ProfileRoute: ProfileRoute,
+  PromotionsRoute: PromotionsRoute,
   SettingsRoute: SettingsRoute,
   SuppliersRoute: SuppliersRoute,
   UsersRoute: UsersRoute,
