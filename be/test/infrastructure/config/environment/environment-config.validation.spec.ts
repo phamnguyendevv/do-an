@@ -12,6 +12,11 @@ const config: { [key: string]: unknown } = {
   DATABASE_NAME: 'postgres',
   DATABASE_SCHEMA: 'public',
   DATABASE_SYNCHRONIZE: false,
+  MAINTENANCE_MODE: false,
+  JWT_SECRET: 'jwt-secret',
+  JWT_EXPIRATION_TIME: '1d',
+  JWT_REFRESH_SECRET: 'jwt-refresh-secret',
+  JWT_REFRESH_EXPIRATION_TIME: '7d',
   AWS_COGNITO_USER_POOL_ID: 'us-east-1_1X2X3X4X5X6',
   AWS_COGNITO_CLIENT_ID: '1X2X3X4X5X6X7X8X9X0X',
   AWS_COGNITO_AUTHORITY_URL:
