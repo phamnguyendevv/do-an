@@ -69,6 +69,7 @@ export const orderApi = {
 
   async create(payload: {
     orderCode?: string;
+    customerId?: number;
     customerName: string;
     customerPhone: string;
     customerAddress: string;
@@ -83,6 +84,7 @@ export const orderApi = {
     }>;
     shippingFee?: number;
     discount?: number;
+    promotionCode?: string;
     shippingMethod?: string;
     trackingCode?: string;
     note?: string;

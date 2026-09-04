@@ -38,6 +38,9 @@ export class BookstoreOrder {
   @Column({ type: 'varchar', length: 50, name: 'customer_phone' })
   public customerPhone!: string
 
+  @Column({ type: 'bigint', nullable: true, name: 'customer_id' })
+  public customerId?: number
+
   @Column({ type: 'text', name: 'customer_address' })
   public customerAddress!: string
 
@@ -58,6 +61,12 @@ export class BookstoreOrder {
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   public discount!: number
+
+  @Column({ type: 'bigint', nullable: true, name: 'promotion_id' })
+  public promotionId?: number
+
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'promotion_code' })
+  public promotionCode?: string
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'shipping_fee' })
   public shippingFee!: number

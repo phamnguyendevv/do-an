@@ -23,6 +23,7 @@ import {
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { ImportReceipt } from '@infrastructure/databases/postgresql/entities/import-receipt.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
+import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
 
 @Injectable()
 export class CreateImportReceiptUseCase {
@@ -162,6 +163,11 @@ export class CreateImportReceiptUseCase {
       })
 
       const savedReceipt = await queryRunner.manager.save(ImportReceipt, receipt)
+      await queryRunner.manager.save(ActivityLog, queryRunner.manager.create(ActivityLog, {
+        actorName: dto.createdBy || 'Admin', action: 'CREATE', resourceType: 'ImportReceipt',
+        resourceId: String(savedReceipt.id), description: `Tạo phiếu nhập ${savedReceipt.receiptCode}`,
+        metadata: { totalItems, totalValue },
+      }))
       await queryRunner.commitTransaction()
 
       await this.redisService.delPattern('books:*')

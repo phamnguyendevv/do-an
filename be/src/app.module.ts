@@ -17,6 +17,9 @@ import { RevenueModule } from '@modules/revenue.module'
 import { SePayModule } from '@modules/sepay.module'
 import { SuppliersModule } from '@modules/supplier.module'
 import { UsersModule } from '@modules/user.module'
+import { CustomersModule } from '@modules/customers.module'
+import { PromotionsModule } from '@modules/promotions.module'
+import { ActivityLogsModule } from '@modules/activity-logs.module'
 
 import { MaintenanceMiddleware } from './infrastructure/common/middlewares/maintenance.middleware'
 import { JwtRefreshStrategy } from './infrastructure/common/strategies/jwt-refresh.strategy'
@@ -66,6 +69,9 @@ import { HealthModule } from './modules/health.module'
     SePayModule,
     RevenueModule,
     NotificationModule,
+    CustomersModule,
+    PromotionsModule,
+    ActivityLogsModule,
   ],
   providers: [
     UserRepository,

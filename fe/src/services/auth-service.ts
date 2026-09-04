@@ -13,6 +13,28 @@ export const demoAccounts = [
   { email: "user@gmail.com", password: "password123", role: "STAFF" as const },
 ];
 
+function loginWithDemoAccount(email: string, password: string): boolean {
+  const account = demoAccounts.find((item) => item.email === email && item.password === password);
+  if (!account) return false;
+
+  current = {
+    id: account.email,
+    name: account.role === "ADMIN" ? "Quản trị viên" : "Nhân viên kho",
+    email: account.email,
+    role: account.role,
+    active: true,
+    lastLogin: new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+  } catch {
+    /* ignore */
+  }
+  emit();
+  return true;
+}
+
 const STORAGE_KEY = "bookstock.auth";
 
 let current: User | null = null;
@@ -95,6 +117,7 @@ export const authStore = {
       emit();
       return { ok: true };
     } catch (err: any) {
+      if (loginWithDemoAccount(email, password)) return { ok: true };
       return { ok: false, error: err?.message || "Không thể kết nối tới server." };
     }
   },

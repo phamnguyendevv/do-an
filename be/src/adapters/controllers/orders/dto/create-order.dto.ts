@@ -33,6 +33,11 @@ export class CreateOrderItemDto {
 }
 
 export class CreateBookstoreOrderDto {
+  @ApiProperty({ example: 1, required: false })
+  @IsOptional()
+  @IsNumber()
+  customerId?: number
+
   @ApiProperty({ example: 'ORD-2025001', required: false })
   @IsOptional()
   @IsString()
@@ -85,6 +90,11 @@ export class CreateBookstoreOrderDto {
   @IsNumber()
   @Min(0)
   discount?: number
+
+  @ApiProperty({ example: 'WELCOME10', required: false })
+  @IsOptional()
+  @IsString()
+  promotionCode?: string
 
   @ApiProperty({ example: 'Giao Hàng Nhanh (GHN)', required: false })
   @IsOptional()

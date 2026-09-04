@@ -56,10 +56,12 @@ export const orderService = {
     orderCode?: string;
     customerName: string;
     customerPhone: string;
+    customerId?: number;
     customerAddress: string;
     shippingMethod: string;
     shippingFee: number;
     discount: number;
+    promotionCode?: string;
     trackingCode?: string;
     note?: string;
     expectedDelivery?: string;
@@ -100,6 +102,7 @@ export const orderService = {
         orderCode: input.orderCode,
         customerName: input.customerName,
         customerPhone: input.customerPhone,
+        customerId: input.customerId,
         customerAddress: input.customerAddress,
         provinceId: input.provinceId,
         districtId: input.districtId,
@@ -107,6 +110,7 @@ export const orderService = {
         items,
         shippingFee: input.shippingFee,
         discount: input.discount,
+        promotionCode: input.promotionCode,
         shippingMethod: input.shippingMethod,
         trackingCode: input.trackingCode,
         note: input.note,

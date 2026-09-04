@@ -25,6 +25,9 @@ import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
+import { Customer } from '@infrastructure/databases/postgresql/entities/customer.entity'
+import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
+import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
 
 @Injectable()
 export class CreateBookstoreOrderUseCase {
@@ -44,6 +47,7 @@ export class CreateBookstoreOrderUseCase {
     orderCode?: string
     customerName: string
     customerPhone: string
+    customerId?: number
     customerAddress: string
     provinceId?: number
     districtId?: number
@@ -51,6 +55,7 @@ export class CreateBookstoreOrderUseCase {
     items: Array<{ bookId: number | string; title: string; quantity: number; price: number }>
     shippingFee?: number
     discount?: number
+    promotionCode?: string
     shippingMethod?: string
     trackingCode?: string
     note?: string
@@ -160,9 +165,35 @@ export class CreateBookstoreOrderUseCase {
         }
       }
 
+      const customer = dto.customerId
+        ? await queryRunner.manager.findOne(Customer, { where: { id: dto.customerId } })
+        : await queryRunner.manager.findOne(Customer, { where: { phone: dto.customerPhone } })
+      const savedCustomer = customer || await queryRunner.manager.save(Customer, queryRunner.manager.create(Customer, {
+        name: dto.customerName, phone: dto.customerPhone, address: dto.customerAddress,
+      }))
+
+      let promotion: Promotion | null = null
+      if (dto.promotionCode) {
+        promotion = await queryRunner.manager.findOne(Promotion, { where: { code: dto.promotionCode.toUpperCase(), isActive: true } })
+        const now = new Date()
+        if (!promotion || promotion.startsAt > now || promotion.endsAt < now || (promotion.usageLimit !== null && promotion.usageLimit !== undefined && promotion.usedCount >= promotion.usageLimit)) {
+          throw this.exceptionsService.badRequestException({ type: 'PromotionValidationException', message: 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn' })
+        }
+      }
+
       // 4. Financial totals
       const subtotal = dto.items.reduce((s, it) => s + it.price * it.quantity, 0)
-      const discount = dto.discount || 0
+      let discount = dto.discount || 0
+      if (promotion && subtotal >= Number(promotion.minOrderValue)) {
+        const promotionDiscount = promotion.discountType === 'PERCENTAGE'
+          ? subtotal * Number(promotion.discountValue) / 100
+          : Number(promotion.discountValue)
+        discount += promotion.maxDiscount !== null && promotion.maxDiscount !== undefined
+          ? Math.min(promotionDiscount, Number(promotion.maxDiscount))
+          : promotionDiscount
+        promotion.usedCount += 1
+        await queryRunner.manager.save(Promotion, promotion)
+      }
       const shippingFee = dto.shippingFee || 0
       const total = Math.max(0, subtotal - discount + shippingFee)
 
@@ -182,6 +213,7 @@ export class CreateBookstoreOrderUseCase {
         orderCode,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
+        customerId: savedCustomer.id,
         customerAddress: dto.customerAddress,
         provinceId: dto.provinceId,
         districtId: dto.districtId,
@@ -189,6 +221,8 @@ export class CreateBookstoreOrderUseCase {
         items: dto.items,
         subtotal,
         discount,
+        promotionId: promotion?.id,
+        promotionCode: promotion?.code,
         shippingFee,
         total,
         payment,
@@ -228,6 +262,17 @@ export class CreateBookstoreOrderUseCase {
         },
       })
       await queryRunner.manager.save(OrderHistory, history)
+
+      savedCustomer.totalOrders += 1
+      savedCustomer.totalSpent = Number(savedCustomer.totalSpent) + Number(savedOrder.total)
+      savedCustomer.lastOrderAt = new Date()
+      await queryRunner.manager.save(Customer, savedCustomer)
+      await queryRunner.manager.save(ActivityLog, queryRunner.manager.create(ActivityLog, {
+        actorName: dto.actor || (isPos ? 'Bán tại quầy (POS)' : 'Staff/Admin'),
+        actorRole: dto.actorRole, action: 'CREATE', resourceType: 'BookstoreOrder', resourceId: String(savedOrder.id),
+        description: `Tạo đơn hàng ${savedOrder.orderCode}`,
+        metadata: { total: Number(savedOrder.total), customerId: savedCustomer.id },
+      }))
 
       await queryRunner.commitTransaction()
 

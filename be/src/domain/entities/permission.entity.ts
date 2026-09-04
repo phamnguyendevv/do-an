@@ -34,3 +34,5 @@ export type TSubject =
   | 'Payment'
   | 'Invoice'
   | 'Shipping'
+  | 'Customer'
+  | 'ActivityLog'

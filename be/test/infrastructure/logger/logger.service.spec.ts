@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common'
+import { ConsoleLogger } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 
 import { LoggerService } from '@infrastructure/logger/logger.service'
@@ -19,13 +19,13 @@ describe('LoggerService', () => {
   })
 
   it('should log debug message in development environment', () => {
-    const debugSpy = jest.spyOn(Logger.prototype, 'debug')
+    const debugSpy = jest.spyOn(ConsoleLogger.prototype, 'debug')
 
     process.env.NODE_ENV = 'local'
     loggerService.debug('Context', 'Message')
 
     expect(debugSpy).toHaveBeenCalled()
-    expect(debugSpy.mock.calls[0]).toEqual(['[DEBUG] Message', 'Context'])
+    expect(debugSpy.mock.calls[0]).toEqual(['Message', 'Context'])
 
     process.env.NODE_ENV = 'production'
     loggerService.debug('Context', 'Message')
@@ -33,44 +33,44 @@ describe('LoggerService', () => {
   })
 
   it('should log info message', () => {
-    const logSpy = jest.spyOn(Logger.prototype, 'log')
+    const logSpy = jest.spyOn(ConsoleLogger.prototype, 'log')
 
     loggerService.log('Context', 'Message')
 
     expect(logSpy).toHaveBeenCalled()
-    expect(logSpy.mock.calls[0]).toEqual(['[INFO] Message', 'Context'])
+    expect(logSpy.mock.calls[0]).toEqual(['Message', 'Context'])
   })
 
   it('should log error message', () => {
-    const errorSpy = jest.spyOn(Logger.prototype, 'error')
+    const errorSpy = jest.spyOn(ConsoleLogger.prototype, 'error')
 
     loggerService.error('Context', 'Message', 'Trace')
 
     expect(errorSpy).toHaveBeenCalled()
     expect(errorSpy.mock.calls[0]).toEqual([
-      '[ERROR] Message',
+      'Message',
       'Trace',
       'Context',
     ])
   })
 
   it('should log warn message', () => {
-    const warnSpy = jest.spyOn(Logger.prototype, 'warn')
+    const warnSpy = jest.spyOn(ConsoleLogger.prototype, 'warn')
 
     loggerService.warn('Context', 'Message')
 
     expect(warnSpy).toHaveBeenCalled()
-    expect(warnSpy.mock.calls[0]).toEqual(['[WARN] Message', 'Context'])
+    expect(warnSpy.mock.calls[0]).toEqual(['Message', 'Context'])
   })
 
   it('should log verbose message in development environment', () => {
-    const verboseSpy = jest.spyOn(Logger.prototype, 'verbose')
+    const verboseSpy = jest.spyOn(ConsoleLogger.prototype, 'verbose')
 
     process.env.NODE_ENV = 'local'
     loggerService.verbose('Context', 'Message')
 
     expect(verboseSpy).toHaveBeenCalled()
-    expect(verboseSpy.mock.calls[0]).toEqual(['[VERBOSE] Message', 'Context'])
+    expect(verboseSpy.mock.calls[0]).toEqual(['Message', 'Context'])
 
     process.env.NODE_ENV = 'production'
     loggerService.debug('Context', 'Message')

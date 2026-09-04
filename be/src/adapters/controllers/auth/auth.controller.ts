@@ -153,7 +153,7 @@ export class AuthController {
     return { success: true, message: 'Đăng xuất thành công' }
   }
 
-  @Get('fogot-password')
+  @Get('forgot-password')
   @Throttle({ medium: { limit: 3, ttl: 60000 } })
   @ApiOperation({
     summary: 'Forgot password',

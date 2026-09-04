@@ -69,13 +69,17 @@ describe('LoggingInterceptor', () => {
         next: () => {
           expect(loggerService.log).toHaveBeenCalledWith(
             'Incoming Request on /test-url',
-            'method=GET ip=127.0.0.1',
+            { method: 'GET', ip: '127.0.0.1' },
           )
         },
         complete: () => {
           expect(loggerService.log).toHaveBeenCalledWith(
             'End Request for /test-url',
-            `method=GET ip=127.0.0.1 duration=${Date.now() - now}ms`,
+            {
+              method: 'GET',
+              ip: '127.0.0.1',
+              duration: `${Date.now() - now}ms`,
+            },
           )
         },
       })

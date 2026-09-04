@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
 
-import { environmentConfigServiceMock } from 'test/mocks/services/environment-config-service.mock'
-
 import { JwtStrategy } from '@infrastructure/common/strategies/jwt.strategy'
 import { EnvironmentConfigService } from '@infrastructure/config/environment/environment-config.service'
+import { UserRepository } from '@infrastructure/databases/postgresql/repositories/user.repository'
+import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
+import { LoggerService } from '@infrastructure/logger/logger.service'
 
 describe('JwtStrategy', () => {
   let jwtStrategy: JwtStrategy
@@ -14,7 +15,21 @@ describe('JwtStrategy', () => {
         JwtStrategy,
         {
           provide: EnvironmentConfigService,
-          useValue: environmentConfigServiceMock,
+          useValue: { getJwtSecret: () => 'jwt-secret' },
+        },
+        { provide: LoggerService, useValue: { warn: jest.fn() } },
+        {
+          provide: ExceptionsService,
+          useValue: { unauthorizedException: jest.fn() },
+        },
+        {
+          provide: UserRepository,
+          useValue: {
+            getUserById: jest.fn().mockResolvedValue({
+              id: 123,
+              status: 1,
+            }),
+          },
         },
       ],
     }).compile()
@@ -26,9 +41,11 @@ describe('JwtStrategy', () => {
     expect(jwtStrategy).toBeDefined()
   })
 
-  it('should validate payload correctly', () => {
-    const payload = { sub: 'user123' }
-    const validatedUser = jwtStrategy.validate(payload)
-    expect(validatedUser).toEqual({ userId: 'user123' })
+  it('should validate payload correctly', async () => {
+    const payload = { id: 123 }
+    await expect(jwtStrategy.validate(payload)).resolves.toEqual({
+      id: 123,
+      status: 1,
+    })
   })
 })
