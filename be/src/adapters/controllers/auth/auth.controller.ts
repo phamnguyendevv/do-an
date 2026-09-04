@@ -16,7 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
-import { Response } from 'express'
+import { CookieOptions, Response } from 'express'
 
 import { LoginOauthUseCase } from '@use-cases/auth/login-oauth.use-case'
 import { LoginUseCase } from '@use-cases/auth/login.use-case'
@@ -42,7 +42,7 @@ import { LoginPresenter, TokenPresenter } from './presenters/login.presenter'
 import { RefreshPresenter } from './presenters/refresh.presenter'
 import { RegisterPresenter } from './presenters/register.presenter'
 
-const COOKIE_OPTIONS = {
+const COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
@@ -147,7 +147,7 @@ export class AuthController {
 
   @Post('logout')
   @ApiOperation({ summary: 'Logout', description: 'Clear auth cookies' })
-  async logout(@Res({ passthrough: true }) res: Response) {
+  logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token', COOKIE_OPTIONS)
     res.clearCookie('refresh_token', COOKIE_OPTIONS)
     return { success: true, message: 'Đăng xuất thành công' }
