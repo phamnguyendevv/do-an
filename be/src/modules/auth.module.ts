@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { USER_REPOSITORY } from '@domain/repositories/user.repository.interface'
 import { MAILER_SERVICE } from '@domain/services/mailer.interface'
 
+import { CheckUserExistenceUseCase } from '@use-cases/auth/check-user-existence.use-case'
 import { GetMeUseCase } from '@use-cases/auth/get-me.use-case'
 import { LoginOauthUseCase } from '@use-cases/auth/login-oauth.use-case'
 import { LoginUseCase } from '@use-cases/auth/login.use-case'
@@ -14,6 +15,7 @@ import { SendVerifyEmailUseCase } from '@use-cases/auth/send-verify-email.use-ca
 import { VerifyEmailUseCase } from '@use-cases/auth/verify-email.use-case'
 import { ForgotPasswordUseCase } from '@use-cases/users/forgot-password.use-case'
 import { ResetPasswordUseCase } from '@use-cases/users/reset-password.use-case'
+import { VerifyResetOtpUseCase } from '@use-cases/users/verify-reset-otp.use-case'
 
 import { AuthController } from '@adapters/controllers/auth/auth.controller'
 
@@ -48,11 +50,13 @@ import { NodeMailerService } from '@infrastructure/services/mailer/mailer.servic
     GoogleStrategy,
 
     RegisterUseCase,
+    CheckUserExistenceUseCase,
     GetMeUseCase,
     LoginUseCase,
     RefreshUseCase,
     ForgotPasswordUseCase,
     ResetPasswordUseCase,
+    VerifyResetOtpUseCase,
     LoginOauthUseCase,
     VerifyEmailUseCase,
     SendVerifyEmailUseCase,

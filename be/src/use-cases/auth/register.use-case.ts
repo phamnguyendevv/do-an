@@ -35,40 +35,80 @@ export class RegisterUseCase {
     private readonly mailerService: IMailerService,
     @Inject(REDIS_SERVICE)
     private readonly redisService: IRedisCacheService,
-  ) {}
+  ) { }
 
   async execute(payload: RegisterDto) {
-    const user = await this.userRepository.getUserByEmail(payload.email)
-    if (user)
-      throw this.exceptionsService.badRequestException({
-        type: 'BadRequest',
-        message: 'User have existed ',
-      })
+    const trimmedEmail = payload.email?.trim()
+    const trimmedUsername = payload.username?.trim()
+    const trimmedPhone = payload.phone?.trim()
+
+    // 1. Kiểm tra Email
+    if (trimmedEmail) {
+      const existingEmail = await this.userRepository.getUserByEmail(trimmedEmail)
+      if (existingEmail) {
+        throw this.exceptionsService.badRequestException({
+          type: 'BadRequest',
+          message: 'Địa chỉ email này đã được sử dụng.',
+        })
+      }
+    }
+
+    // 2. Kiểm tra Họ và tên
+    if (trimmedUsername) {
+      const existingUsername = await this.userRepository.getUserByUsername(trimmedUsername)
+      if (existingUsername) {
+        throw this.exceptionsService.badRequestException({
+          type: 'BadRequest',
+          message: 'Họ và tên đã tồn tại trong hệ thống.',
+        })
+      }
+    }
+
+    // 3. Kiểm tra Số điện thoại
+    if (trimmedPhone) {
+      const existingPhone = await this.userRepository.getUserByPhone(trimmedPhone)
+      if (existingPhone) {
+        throw this.exceptionsService.badRequestException({
+          type: 'BadRequest',
+          message: 'Số điện thoại này đã được sử dụng.',
+        })
+      }
+    }
 
     const passwordMatches = await this.bcryptService.hash(payload.password)
 
-    const newUser = await this.userRepository.createUser({
-      username: payload.username || '',
-      email: payload.email,
+    const pendingUserData = {
+      username: trimmedUsername || '',
+      email: trimmedEmail,
+      phone: trimmedPhone || undefined,
       password: passwordMatches,
       role: payload.role || UserRoleEnum.Client,
-      status: UserStatusEnum.InActive,
-      emailVerified: false,
+      status: UserStatusEnum.Active,
+      emailVerified: true,
       isProvider: false,
-    })
+    }
 
     const otp = Math.floor(Math.random() * 1000000)
       .toString()
       .padStart(6, '0')
-    const key = `otp:${payload.email}`
+    const key = `otp:${trimmedEmail}`
+    const pendingKey = `pending_registration:${trimmedEmail}`
 
-    await this.redisService.setValue(key, otp, 600)
+    await Promise.all([
+      this.redisService.setValue(key, otp, 600),
+      this.redisService.setValue(pendingKey, JSON.stringify(pendingUserData), 600),
+    ])
 
-    await this.mailerService.sendMail(
-      newUser.email,
-      'Verify your email',
-      `Otp for verifying your email is: ${otp}`,
-    )
+    // Gửi email xác thực trong background, không block API response
+    this.mailerService
+      .sendMail(
+        trimmedEmail,
+        'Verify your email',
+        `Otp for verifying your email is: ${otp}`,
+      )
+      .catch((err) => {
+        console.error('Failed to send verification email:', err)
+      })
 
     return {
       message: 'User registered successfully',

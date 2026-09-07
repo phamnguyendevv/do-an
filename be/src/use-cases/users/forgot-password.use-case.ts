@@ -52,7 +52,7 @@ export class ForgotPasswordUseCase {
     if (!user) {
       throw this.exceptionsService.notFoundException({
         type: 'UserNotFoundException',
-        message: 'User not found',
+        message: 'Email này không tồn tại trong hệ thống',
       })
     }
   }

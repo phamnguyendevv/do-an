@@ -464,22 +464,29 @@ const mapApiUser = (u: UserApiItem): User => ({
   role: u.role === 1 ? "ADMIN" : "STAFF",
   active: u.status === 1,
   lastLogin: u.lastLogin || u.createdAt || new Date().toISOString(),
+  createdAt: u.createdAt,
+  updatedAt: u.updatedAt,
 });
 
 function UsersPage() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("all");
 
-  const { data: usersData = [], isLoading } = useQuery({
+  const {
+    data: usersData = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: async () => {
-      try {
-        const res = await userApi.list({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : [];
-        return items.map(mapApiUser);
-      } catch {
-        return [];
-      }
+      const res: any = await userApi.list({ size: 200 });
+      const items = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : [];
+      return items.map(mapApiUser);
     },
     staleTime: 10_000,
   });
@@ -543,7 +550,16 @@ function UsersPage() {
           columns={columns}
           data={data}
           rowKey={(u) => u.id}
-          emptyTitle={isLoading ? "Đang tải danh sách người dùng..." : "Không tìm thấy người dùng nào"}
+          loading={isLoading}
+          error={
+            isError
+              ? error instanceof Error
+                ? error.message
+                : "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend và thử lại!"
+              : null
+          }
+          emptyTitle="Không tìm thấy người dùng nào"
+          emptyDescription="Chưa có dữ liệu người dùng hoặc danh sách đang trống."
           toolbar={
             <FilterBar>
               <SearchInput

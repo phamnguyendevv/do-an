@@ -22,6 +22,7 @@ export const USER_REPOSITORY = 'USER_REPOSITORY_INTERFACE'
 export interface IUserRepositoryInterface {
   getUserByUsername(username: string): Promise<UserEntity | null>
   getUserByEmail(email: string): Promise<UserEntity | null>
+  getUserByPhone(phone: string): Promise<UserEntity | null>
   getUserById(id: number): Promise<UserEntity | null>
   updateLastLogin(id: number): Promise<void>
   createUser(user: RegisterDto, manager?: EntityManager): Promise<UserEntity>

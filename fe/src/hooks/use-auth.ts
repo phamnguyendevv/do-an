@@ -23,5 +23,11 @@ export function useAuth() {
     role: user?.role ?? "STAFF",
     login: authStore.login,
     logout: authStore.logout,
+    register: authStore.register,
+    checkExist: authStore.checkExist,
+    verifyEmail: authStore.verifyEmail,
+    forgotPassword: authStore.forgotPassword,
+    verifyResetOtp: authStore.verifyResetOtp,
+    resetPassword: authStore.resetPassword,
   };
 }

@@ -11,6 +11,7 @@ import {
 @Injectable()
 export class RedisService implements IRedisCacheService {
   private readonly logger = new Logger(RedisService.name)
+  private readonly memoryCache = new Map<string, { value: any; expiry: number }>()
 
   constructor(
     @Inject(EXCEPTIONS)
@@ -21,16 +22,25 @@ export class RedisService implements IRedisCacheService {
   async getValue<T>(key: string): Promise<T | null> {
     try {
       const value = await this.redisClient.get(key)
-      return value ? JSON.parse(value) : null
+      if (value) return JSON.parse(value)
     } catch (err: any) {
       this.logger.warn(`Redis get error for key "${key}": ${err?.message || err}`)
-      return null
     }
+    const item = this.memoryCache.get(key)
+    if (item) {
+      if (Date.now() > item.expiry) {
+        this.memoryCache.delete(key)
+        return null
+      }
+      return item.value as T
+    }
+    return null
   }
 
   async setValue<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const ttls = ttl || 60
+    this.memoryCache.set(key, { value, expiry: Date.now() + ttls * 1000 })
     try {
-      const ttls = ttl || 60
       await this.redisClient.set(key, JSON.stringify(value), 'EX', ttls)
     } catch (err: any) {
       this.logger.warn(`Redis set error for key "${key}": ${err?.message || err}`)
@@ -38,6 +48,7 @@ export class RedisService implements IRedisCacheService {
   }
 
   async delValue(key: string): Promise<void> {
+    this.memoryCache.delete(key)
     try {
       await this.redisClient.del(key)
     } catch (err: any) {

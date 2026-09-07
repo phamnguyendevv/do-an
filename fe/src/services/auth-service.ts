@@ -6,34 +6,26 @@ export interface Credentials {
   password: string;
 }
 
+export interface RegisterData {
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+  phone?: string | undefined;
+}
+
+export interface ResetPasswordData {
+  email: string;
+  inputOtp: string;
+  newPassword: string;
+}
+
 /** Demo accounts for UI convenience */
 export const demoAccounts = [
   { email: "admin@example.com", password: "admin123", role: "ADMIN" as const },
   { email: "staff@example.com", password: "staff123", role: "STAFF" as const },
   { email: "user@gmail.com", password: "password123", role: "STAFF" as const },
 ];
-
-function loginWithDemoAccount(email: string, password: string): boolean {
-  const account = demoAccounts.find((item) => item.email === email && item.password === password);
-  if (!account) return false;
-
-  current = {
-    id: account.email,
-    name: account.role === "ADMIN" ? "Quản trị viên" : "Nhân viên kho",
-    email: account.email,
-    role: account.role,
-    active: true,
-    lastLogin: new Date().toISOString(),
-  };
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-  } catch {
-    /* ignore */
-  }
-  emit();
-  return true;
-}
 
 const STORAGE_KEY = "bookstock.auth";
 
@@ -78,7 +70,8 @@ export const authStore = {
       const payload = body?.data ?? null; // ResponseInterceptor wraps controller result in { data: <presenter>, ... }
       const user = payload?.data ?? null;
       const token = payload?.token ?? null;
-      if (!user || !token?.accessToken) return { ok: false, error: "Định dạng phản hồi không hợp lệ." };
+      if (!user || !token?.accessToken)
+        return { ok: false, error: "Định dạng phản hồi không hợp lệ." };
 
       const normalizeRole = (r: any) => {
         if (typeof r === "number" || /^(\d+)$/i.test(String(r))) {
@@ -87,7 +80,13 @@ export const authStore = {
         }
         const s = String(r || "").toLowerCase();
         if (s.includes("admin")) return "ADMIN";
-        if (s.includes("staff") || s.includes("user") || s.includes("client") || s.includes("provider")) return "STAFF";
+        if (
+          s.includes("staff") ||
+          s.includes("user") ||
+          s.includes("client") ||
+          s.includes("provider")
+        )
+          return "STAFF";
         return "STAFF";
       };
 
@@ -117,7 +116,156 @@ export const authStore = {
       emit();
       return { ok: true };
     } catch (err: any) {
-      if (loginWithDemoAccount(email, password)) return { ok: true };
+      return { ok: false, error: err?.message || "Không thể kết nối tới server." };
+    }
+  },
+  async register(
+    data: RegisterData,
+  ): Promise<{ ok: boolean; error?: string; message?: string; otp?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}${API_PREFIX}/auth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, error: body?.error?.message || body?.message || "Đăng ký thất bại." };
+      }
+      const body = await res.json();
+      const payload = body?.data ?? {};
+      return {
+        ok: true,
+        message: payload?.message || body?.message || "Đăng ký thành công.",
+        otp: payload?.otp,
+      };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || "Không thể kết nối tới server." };
+    }
+  },
+  async checkExist({
+    email,
+    username,
+    phone,
+  }: {
+    email?: string | undefined;
+    username?: string | undefined;
+    phone?: string | undefined;
+  }): Promise<{
+    emailExists?: boolean;
+    usernameExists?: boolean;
+    phoneExists?: boolean;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (email) params.append("email", email);
+      if (username) params.append("username", username);
+      if (phone) params.append("phone", phone);
+      const res = await fetch(`${API_BASE}${API_PREFIX}/auth/check-exist?${params.toString()}`);
+      if (!res.ok) return {};
+      const body = await res.json();
+      return body?.data ?? body ?? {};
+    } catch {
+      return {};
+    }
+  },
+  async verifyEmail({
+    email,
+    inputOtp,
+  }: {
+    email: string;
+    inputOtp: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}${API_PREFIX}/auth/verify-email`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, inputOtp }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return {
+          ok: false,
+          error: body?.error?.message || body?.message || "Xác thực email thất bại.",
+        };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || "Không thể kết nối tới server." };
+    }
+  },
+  async forgotPassword(email: string): Promise<{ ok: boolean; error?: string; message?: string }> {
+    try {
+      const res = await fetch(
+        `${API_BASE}${API_PREFIX}/auth/forgot-password?email=${encodeURIComponent(email)}`,
+        {
+          method: "GET",
+          headers: { "content-type": "application/json" },
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        let err = body?.error?.message || body?.message || "";
+        if (res.status === 404 || err.includes("User not found") || err.includes("không tồn tại")) {
+          err = "Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại!";
+        } else if (!err) {
+          err = "Không thể gửi yêu cầu quên mật khẩu. Vui lòng thử lại!";
+        }
+        return {
+          ok: false,
+          error: err,
+        };
+      }
+      const body = await res.json();
+      return { ok: true, message: body?.data || "Mã xác thực OTP đã được gửi đến email của bạn." };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || "Không thể kết nối tới server." };
+    }
+  },
+  async verifyResetOtp(
+    email: string,
+    inputOtp: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}${API_PREFIX}/auth/verify-reset-otp`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, inputOtp }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return {
+          ok: false,
+          error:
+            body?.error?.message ||
+            body?.message ||
+            "Mã OTP không chính xác hoặc đã hết hạn. Vui lòng thử lại!",
+        };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || "Không thể kết nối tới server." };
+    }
+  },
+  async resetPassword(
+    data: ResetPasswordData,
+  ): Promise<{ ok: boolean; error?: string; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}${API_PREFIX}/auth/reset-password`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return {
+          ok: false,
+          error: body?.error?.message || body?.message || "Đặt lại mật khẩu thất bại.",
+        };
+      }
+      const body = await res.json();
+      return { ok: true, message: body?.data || "Đặt lại mật khẩu thành công." };
+    } catch (err: any) {
       return { ok: false, error: err?.message || "Không thể kết nối tới server." };
     }
   },
@@ -147,7 +295,13 @@ export const authStore = {
 
       const body = await res.json();
       const payload = body?.data ?? body;
-      if (payload && (payload.status === 2 || payload.status === 3 || payload.status === 0 || payload.active === false)) {
+      if (
+        payload &&
+        (payload.status === 2 ||
+          payload.status === 3 ||
+          payload.status === 0 ||
+          payload.active === false)
+      ) {
         authStore.handleUnauthorized(true);
         return false;
       }

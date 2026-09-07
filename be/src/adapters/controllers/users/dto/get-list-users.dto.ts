@@ -9,18 +9,27 @@ import { ISearchUsersParams } from '@domain/repositories/user.repository.interfa
 
 export class GetListUsersDto implements ISearchUsersParams {
   @ApiProperty({
-    required: true,
+    required: false,
     enum: UserStatusEnum,
     description: '1: active , 2: inactive, 3: pending, 4: banned',
   })
-  status!: UserStatusEnum
+  @IsNumber()
+  @Transform(({ value }: { value: any }) =>
+    value !== undefined && value !== '' ? parseInt(value, 10) : undefined,
+  )
+  @IsOptional()
+  status?: UserStatusEnum
 
   @ApiProperty({
     required: false,
     enum: UserRoleEnum,
     description: '1: Admin, 2: Provider, 3: Client, empty: All',
   })
-  @Transform(({ value }: { value: string }) => parseInt(value))
+  @IsNumber()
+  @Transform(({ value }: { value: any }) =>
+    value !== undefined && value !== '' ? parseInt(value, 10) : undefined,
+  )
+  @IsOptional()
   role?: UserRoleEnum
 
   @ApiProperty({

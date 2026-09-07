@@ -20,6 +20,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PromotionsRouteImport } from './routes/promotions'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as UsersRouteImport } from './routes/users'
@@ -88,6 +89,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PromotionsRoute = PromotionsRouteImport.update({
   id: '/promotions',
   path: '/promotions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
+  '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
   '/users': typeof UsersRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/profile'
     | '/promotions'
+    | '/register'
     | '/settings'
     | '/suppliers'
     | '/users'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/profile'
     | '/promotions'
+    | '/register'
     | '/settings'
     | '/suppliers'
     | '/users'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/profile'
     | '/promotions'
+    | '/register'
     | '/settings'
     | '/suppliers'
     | '/users'
@@ -339,6 +351,7 @@ export interface RootRouteChildren {
   PosRoute: typeof PosRoute
   ProfileRoute: typeof ProfileRoute
   PromotionsRoute: typeof PromotionsRoute
+  RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   SuppliersRoute: typeof SuppliersRoute
   UsersRoute: typeof UsersRoute
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       path: '/promotions'
       fullPath: '/promotions'
       preLoaderRoute: typeof PromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -547,6 +567,7 @@ const rootRouteChildren: RootRouteChildren = {
   PosRoute: PosRoute,
   ProfileRoute: ProfileRoute,
   PromotionsRoute: PromotionsRoute,
+  RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   SuppliersRoute: SuppliersRoute,
   UsersRoute: UsersRoute,

@@ -18,6 +18,7 @@ import {
 import { Throttle } from '@nestjs/throttler'
 import { CookieOptions, Response } from 'express'
 
+import { CheckUserExistenceUseCase } from '@use-cases/auth/check-user-existence.use-case'
 import { LoginOauthUseCase } from '@use-cases/auth/login-oauth.use-case'
 import { LoginUseCase } from '@use-cases/auth/login.use-case'
 import { RefreshUseCase } from '@use-cases/auth/refresh.use-case'
@@ -26,28 +27,27 @@ import { SendVerifyEmailUseCase } from '@use-cases/auth/send-verify-email.use-ca
 import { VerifyEmailUseCase } from '@use-cases/auth/verify-email.use-case'
 import { ForgotPasswordUseCase } from '@use-cases/users/forgot-password.use-case'
 import { ResetPasswordUseCase } from '@use-cases/users/reset-password.use-case'
+import { VerifyResetOtpUseCase } from '@use-cases/users/verify-reset-otp.use-case'
+
+import { EnvironmentConfigService } from '@infrastructure/config/environment/environment-config.service'
 
 import { ApiResponseType } from '../common/decorators/swagger-response.decorator'
 import { User } from '../common/decorators/user.decorator'
 import { GoogleOauthGuard } from '../common/guards/google-oauth.guard'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import JwtRefreshGuard from '../common/guards/jwt-refresh.guard'
+import { getCookieOptions } from '../common/helpers/cookie.helper'
+import { CheckExistDto } from './dto/check-exist.dto'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { SendVerifyEmailDto } from './dto/send-verify-email.dto'
 import { VerifyOtpDto } from './dto/verify-email.dto'
+import { CheckExistPresenter } from './presenters/check-exist.presenter'
 import { GetMePresenter } from './presenters/get-me.presenter'
 import { LoginPresenter, TokenPresenter } from './presenters/login.presenter'
 import { RefreshPresenter } from './presenters/refresh.presenter'
 import { RegisterPresenter } from './presenters/register.presenter'
-
-const COOKIE_OPTIONS: CookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
-  path: '/',
-}
 
 @Controller('auth')
 @ApiTags('Auth')
@@ -59,15 +59,22 @@ const COOKIE_OPTIONS: CookieOptions = {
 @ApiResponse({ status: 500, description: 'Internal error' })
 export class AuthController {
   constructor(
+    private readonly environmentConfigService: EnvironmentConfigService,
     private readonly registerUseCase: RegisterUseCase,
+    private readonly checkUserExistenceUseCase: CheckUserExistenceUseCase,
     private readonly loginUseCase: LoginUseCase,
     private readonly refreshUseCase: RefreshUseCase,
     private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     private readonly resetPasswordUsseCase: ResetPasswordUseCase,
+    private readonly verifyResetOtpUseCase: VerifyResetOtpUseCase,
     private readonly loginOauthUseCase: LoginOauthUseCase,
     private readonly verifyEmailUseCase: VerifyEmailUseCase,
     private readonly sendVerifyEmailUseCase: SendVerifyEmailUseCase,
   ) {}
+
+  private get cookieOptions(): CookieOptions {
+    return getCookieOptions(this.environmentConfigService.getNodeEnv())
+  }
 
   @Post('login')
   @Throttle({ medium: { limit: 10, ttl: 60000 } })
@@ -83,13 +90,13 @@ export class AuthController {
 
     if (tokens?.accessToken) {
       res.cookie('access_token', tokens.accessToken, {
-        ...COOKIE_OPTIONS,
+        ...this.cookieOptions,
         maxAge: 24 * 60 * 60 * 1000,
       })
     }
     if (tokens?.refreshToken) {
       res.cookie('refresh_token', tokens.refreshToken, {
-        ...COOKIE_OPTIONS,
+        ...this.cookieOptions,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
     }
@@ -114,6 +121,22 @@ export class AuthController {
     return new RegisterPresenter(result)
   }
 
+  @Get('check-exist')
+  @ApiOperation({
+    summary: 'Check existence',
+    description: 'Check if email, username, or phone already exists in the system',
+  })
+  @ApiExtraModels(CheckExistPresenter)
+  @ApiResponseType(CheckExistPresenter, false)
+  async checkExist(@Query() query: CheckExistDto) {
+    const result = await this.checkUserExistenceUseCase.execute({
+      email: query.email,
+      username: query.username,
+      phone: query.phone,
+    })
+    return new CheckExistPresenter(result)
+  }
+
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
   @ApiBearerAuth()
@@ -131,13 +154,13 @@ export class AuthController {
 
     if (tokens?.accessToken) {
       res.cookie('access_token', tokens.accessToken, {
-        ...COOKIE_OPTIONS,
+        ...this.cookieOptions,
         maxAge: 24 * 60 * 60 * 1000,
       })
     }
     if (tokens?.refreshToken) {
       res.cookie('refresh_token', tokens.refreshToken, {
-        ...COOKIE_OPTIONS,
+        ...this.cookieOptions,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
     }
@@ -148,8 +171,8 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({ summary: 'Logout', description: 'Clear auth cookies' })
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token', COOKIE_OPTIONS)
-    res.clearCookie('refresh_token', COOKIE_OPTIONS)
+    res.clearCookie('access_token', this.cookieOptions)
+    res.clearCookie('refresh_token', this.cookieOptions)
     return { success: true, message: 'Đăng xuất thành công' }
   }
 
@@ -166,6 +189,18 @@ export class AuthController {
   forgotPassword(@Query('email') email: string) {
     const result = this.forgotPasswordUseCase.execute(email)
     return result
+  }
+
+  @Post('verify-reset-otp')
+  @ApiOperation({
+    summary: 'Verify OTP for reset password',
+    description: 'Verify if OTP is valid before moving to change password step',
+  })
+  @ApiResponse({ status: 200, description: 'OTP is valid' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async verifyResetOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    const isValid = await this.verifyResetOtpUseCase.execute(verifyOtpDto)
+    return { valid: isValid, message: 'Mã OTP hợp lệ' }
   }
 
   @Post('reset-password')

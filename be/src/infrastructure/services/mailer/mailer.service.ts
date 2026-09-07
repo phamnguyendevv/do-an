@@ -20,7 +20,14 @@ export class NodeMailerService implements IMailerService {
         from: 'BookStock <no-reply@bookstock.vn>',
         text: text,
       })
-    } catch {
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.warn(`[NodeMailerService] Could not send email to ${to}:`, err?.message || err)
+      // eslint-disable-next-line no-console
+      console.log(`\n========================================\n[DEV OTP] To: ${to} | Subject: ${subject}\n${text}\n========================================\n`)
+      if (!process.env.EMAIL_USERNAME || !process.env.EMAIL_PASSWORD) {
+        return
+      }
       throw this.exceptionsService.internalServerErrorException({
         type: 'InternalServerError',
         message: 'Failed to send email',

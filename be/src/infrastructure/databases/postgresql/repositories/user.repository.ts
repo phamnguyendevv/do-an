@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 
-import { EntityManager, Repository } from 'typeorm'
+import { EntityManager, ILike, Repository } from 'typeorm'
 
 import { IPaginationParams } from '@domain/entities/search.entity'
 import { UserEntity } from '@domain/entities/user.entity'
@@ -43,7 +43,7 @@ export class UserRepository implements IUserRepositoryInterface {
   async getUserByUsername(username: string) {
     return await this.userRepository.findOne({
       where: {
-        username,
+        username: ILike(username.trim()),
       },
     })
   }
@@ -51,7 +51,15 @@ export class UserRepository implements IUserRepositoryInterface {
   async getUserByEmail(email: string): Promise<UserEntity | null> {
     return await this.userRepository.findOne({
       where: {
-        email,
+        email: ILike(email.trim()),
+      },
+    })
+  }
+
+  async getUserByPhone(phone: string): Promise<UserEntity | null> {
+    return await this.userRepository.findOne({
+      where: {
+        phone: phone.trim(),
       },
     })
   }
