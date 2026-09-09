@@ -95,8 +95,8 @@ export class RegisterUseCase {
     const pendingKey = `pending_registration:${trimmedEmail}`
 
     await Promise.all([
-      this.redisService.setValue(key, otp, 600),
-      this.redisService.setValue(pendingKey, JSON.stringify(pendingUserData), 600),
+      this.redisService.setValue(key, otp, 300),
+      this.redisService.setValue(pendingKey, JSON.stringify(pendingUserData), 300),
     ])
 
     // Gửi email xác thực trong background, không block API response
