@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
@@ -16,7 +17,9 @@ export class GetTopSellingBooksUseCase {
       .where("o.status != 'CANCELLED'")
 
     if (params?.startDate) {
-      query.andWhere('o.createdAt >= :startDate', { startDate: params.startDate })
+      query.andWhere('o.createdAt >= :startDate', {
+        startDate: params.startDate,
+      })
     }
 
     if (params?.endDate) {
@@ -25,7 +28,15 @@ export class GetTopSellingBooksUseCase {
 
     const orders = await query.getMany()
 
-    const bookMap = new Map<string, { bookId: string; title: string; soldQuantity: number; totalRevenue: number }>()
+    const bookMap = new Map<
+      string,
+      {
+        bookId: string
+        title: string
+        soldQuantity: number
+        totalRevenue: number
+      }
+    >()
 
     for (const order of orders) {
       if (order.items && Array.isArray(order.items)) {
@@ -41,7 +52,8 @@ export class GetTopSellingBooksUseCase {
           }
           const entry = bookMap.get(key)!
           entry.soldQuantity += Number(item.quantity || 0)
-          entry.totalRevenue += Number(item.quantity || 0) * Number(item.price || 0)
+          entry.totalRevenue +=
+            Number(item.quantity || 0) * Number(item.price || 0)
         }
       }
     }

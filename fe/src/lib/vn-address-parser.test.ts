@@ -44,9 +44,7 @@ describe("Vietnamese Address & Customer Parser", () => {
       { DistrictID: 1470, ProvinceID: 205, DistrictName: "Huyện Hàm Yên", Code: "HY" },
       { DistrictID: 1471, ProvinceID: 205, DistrictName: "Thành phố Tuyên Quang", Code: "TPTQ" },
     ],
-    206: [
-      { DistrictID: 1480, ProvinceID: 206, DistrictName: "Huyện Kim Bảng", Code: "KB" },
-    ],
+    206: [{ DistrictID: 1480, ProvinceID: 206, DistrictName: "Huyện Kim Bảng", Code: "KB" }],
   };
 
   const mockWards: Record<number, GhnWard[]> = {
@@ -54,9 +52,7 @@ describe("Vietnamese Address & Customer Parser", () => {
       { WardCode: "20109", DistrictID: 1442, WardName: "Phường Bến Nghé" },
       { WardCode: "20110", DistrictID: 1442, WardName: "Phường Bến Thành" },
     ],
-    1443: [
-      { WardCode: "20301", DistrictID: 1443, WardName: "Phường Võ Thị Sáu" },
-    ],
+    1443: [{ WardCode: "20301", DistrictID: 1443, WardName: "Phường Võ Thị Sáu" }],
     1445: [
       { WardCode: "20401", DistrictID: 1445, WardName: "Phường 01" },
       { WardCode: "20402", DistrictID: 1445, WardName: "Phường 02" },
@@ -205,7 +201,8 @@ describe("Vietnamese Address & Customer Parser", () => {
   });
 
   it("parses user case: đc: 158/48/71 khu phố 3 phường Quang Vinh, Biên Hoà, Đồng Nai sđt: 0941465476 Thảo Nguyên", async () => {
-    const input = "đc: 158/48/71 khu phố 3 phường Quang Vinh, Biên Hoà, Đồng Nai sđt: 0941465476 Thảo Nguyên";
+    const input =
+      "đc: 158/48/71 khu phố 3 phường Quang Vinh, Biên Hoà, Đồng Nai sđt: 0941465476 Thảo Nguyên";
     const res = await parseCustomerAndAddress(input, mockProvinces, loadDistricts, loadWards);
 
     expect(res.customerName).toBe("Thảo Nguyên");
@@ -305,7 +302,12 @@ Số 45 ngõ 12 đường Cầu Giấy, Phường Dịch Vọng, Cầu Giấy, H
   it("resolves 2-level to 3-level mapper correctly", () => {
     const allWards = [
       { WardCode: "20109", DistrictID: 1442, WardName: "Phường Bến Nghé", districtName: "Quận 1" },
-      { WardCode: "20301", DistrictID: 1443, WardName: "Phường Võ Thị Sáu", districtName: "Quận 3" },
+      {
+        WardCode: "20301",
+        DistrictID: 1443,
+        WardName: "Phường Võ Thị Sáu",
+        districtName: "Quận 3",
+      },
     ];
 
     const mapped = resolve2LevelTo3Level(202, "20109", allWards);

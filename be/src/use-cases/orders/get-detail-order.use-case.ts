@@ -25,12 +25,14 @@ export class GetDetailBookstoreOrderUseCase {
   async execute(identifier: string | number): Promise<BookstoreOrderEntity> {
     const cacheKey = `orders:detail:${identifier}`
 
-    const cached = await this.redisService.getValue<BookstoreOrderEntity>(cacheKey)
+    const cached =
+      await this.redisService.getValue<BookstoreOrderEntity>(cacheKey)
     if (cached) {
       return cached
     }
 
-    const idNum = typeof identifier === 'number' ? identifier : parseInt(identifier, 10)
+    const idNum =
+      typeof identifier === 'number' ? identifier : parseInt(identifier, 10)
     let order: BookstoreOrderEntity | null = null
 
     if (!isNaN(idNum)) {
@@ -53,10 +55,13 @@ export class GetDetailBookstoreOrderUseCase {
       await this.redisService.setValue(`orders:detail:${order.id}`, order, 120)
     }
     if (order.orderCode) {
-      await this.redisService.setValue(`orders:detail:${order.orderCode}`, order, 120)
+      await this.redisService.setValue(
+        `orders:detail:${order.orderCode}`,
+        order,
+        120,
+      )
     }
 
     return order
   }
 }
-

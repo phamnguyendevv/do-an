@@ -43,15 +43,22 @@ import type { Book, BookStatus } from "@/types";
 
 export const Route = createFileRoute("/books/")({
   validateSearch: (search: Record<string, unknown>): { q?: string } => {
-    const q = typeof search['q'] === "string" ? search['q'] : undefined;
+    const q = typeof search["q"] === "string" ? search["q"] : undefined;
     return q ? { q } : {};
   },
   head: () => ({
     meta: [
       { title: "Quản lý sách — BookStock" },
-      { name: "description", content: "Danh sách đầu sách: tìm kiếm, lọc, thêm, sửa, nhập xuất Excel và xóa sách trong kho." },
+      {
+        name: "description",
+        content:
+          "Danh sách đầu sách: tìm kiếm, lọc, thêm, sửa, nhập xuất Excel và xóa sách trong kho.",
+      },
       { property: "og:title", content: "Quản lý sách — BookStock" },
-      { property: "og:description", content: "Quản lý toàn bộ đầu sách, giá nhập, giá bán và tồn kho." },
+      {
+        property: "og:description",
+        content: "Quản lý toàn bộ đầu sách, giá nhập, giá bán và tồn kho.",
+      },
     ],
   }),
   component: BooksPage,
@@ -80,19 +87,61 @@ function BooksPage() {
   const activeFilters = useMemo<ActiveFilter[]>(() => {
     const chips: ActiveFilter[] = [];
     if (debouncedSearch)
-      chips.push({ key: "search", label: `Từ khóa: "${debouncedSearch}"`, onRemove: () => { setSearch(""); resetPage(); } });
+      chips.push({
+        key: "search",
+        label: `Từ khóa: "${debouncedSearch}"`,
+        onRemove: () => {
+          setSearch("");
+          resetPage();
+        },
+      });
     if (category !== "all")
-      chips.push({ key: "category", label: `Danh mục: ${category}`, onRemove: () => { setCategory("all"); resetPage(); } });
+      chips.push({
+        key: "category",
+        label: `Danh mục: ${category}`,
+        onRemove: () => {
+          setCategory("all");
+          resetPage();
+        },
+      });
     if (status !== "all")
-      chips.push({ key: "status", label: `Trạng thái: ${bookStatusLabel[status as BookStatus] ?? status}`, onRemove: () => { setStatus("all"); resetPage(); } });
+      chips.push({
+        key: "status",
+        label: `Trạng thái: ${bookStatusLabel[status as BookStatus] ?? status}`,
+        onRemove: () => {
+          setStatus("all");
+          resetPage();
+        },
+      });
     if (priceRange.min !== undefined || priceRange.max !== undefined) {
-      const label = [priceRange.min !== undefined ? `Từ ${formatCompactCurrency(priceRange.min)}` : null, priceRange.max !== undefined ? `đến ${formatCompactCurrency(priceRange.max)}` : null].filter(Boolean).join(" ");
-      chips.push({ key: "price", label: `Giá: ${label}`, onRemove: () => { setPriceRange({}); resetPage(); } });
+      const label = [
+        priceRange.min !== undefined ? `Từ ${formatCompactCurrency(priceRange.min)}` : null,
+        priceRange.max !== undefined ? `đến ${formatCompactCurrency(priceRange.max)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      chips.push({
+        key: "price",
+        label: `Giá: ${label}`,
+        onRemove: () => {
+          setPriceRange({});
+          resetPage();
+        },
+      });
     }
     if (dateRange?.from) {
       const d = dateRange;
-      const label = d.to ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}` : d.from.toLocaleDateString("vi");
-      chips.push({ key: "date", label: `Ngày tạo: ${label}`, onRemove: () => { setDateRange(undefined); resetPage(); } });
+      const label = d.to
+        ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
+        : d.from.toLocaleDateString("vi");
+      chips.push({
+        key: "date",
+        label: `Ngày tạo: ${label}`,
+        onRemove: () => {
+          setDateRange(undefined);
+          resetPage();
+        },
+      });
     }
     return chips;
   }, [debouncedSearch, category, status, priceRange, dateRange]);
@@ -112,7 +161,9 @@ function BooksPage() {
       try {
         const res = await categoryApi.list({ size: 100 });
         const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items.map((c: any) => (typeof c === "string" ? c : c?.name)).filter(Boolean) as string[];
+        return items
+          .map((c: any) => (typeof c === "string" ? c : c?.name))
+          .filter(Boolean) as string[];
       } catch {
         return [];
       }
@@ -151,7 +202,11 @@ function BooksPage() {
       sortable: true,
       value: (b) => b.title ?? "",
       cell: (b) => (
-        <Link to="/books/$bookId" params={{ bookId: b.id }} className="font-medium hover:text-primary">
+        <Link
+          to="/books/$bookId"
+          params={{ bookId: b.id }}
+          className="font-medium hover:text-primary"
+        >
           {b.title || "—"}
         </Link>
       ),
@@ -198,9 +253,7 @@ function BooksPage() {
       cell: (b) => {
         const s = (b.status as BookStatus) || "IN_STOCK";
         return (
-          <StatusBadge tone={bookStatusTone[s] || "neutral"}>
-            {bookStatusLabel[s] || s}
-          </StatusBadge>
+          <StatusBadge tone={bookStatusTone[s] || "neutral"}>{bookStatusLabel[s] || s}</StatusBadge>
         );
       },
     },
@@ -214,11 +267,7 @@ function BooksPage() {
           description={`${pagination.total} đầu sách đang được theo dõi trong hệ thống.`}
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportBooksToExcel(books)}
-              >
+              <Button variant="outline" size="sm" onClick={() => exportBooksToExcel(books)}>
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Excel
               </Button>
               <Can I="create" a="Book">
@@ -265,10 +314,19 @@ function BooksPage() {
                 <SearchInput
                   className="sm:w-64"
                   value={search}
-                  onValueChange={(val) => { setSearch(val); resetPage(); }}
+                  onValueChange={(val) => {
+                    setSearch(val);
+                    resetPage();
+                  }}
                   placeholder="Tìm theo tên, tác giả..."
                 />
-                <Select value={category} onValueChange={(val) => { setCategory(val); resetPage(); }}>
+                <Select
+                  value={category}
+                  onValueChange={(val) => {
+                    setCategory(val);
+                    resetPage();
+                  }}
+                >
                   <SelectTrigger className="h-9 sm:w-44">
                     <SelectValue />
                   </SelectTrigger>
@@ -281,7 +339,13 @@ function BooksPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={status} onValueChange={(val) => { setStatus(val); resetPage(); }}>
+                <Select
+                  value={status}
+                  onValueChange={(val) => {
+                    setStatus(val);
+                    resetPage();
+                  }}
+                >
                   <SelectTrigger className="h-9 sm:w-40">
                     <SelectValue />
                   </SelectTrigger>
@@ -294,12 +358,18 @@ function BooksPage() {
                 </Select>
                 <PriceRangeFilter
                   value={priceRange}
-                  onValueChange={(r) => { setPriceRange(r); resetPage(); }}
+                  onValueChange={(r) => {
+                    setPriceRange(r);
+                    resetPage();
+                  }}
                   label="Khoảng giá bán"
                 />
                 <DateRangePicker
                   value={dateRange}
-                  onValueChange={(r) => { setDateRange(r); resetPage(); }}
+                  onValueChange={(r) => {
+                    setDateRange(r);
+                    resetPage();
+                  }}
                   placeholder="Ngày tạo"
                 />
               </FilterBar>
@@ -309,13 +379,14 @@ function BooksPage() {
           rowActions={(b) => <BookRowActions book={b} />}
         />
         {isFetching && !isLoading && (
-          <p className="mt-2 text-xs text-muted-foreground animate-pulse">Đang cập nhật dữ liệu...</p>
+          <p className="mt-2 text-xs text-muted-foreground animate-pulse">
+            Đang cập nhật dữ liệu...
+          </p>
         )}
       </PageContainer>
     </AppShell>
   );
 }
-
 
 function BookRowActions({ book }: { book: Book }) {
   const queryClient = useQueryClient();

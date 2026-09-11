@@ -370,12 +370,15 @@ export const orderService = {
       const updated = await orderApi.update(targetId, dbPayload);
       const localOrder = mapApiOrder(updated);
       const newOrders = orders.map((o) =>
-        o.id === order.id || o.orderCode === order.orderCode ? localOrder : o
+        o.id === order.id || o.orderCode === order.orderCode ? localOrder : o,
       );
       store.setState({ orders: newOrders });
       return { ok: true, data: localOrder };
     } catch (apiErr: any) {
-      console.warn("Backend API unavailable for order update, updating local store fallback:", apiErr);
+      console.warn(
+        "Backend API unavailable for order update, updating local store fallback:",
+        apiErr,
+      );
       const updated: Order = {
         ...order,
         customerName: payload.customerName ?? order.customerName,
@@ -386,7 +389,7 @@ export const orderService = {
         wardCode: payload.toWardCode ?? order.wardCode,
       };
       const newOrders = orders.map((o) =>
-        o.id === order.id || o.orderCode === order.orderCode ? updated : o
+        o.id === order.id || o.orderCode === order.orderCode ? updated : o,
       );
       store.setState({ orders: newOrders });
       return { ok: true, data: updated };

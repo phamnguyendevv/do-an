@@ -19,7 +19,19 @@ export type BookListApiResponse = {
 import { apiRequest } from "./api-client";
 
 export const bookApi = {
-  async list(params?: { search?: string; category?: string; status?: string; page?: number; size?: number; minPrice?: number; maxPrice?: number; startDate?: string; endDate?: string; sortBy?: string; sortOrder?: string }) {
+  async list(params?: {
+    search?: string;
+    category?: string;
+    status?: string;
+    page?: number;
+    size?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }) {
     const search = new URLSearchParams();
     if (params?.search) search.set("search", params.search);
     if (params?.category) search.set("category", params.category);

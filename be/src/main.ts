@@ -2,6 +2,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 
@@ -9,6 +10,7 @@ import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
 import { USER_REPOSITORY } from '@domain/repositories/user.repository.interface'
 import { BCRYPT_SERVICE } from '@domain/services/bcrypt.interface'
+
 import { AppModule } from './app.module'
 import { AllExceptionFilter } from './infrastructure/common/filter/exception.filter'
 import { LoggingInterceptor } from './infrastructure/common/interceptors/logger.interceptor'
@@ -80,8 +82,8 @@ async function bootstrap() {
 
   // Seed a default admin user if no users exist (useful for local dev)
   try {
-    const userRepo: any = app.get(USER_REPOSITORY)
-    const bcrypt: any = app.get(BCRYPT_SERVICE)
+    const userRepo = app.get(USER_REPOSITORY)
+    const bcrypt = app.get(BCRYPT_SERVICE)
     if (userRepo && bcrypt) {
       const { pagination } = await userRepo.findUsers({ size: 1, page: 1 })
       const total = pagination?.total ?? 0

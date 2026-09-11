@@ -48,7 +48,10 @@ export class BooksController {
 
   @Get('/admin/books')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List books', description: 'Admin can list all books' })
+  @ApiOperation({
+    summary: 'List books',
+    description: 'Admin can list all books',
+  })
   @CheckPolicies({ action: 'read', subject: 'Book' })
   async getBooks(@Query() queryParams: GetListBooksDto) {
     return await this.getListBooksUseCase.execute(queryParams)
@@ -56,7 +59,10 @@ export class BooksController {
 
   @Get('/admin/books/:id')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get book by ID', description: 'Admin can read a single book' })
+  @ApiOperation({
+    summary: 'Get book by ID',
+    description: 'Admin can read a single book',
+  })
   @CheckPolicies({ action: 'read', subject: 'Book' })
   async getBookById(@Param('id', ParseIntPipe) id: number) {
     return await this.getDetailBookUseCase.execute({ id })

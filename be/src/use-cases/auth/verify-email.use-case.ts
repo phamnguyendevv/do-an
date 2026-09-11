@@ -25,7 +25,10 @@ export class VerifyEmailUseCase {
 
   async execute(verifyOtpDto: VerifyOtpDto): Promise<boolean> {
     const trimmedEmail = verifyOtpDto.email.trim()
-    await this.checkOtp({ email: trimmedEmail, inputOtp: verifyOtpDto.inputOtp.trim() })
+    await this.checkOtp({
+      email: trimmedEmail,
+      inputOtp: verifyOtpDto.inputOtp.trim(),
+    })
 
     const pendingKey = `pending_registration:${trimmedEmail}`
     const pendingDataRaw = await this.redisService.getValue<string>(pendingKey)
@@ -33,7 +36,8 @@ export class VerifyEmailUseCase {
     if (pendingDataRaw) {
       try {
         const pendingUserData = JSON.parse(pendingDataRaw)
-        const existingUser = await this.userRepository.getUserByEmail(trimmedEmail)
+        const existingUser =
+          await this.userRepository.getUserByEmail(trimmedEmail)
         if (!existingUser) {
           // Lưu tài khoản vào database chỉ khi xác thực OTP thành công
           await this.userRepository.createUser(pendingUserData)

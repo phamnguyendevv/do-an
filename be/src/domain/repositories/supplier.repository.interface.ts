@@ -1,5 +1,5 @@
-import { SupplierEntity } from '@domain/entities/supplier.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
+import { SupplierEntity } from '@domain/entities/supplier.entity'
 
 export interface ISearchSupplierParams {
   size?: number

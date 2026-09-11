@@ -1,4 +1,9 @@
-export type StockMovementType = 'IMPORT' | 'EXPORT' | 'SALE' | 'RESTOCK' | 'ADJUST'
+export type StockMovementType =
+  | 'IMPORT'
+  | 'EXPORT'
+  | 'SALE'
+  | 'RESTOCK'
+  | 'ADJUST'
 
 export class StockMovementEntity {
   public readonly id!: number

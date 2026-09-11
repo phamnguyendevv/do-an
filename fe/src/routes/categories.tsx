@@ -105,15 +105,18 @@ function CategoryFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => {
-      setOpen(v);
-      if (v) {
-        form.reset({
-          name: category?.name ?? "",
-          description: category?.description ?? "",
-        });
-      }
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (v) {
+          form.reset({
+            name: category?.name ?? "",
+            description: category?.description ?? "",
+          });
+        }
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -298,9 +301,7 @@ function CategoriesPage() {
       header: "Mô tả",
       value: (c) => c.description ?? "",
       cell: (c) => (
-        <span className="text-sm text-muted-foreground line-clamp-1">
-          {c.description || "—"}
-        </span>
+        <span className="text-sm text-muted-foreground line-clamp-1">{c.description || "—"}</span>
       ),
     },
   ];
@@ -325,11 +326,7 @@ function CategoriesPage() {
         />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard
-            label="Tổng số danh mục"
-            value={categories.length}
-            hint="Danh mục hoạt động"
-          />
+          <StatCard label="Tổng số danh mục" value={categories.length} hint="Danh mục hoạt động" />
           <StatCard
             label="Có mô tả chi tiết"
             value={categories.filter((c) => Boolean(c.description)).length}
@@ -361,7 +358,9 @@ function CategoriesPage() {
           }
           rowActions={(c) => <CategoryRowActions category={c} />}
         />
-        {isLoading && <p className="mt-3 text-sm text-muted-foreground">Đang tải danh mục sách...</p>}
+        {isLoading && (
+          <p className="mt-3 text-sm text-muted-foreground">Đang tải danh mục sách...</p>
+        )}
       </PageContainer>
     </AppShell>
   );

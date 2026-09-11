@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  Edit2,
-  Loader2,
-  Package,
-  QrCode,
-  Truck,
-  User,
-} from "lucide-react";
+import { ArrowLeft, Edit2, Loader2, Package, QrCode, Truck, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -106,15 +98,26 @@ export const Route = createFileRoute("/orders/$orderId")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Không tìm thấy đơn hàng — BookStock" }, { name: "robots", content: "noindex" }] };
+      return {
+        meta: [
+          { title: "Không tìm thấy đơn hàng — BookStock" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     }
     const code = loaderData.order.orderCode || loaderData.order.id;
     return {
       meta: [
         { title: `Đơn ${code} — BookStock` },
-        { name: "description", content: `Chi tiết đơn hàng ${code} của ${loaderData.order.customerName}.` },
+        {
+          name: "description",
+          content: `Chi tiết đơn hàng ${code} của ${loaderData.order.customerName}.`,
+        },
         { property: "og:title", content: `Đơn ${code} — BookStock` },
-        { property: "og:description", content: "Chi tiết sản phẩm, thanh toán và vận chuyển của đơn hàng." },
+        {
+          property: "og:description",
+          content: "Chi tiết sản phẩm, thanh toán và vận chuyển của đơn hàng.",
+        },
       ],
     };
   },
@@ -182,12 +185,12 @@ function OrderDetailPage() {
         />
 
         <div className="flex flex-wrap gap-2">
-          <StatusBadge tone={orderStatusTone[order.status]}>{orderStatusLabel[order.status]}</StatusBadge>
+          <StatusBadge tone={orderStatusTone[order.status]}>
+            {orderStatusLabel[order.status]}
+          </StatusBadge>
           <StatusBadge tone={paymentTone[order.payment]}>{paymentLabel[order.payment]}</StatusBadge>
           <StatusBadge tone="info">{order.shippingMethod}</StatusBadge>
-          {order.trackingCode && (
-            <StatusBadge tone="info">GHN: {order.trackingCode}</StatusBadge>
-          )}
+          {order.trackingCode && <StatusBadge tone="info">GHN: {order.trackingCode}</StatusBadge>}
         </div>
 
         <OrderWorkflow order={order} />
@@ -214,7 +217,9 @@ function OrderDetailPage() {
                     <TableRow key={it.bookId}>
                       <TableCell className="font-medium">{it.title}</TableCell>
                       <TableCell className="text-right tabular-nums">{it.quantity}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatCurrency(it.price)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCurrency(it.price)}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatCurrency(it.price * it.quantity)}
                       </TableCell>
@@ -274,11 +279,7 @@ function OrderDetailPage() {
         <OrderTimeline order={order} />
 
         {/* Sheet chỉnh sửa đơn hàng PENDING */}
-        <EditOrderSheet
-          order={order}
-          open={editOpen}
-          onOpenChange={setEditOpen}
-        />
+        <EditOrderSheet order={order} open={editOpen} onOpenChange={setEditOpen} />
       </PageContainer>
     </AppShell>
   );
@@ -344,24 +345,22 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
         districtId: ghnDetail?.to_district_id
           ? String(ghnDetail.to_district_id)
           : order.districtId
-          ? String(order.districtId)
-          : "",
+            ? String(order.districtId)
+            : "",
         wardCode: ghnDetail?.to_ward_code
           ? String(ghnDetail.to_ward_code)
           : order.wardCode
-          ? String(order.wardCode)
-          : "",
+            ? String(order.wardCode)
+            : "",
         weight: ghnDetail?.weight || 300,
         length: ghnDetail?.length || 20,
         width: ghnDetail?.width || 15,
         height: ghnDetail?.height || 10,
         insuranceValue: ghnDetail?.insurance_value ?? order.subtotal ?? 0,
         paymentTypeId: ghnDetail?.payment_type_id === 1 ? "1" : "2",
-        requiredNote:
-          ((ghnDetail as any)?.required_note as any) || "CHOXEMHANGKHONGTHU",
+        requiredNote: ((ghnDetail as any)?.required_note as any) || "CHOXEMHANGKHONGTHU",
         content:
-          ghnDetail?.content ||
-          order.items.map((i) => `${i.title} x${i.quantity}`).join(", "),
+          ghnDetail?.content || order.items.map((i) => `${i.title} x${i.quantity}`).join(", "),
       });
     }
   }, [open, ghnDetail, order]);
@@ -413,15 +412,15 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
   // Tên địa chỉ đã chọn
   const selectedProvinceName = useMemo(
     () => provinces.find((p) => String(p.ProvinceID) === form.provinceId)?.ProvinceName,
-    [provinces, form.provinceId]
+    [provinces, form.provinceId],
   );
   const selectedDistrictName = useMemo(
     () => districts.find((d) => String(d.DistrictID) === form.districtId)?.DistrictName,
-    [districts, form.districtId]
+    [districts, form.districtId],
   );
   const selectedWardName = useMemo(
     () => wards.find((w) => w.WardCode === form.wardCode)?.WardName,
-    [wards, form.wardCode]
+    [wards, form.wardCode],
   );
 
   const handleSave = async () => {
@@ -435,7 +434,12 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
       // Ghép địa chỉ chi tiết nếu có chọn Tỉnh/Huyện
       let fullAddress = form.customerAddress;
       if (selectedDistrictName && selectedProvinceName) {
-        fullAddress = [form.customerAddress, selectedWardName, selectedDistrictName, selectedProvinceName]
+        fullAddress = [
+          form.customerAddress,
+          selectedWardName,
+          selectedDistrictName,
+          selectedProvinceName,
+        ]
           .filter(Boolean)
           .join(", ");
       }
@@ -494,10 +498,7 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full max-w-lg overflow-y-auto sm:max-w-xl"
-      >
+      <SheetContent side="right" className="w-full max-w-lg overflow-y-auto sm:max-w-xl">
         <SheetHeader className="border-b pb-4">
           <SheetTitle className="flex items-center gap-2 text-base">
             <Edit2 className="h-4 w-4 text-blue-500" />
@@ -506,7 +507,11 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
           <SheetDescription className="text-xs">
             Chỉ khả dụng khi đơn ở trạng thái <strong>Chờ xử lý</strong>.
             {hasGhn && (
-              <> Thay đổi sẽ được gửi trực tiếp lên <strong>GHN Sandbox</strong> (mã: {order.trackingCode}) và lưu vào hệ thống.</>
+              <>
+                {" "}
+                Thay đổi sẽ được gửi trực tiếp lên <strong>GHN Sandbox</strong> (mã:{" "}
+                {order.trackingCode}) và lưu vào hệ thống.
+              </>
             )}
             {!hasGhn && " Thay đổi sẽ được lưu vào hệ thống nội bộ."}
           </SheetDescription>
@@ -517,7 +522,8 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
           <section className="space-y-3 rounded-lg border bg-muted/40 p-3.5">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Package className="h-3.5 w-3.5 text-primary" /> Sản phẩm trong đơn ({order.items.length})
+                <Package className="h-3.5 w-3.5 text-primary" /> Sản phẩm trong đơn (
+                {order.items.length})
               </h3>
               <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                 ✓ Được giữ nguyên
@@ -546,21 +552,29 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
             <div className="border-t pt-2 space-y-1 text-xs text-muted-foreground">
               <div className="flex justify-between">
                 <span>Tạm tính tiền sách:</span>
-                <span className="font-medium text-foreground tabular-nums">{formatCurrency(order.subtotal)}</span>
+                <span className="font-medium text-foreground tabular-nums">
+                  {formatCurrency(order.subtotal)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Phí vận chuyển:</span>
-                <span className="font-medium text-foreground tabular-nums">{formatCurrency(order.shippingFee)}</span>
+                <span className="font-medium text-foreground tabular-nums">
+                  {formatCurrency(order.shippingFee)}
+                </span>
               </div>
               {order.discount > 0 && (
                 <div className="flex justify-between">
                   <span>Chiết khấu:</span>
-                  <span className="font-medium text-emerald-600 tabular-nums">-{formatCurrency(order.discount)}</span>
+                  <span className="font-medium text-emerald-600 tabular-nums">
+                    -{formatCurrency(order.discount)}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between border-t pt-1.5 font-semibold text-foreground text-sm">
                 <span>Tổng cộng:</span>
-                <span className="text-primary tabular-nums font-bold">{formatCurrency(order.total)}</span>
+                <span className="text-primary tabular-nums font-bold">
+                  {formatCurrency(order.total)}
+                </span>
               </div>
             </div>
           </section>
@@ -632,7 +646,9 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
                   }}
                 >
                   <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder={loadingDistricts ? "Đang tải..." : "Chọn Quận / Huyện"} />
+                    <SelectValue
+                      placeholder={loadingDistricts ? "Đang tải..." : "Chọn Quận / Huyện"}
+                    />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {districts.map((d) => (
@@ -677,7 +693,15 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
               />
               {selectedDistrictName && selectedProvinceName && (
                 <p className="text-[11px] text-muted-foreground">
-                  → {[form.customerAddress, selectedWardName, selectedDistrictName, selectedProvinceName].filter(Boolean).join(", ")}
+                  →{" "}
+                  {[
+                    form.customerAddress,
+                    selectedWardName,
+                    selectedDistrictName,
+                    selectedProvinceName,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
                 </p>
               )}
             </div>
@@ -707,10 +731,7 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Loại ghi chú bắt buộc</Label>
-                  <Select
-                    value={form.requiredNote}
-                    onValueChange={(v) => set("requiredNote", v)}
-                  >
+                  <Select value={form.requiredNote} onValueChange={(v) => set("requiredNote", v)}>
                     <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
@@ -724,10 +745,7 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Ai trả phí vận chuyển</Label>
-                  <Select
-                    value={form.paymentTypeId}
-                    onValueChange={(v) => set("paymentTypeId", v)}
-                  >
+                  <Select value={form.paymentTypeId} onValueChange={(v) => set("paymentTypeId", v)}>
                     <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
@@ -750,7 +768,8 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
                   placeholder="VD: Sách giáo khoa x2, Từ điển x1"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  💡 Nếu để trống, thông tin sản phẩm và nội dung đơn sẽ được giữ nguyên không thay đổi.
+                  💡 Nếu để trống, thông tin sản phẩm và nội dung đơn sẽ được giữ nguyên không thay
+                  đổi.
                 </p>
               </div>
             </section>
@@ -798,7 +817,9 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-length" className="text-xs font-medium">Dài (cm)</Label>
+                  <Label htmlFor="edit-length" className="text-xs font-medium">
+                    Dài (cm)
+                  </Label>
                   <Input
                     id="edit-length"
                     type="number"
@@ -810,7 +831,9 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-width" className="text-xs font-medium">Rộng (cm)</Label>
+                  <Label htmlFor="edit-width" className="text-xs font-medium">
+                    Rộng (cm)
+                  </Label>
                   <Input
                     id="edit-width"
                     type="number"
@@ -822,7 +845,9 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-height" className="text-xs font-medium">Cao (cm)</Label>
+                  <Label htmlFor="edit-height" className="text-xs font-medium">
+                    Cao (cm)
+                  </Label>
                   <Input
                     id="edit-height"
                     type="number"
@@ -839,20 +864,10 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
         </div>
 
         <SheetFooter className="border-t pt-4 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>
             Huỷ
           </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-1.5"
-          >
+          <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
             {saving ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang lưu...

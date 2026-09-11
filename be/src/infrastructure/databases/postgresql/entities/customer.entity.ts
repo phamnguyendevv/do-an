@@ -10,7 +10,10 @@ import {
 @Entity('customers')
 @Index('IDX_customers_phone', ['phone'], { unique: true })
 export class Customer {
-  @PrimaryGeneratedColumn({ type: 'bigint', primaryKeyConstraintName: 'PK_customers_id' })
+  @PrimaryGeneratedColumn({
+    type: 'bigint',
+    primaryKeyConstraintName: 'PK_customers_id',
+  })
   public readonly id!: number
 
   @Column({ type: 'varchar', length: 255 })
@@ -31,7 +34,13 @@ export class Customer {
   @Column({ type: 'int', default: 0, name: 'total_orders' })
   public totalOrders!: number
 
-  @Column({ type: 'decimal', precision: 14, scale: 2, default: 0, name: 'total_spent' })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 2,
+    default: 0,
+    name: 'total_spent',
+  })
   public totalSpent!: number
 
   @Column({ type: 'timestamp', nullable: true, name: 'last_order_at' })

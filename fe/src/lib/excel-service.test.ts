@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import {
-  exportBooksToExcel,
-  exportOrdersToExcel,
-  exportMovementsToExcel,
-} from "./excel-service";
+import { exportBooksToExcel, exportOrdersToExcel, exportMovementsToExcel } from "./excel-service";
 import type { Book, Order } from "@/types";
 
 describe("excel-service", () => {

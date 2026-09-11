@@ -9,7 +9,13 @@ export interface IStockAuditRepositoryInterface {
     size?: number
     status?: string
     search?: string
-  }): Promise<{ data: StockAuditEntity[]; pagination: { total: number; page: number; size: number } }>
+  }): Promise<{
+    data: StockAuditEntity[]
+    pagination: { total: number; page: number; size: number }
+  }>
   getAuditById(id: number): Promise<StockAuditEntity | null>
-  updateAudit(id: number, payload: Partial<StockAuditEntity>): Promise<StockAuditEntity>
+  updateAudit(
+    id: number,
+    payload: Partial<StockAuditEntity>,
+  ): Promise<StockAuditEntity>
 }

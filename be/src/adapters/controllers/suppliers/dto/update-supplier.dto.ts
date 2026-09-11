@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+
 import { IsOptional, IsString } from 'class-validator'
 
 export class UpdateSupplierDto {
@@ -27,7 +28,10 @@ export class UpdateSupplierDto {
   @IsString()
   address?: string
 
-  @ApiProperty({ example: 'Nhà xuất bản sách thiếu nhi và văn học', required: false })
+  @ApiProperty({
+    example: 'Nhà xuất bản sách thiếu nhi và văn học',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   note?: string

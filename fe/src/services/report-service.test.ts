@@ -15,7 +15,11 @@ const book: Book = {
   createdAt: new Date().toISOString(),
 };
 
-const makeOrder = (daysAgo: number, total: number, status: Order["status"] = "DELIVERED"): Order => ({
+const makeOrder = (
+  daysAgo: number,
+  total: number,
+  status: Order["status"] = "DELIVERED",
+): Order => ({
   id: `ORD-${daysAgo}-${total}`,
   customerName: "K",
   customerPhone: "0",
@@ -33,11 +37,7 @@ const makeOrder = (daysAgo: number, total: number, status: Order["status"] = "DE
 
 describe("report-service", () => {
   it("tách kỳ hiện tại và kỳ trước", () => {
-    const report = buildReport(
-      [makeOrder(2, 300_000), makeOrder(12, 100_000)],
-      [book],
-      "7d",
-    );
+    const report = buildReport([makeOrder(2, 300_000), makeOrder(12, 100_000)], [book], "7d");
     expect(report.current.revenue).toBe(300_000);
     expect(report.previous.revenue).toBe(100_000);
     expect(report.current.orders).toBe(1);

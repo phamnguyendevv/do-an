@@ -222,10 +222,7 @@ export const authStore = {
       return { ok: false, error: err?.message || "Không thể kết nối tới server." };
     }
   },
-  async verifyResetOtp(
-    email: string,
-    inputOtp: string,
-  ): Promise<{ ok: boolean; error?: string }> {
+  async verifyResetOtp(email: string, inputOtp: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const res = await fetch(`${API_BASE}${API_PREFIX}/auth/verify-reset-otp`, {
         method: "POST",

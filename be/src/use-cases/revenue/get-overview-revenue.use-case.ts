@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
@@ -13,7 +14,9 @@ export class GetOverviewRevenueUseCase {
     const query = orderRepo.createQueryBuilder('o')
 
     if (params?.startDate) {
-      query.andWhere('o.createdAt >= :startDate', { startDate: params.startDate })
+      query.andWhere('o.createdAt >= :startDate', {
+        startDate: params.startDate,
+      })
     }
 
     if (params?.endDate) {
@@ -24,7 +27,7 @@ export class GetOverviewRevenueUseCase {
 
     let totalRevenue = 0
     let pendingRevenue = 0
-    let totalOrders = orders.length
+    const totalOrders = orders.length
     let deliveredOrders = 0
     let cancelledOrders = 0
     let totalBooksSold = 0
@@ -60,7 +63,12 @@ export class GetOverviewRevenueUseCase {
       deliveredOrders,
       cancelledOrders,
       totalBooksSold,
-      averageOrderValue: totalOrders > 0 ? Math.round(totalRevenue / Math.max(1, totalOrders - cancelledOrders)) : 0,
+      averageOrderValue:
+        totalOrders > 0
+          ? Math.round(
+              totalRevenue / Math.max(1, totalOrders - cancelledOrders),
+            )
+          : 0,
     }
   }
 }

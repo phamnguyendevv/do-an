@@ -13,7 +13,7 @@ export class RefreshUseCase {
     private readonly bcryptService: IBcryptService,
     @Inject(JWT_SERVICE)
     private readonly jwtService: IJwtService,
-  ) { }
+  ) {}
 
   async execute(payload: { userId: number }) {
     const tokens = await this.createTokens(payload.userId)

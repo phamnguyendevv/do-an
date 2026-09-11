@@ -7,6 +7,16 @@ import { BOOKSTORE_ORDER_REPOSITORY } from '@domain/repositories/bookstore-order
 import { ORDER_HISTORY_REPOSITORY } from '@domain/repositories/order-history.repository.interface'
 import { STOCK_MOVEMENT_REPOSITORY } from '@domain/repositories/stock-movement.repository.interface'
 
+import { AddOrderHistoryNoteUseCase } from '@use-cases/orders/add-order-history-note.use-case'
+import { CreateBookstoreOrderUseCase } from '@use-cases/orders/create-order.use-case'
+import { GetDetailBookstoreOrderUseCase } from '@use-cases/orders/get-detail-order.use-case'
+import { GetListOrderHistoriesUseCase } from '@use-cases/orders/get-list-order-histories.use-case'
+import { GetListBookstoreOrdersUseCase } from '@use-cases/orders/get-list-orders.use-case'
+import { GetOrderHistoriesUseCase } from '@use-cases/orders/get-order-histories.use-case'
+import { UpdateBookstoreOrderPaymentUseCase } from '@use-cases/orders/update-order-payment.use-case'
+import { UpdateBookstoreOrderStatusUseCase } from '@use-cases/orders/update-order-status.use-case'
+import { UpdateBookstoreOrderUseCase } from '@use-cases/orders/update-order.use-case'
+
 import { BookstoreOrdersController } from '@adapters/controllers/orders/orders.controller'
 
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
@@ -21,19 +31,14 @@ import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { CaslModule } from '@infrastructure/services/casl/casl.module'
 
-import { AddOrderHistoryNoteUseCase } from '@use-cases/orders/add-order-history-note.use-case'
-import { CreateBookstoreOrderUseCase } from '@use-cases/orders/create-order.use-case'
-import { GetDetailBookstoreOrderUseCase } from '@use-cases/orders/get-detail-order.use-case'
-import { GetListBookstoreOrdersUseCase } from '@use-cases/orders/get-list-orders.use-case'
-import { GetListOrderHistoriesUseCase } from '@use-cases/orders/get-list-order-histories.use-case'
-import { GetOrderHistoriesUseCase } from '@use-cases/orders/get-order-histories.use-case'
-import { UpdateBookstoreOrderPaymentUseCase } from '@use-cases/orders/update-order-payment.use-case'
-import { UpdateBookstoreOrderStatusUseCase } from '@use-cases/orders/update-order-status.use-case'
-import { UpdateBookstoreOrderUseCase } from '@use-cases/orders/update-order.use-case'
-
 @Module({
   imports: [
-    TypeOrmModule.forFeature([BookstoreOrder, Book, StockMovement, OrderHistory]),
+    TypeOrmModule.forFeature([
+      BookstoreOrder,
+      Book,
+      StockMovement,
+      OrderHistory,
+    ]),
     CaslModule,
     ExceptionsModule,
   ],

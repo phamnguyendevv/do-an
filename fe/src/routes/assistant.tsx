@@ -21,7 +21,10 @@ export const Route = createFileRoute("/assistant")({
           "Trợ lý AI phân tích tồn kho, tìm kiếm bằng ngôn ngữ tự nhiên, tạo báo cáo và chuẩn bị thao tác kho có xác nhận.",
       },
       { property: "og:title", content: "Trợ lý AI kho sách — BookStock" },
-      { property: "og:description", content: "AI hỗ trợ nhân viên kho: phân tích, tra cứu, báo cáo và tạo thao tác." },
+      {
+        property: "og:description",
+        content: "AI hỗ trợ nhân viên kho: phân tích, tra cứu, báo cáo và tạo thao tác.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -63,7 +66,9 @@ function AssistantPage() {
                   intel.insights.map((i) => (
                     <div key={i.title} className="space-y-1 border-l-2 pl-3" data-level={i.level}>
                       <p className="flex items-center gap-2 font-medium">
-                        {i.level === "critical" ? <AlertTriangle className="size-4 text-destructive" /> : null}
+                        {i.level === "critical" ? (
+                          <AlertTriangle className="size-4 text-destructive" />
+                        ) : null}
                         {i.title}
                       </p>
                       <p className="text-muted-foreground">{i.detail}</p>
@@ -81,7 +86,10 @@ function AssistantPage() {
               <CardContent className="grid grid-cols-2 gap-3 text-sm">
                 <Stat label="Đầu sách" value={formatNumber(intel.totals.titles)} />
                 <Stat label="Tồn kho" value={formatNumber(intel.totals.stock)} />
-                <Stat label="Giá trị tồn" value={formatCompactCurrency(intel.totals.inventoryValue)} />
+                <Stat
+                  label="Giá trị tồn"
+                  value={formatCompactCurrency(intel.totals.inventoryValue)}
+                />
                 <Stat label="Tồn > 90 ngày" value={formatNumber(intel.totals.aging90)} />
                 <Stat label="Sắp hết" value={formatNumber(intel.totals.lowStock)} />
                 <Stat label="Hết hàng" value={formatNumber(intel.totals.outOfStock)} />
@@ -101,7 +109,9 @@ function AssistantPage() {
                     <Badge variant="secondary">{x.sold}</Badge>
                   </div>
                 ))}
-                {intel.fastMovers.length === 0 ? <p className="text-muted-foreground">Chưa có dữ liệu bán.</p> : null}
+                {intel.fastMovers.length === 0 ? (
+                  <p className="text-muted-foreground">Chưa có dữ liệu bán.</p>
+                ) : null}
               </CardContent>
             </Card>
 
@@ -115,10 +125,14 @@ function AssistantPage() {
                 {intel.slowMovers.slice(0, 5).map((x) => (
                   <div key={x.book.id} className="flex items-center justify-between gap-2">
                     <span className="truncate">{x.book.title}</span>
-                    <span className="shrink-0 text-muted-foreground">{formatNumber(x.book.stock)} cuốn</span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {formatNumber(x.book.stock)} cuốn
+                    </span>
                   </div>
                 ))}
-                {intel.slowMovers.length === 0 ? <p className="text-muted-foreground">Không có sách tồn đọng.</p> : null}
+                {intel.slowMovers.length === 0 ? (
+                  <p className="text-muted-foreground">Không có sách tồn đọng.</p>
+                ) : null}
               </CardContent>
             </Card>
           </div>

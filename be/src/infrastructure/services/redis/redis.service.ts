@@ -11,7 +11,10 @@ import {
 @Injectable()
 export class RedisService implements IRedisCacheService {
   private readonly logger = new Logger(RedisService.name)
-  private readonly memoryCache = new Map<string, { value: any; expiry: number }>()
+  private readonly memoryCache = new Map<
+    string,
+    { value: any; expiry: number }
+  >()
 
   constructor(
     @Inject(EXCEPTIONS)
@@ -24,7 +27,9 @@ export class RedisService implements IRedisCacheService {
       const value = await this.redisClient.get(key)
       if (value) return JSON.parse(value)
     } catch (err: any) {
-      this.logger.warn(`Redis get error for key "${key}": ${err?.message || err}`)
+      this.logger.warn(
+        `Redis get error for key "${key}": ${err?.message || err}`,
+      )
     }
     const item = this.memoryCache.get(key)
     if (item) {
@@ -43,7 +48,9 @@ export class RedisService implements IRedisCacheService {
     try {
       await this.redisClient.set(key, JSON.stringify(value), 'EX', ttls)
     } catch (err: any) {
-      this.logger.warn(`Redis set error for key "${key}": ${err?.message || err}`)
+      this.logger.warn(
+        `Redis set error for key "${key}": ${err?.message || err}`,
+      )
     }
   }
 
@@ -52,7 +59,9 @@ export class RedisService implements IRedisCacheService {
     try {
       await this.redisClient.del(key)
     } catch (err: any) {
-      this.logger.warn(`Redis del error for key "${key}": ${err?.message || err}`)
+      this.logger.warn(
+        `Redis del error for key "${key}": ${err?.message || err}`,
+      )
     }
   }
 
@@ -76,11 +85,14 @@ export class RedisService implements IRedisCacheService {
           const chunk = keys.slice(i, i + chunkSize)
           await this.redisClient.del(...chunk)
         }
-        this.logger.log(`Deleted ${keys.length} keys matching pattern: ${pattern}`)
+        this.logger.log(
+          `Deleted ${keys.length} keys matching pattern: ${pattern}`,
+        )
       }
     } catch (err: any) {
-      this.logger.warn(`Redis delPattern error for pattern "${pattern}": ${err?.message || err}`)
+      this.logger.warn(
+        `Redis delPattern error for pattern "${pattern}": ${err?.message || err}`,
+      )
     }
   }
 }
-

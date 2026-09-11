@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus } from '@nestjs/common'
 
-import { AuthController } from '@adapters/controllers/auth/auth.controller'
-import { LoginDto } from '@adapters/controllers/auth/dto/login.dto'
 import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
+
+import { AuthController } from '@adapters/controllers/auth/auth.controller'
+import { LoginDto } from '@adapters/controllers/auth/dto/login.dto'
 
 describe('AuthController', () => {
   const user = {
@@ -22,14 +23,18 @@ describe('AuthController', () => {
 
   const createController = (loginResult: unknown = { user, tokens }) => {
     const loginUseCase = {
-      execute: loginResult instanceof Error
-        ? jest.fn().mockRejectedValue(loginResult)
-        : jest.fn().mockResolvedValue(loginResult),
+      execute:
+        loginResult instanceof Error
+          ? jest.fn().mockRejectedValue(loginResult)
+          : jest.fn().mockResolvedValue(loginResult),
     }
 
     return new AuthController(
+      { getNodeEnv: jest.fn() } as any,
+      { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       loginUseCase as any,
+      { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,

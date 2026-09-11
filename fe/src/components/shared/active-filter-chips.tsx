@@ -26,19 +26,12 @@ interface ActiveFilterChipsProps {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function ActiveFilterChips({
-  filters,
-  onClearAll,
-  className,
-}: ActiveFilterChipsProps) {
+export function ActiveFilterChips({ filters, onClearAll, className }: ActiveFilterChipsProps) {
   if (filters.length === 0) return null;
 
   return (
     <div
-      className={cn(
-        "flex flex-wrap items-center gap-1.5",
-        className,
-      )}
+      className={cn("flex flex-wrap items-center gap-1.5", className)}
       role="region"
       aria-label="Các bộ lọc đang kích hoạt"
     >

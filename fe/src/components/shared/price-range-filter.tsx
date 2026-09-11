@@ -64,7 +64,8 @@ export function PriceRangeFilter({
         value.max !== undefined ? `đến ${formatCompactCurrency(value.max)}` : null,
       ]
         .filter(Boolean)
-        .join(" ") || label))
+        .join(" ") ||
+        label))
     : label;
 
   const applyCustom = () => {
@@ -187,11 +188,7 @@ export function PriceRangeFilter({
               >
                 Đặt lại
               </Button>
-              <Button
-                size="sm"
-                className="h-7 text-xs flex-1"
-                onClick={applyCustom}
-              >
+              <Button size="sm" className="h-7 text-xs flex-1" onClick={applyCustom}>
                 Áp dụng
               </Button>
             </div>

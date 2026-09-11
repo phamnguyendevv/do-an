@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { StockMovementEntity } from '@domain/entities/stock-movement.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
+import { StockMovementEntity } from '@domain/entities/stock-movement.entity'
 import {
-  IStockMovementRepositoryInterface,
   ISearchStockMovementParams,
+  IStockMovementRepositoryInterface,
   STOCK_MOVEMENT_REPOSITORY,
 } from '@domain/repositories/stock-movement.repository.interface'
 

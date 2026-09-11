@@ -43,4 +43,3 @@ export class GetListBookstoreOrdersUseCase {
     return result
   }
 }
-

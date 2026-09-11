@@ -13,7 +13,9 @@ import {
 import { ImportReceipt } from '../entities/import-receipt.entity'
 
 @Injectable()
-export class ImportReceiptRepository implements IImportReceiptRepositoryInterface {
+export class ImportReceiptRepository
+  implements IImportReceiptRepositoryInterface
+{
   constructor(
     @InjectRepository(ImportReceipt)
     private readonly receiptRepository: Repository<ImportReceipt>,
@@ -52,11 +54,15 @@ export class ImportReceiptRepository implements IImportReceiptRepositoryInterfac
     }
 
     if (supplierName) {
-      query.andWhere('r.supplierName ILIKE :supplierName', { supplierName: `%${supplierName}%` })
+      query.andWhere('r.supplierName ILIKE :supplierName', {
+        supplierName: `%${supplierName}%`,
+      })
     }
 
     if (startDate) {
-      query.andWhere('r.importDate >= :startDate', { startDate: new Date(startDate) })
+      query.andWhere('r.importDate >= :startDate', {
+        startDate: new Date(startDate),
+      })
     }
 
     if (endDate) {
@@ -82,14 +88,18 @@ export class ImportReceiptRepository implements IImportReceiptRepositoryInterfac
     return receipt ?? null
   }
 
-  async findReceiptByCode(receiptCode: string): Promise<ImportReceiptEntity | null> {
+  async findReceiptByCode(
+    receiptCode: string,
+  ): Promise<ImportReceiptEntity | null> {
     const receipt = await this.receiptRepository.findOne({
       where: { receiptCode },
     })
     return receipt ?? null
   }
 
-  async createReceipt(receipt: Partial<ImportReceiptEntity>): Promise<ImportReceiptEntity> {
+  async createReceipt(
+    receipt: Partial<ImportReceiptEntity>,
+  ): Promise<ImportReceiptEntity> {
     const newReceipt = this.receiptRepository.create(receipt)
     return await this.receiptRepository.save(newReceipt)
   }

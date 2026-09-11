@@ -1,9 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger'
+
 import { Transform } from 'class-transformer'
 import { IsNumber, IsOptional, IsString, Min } from 'class-validator'
 
 export class GetListSuppliersDto {
-  @ApiProperty({ required: false, description: 'Search by supplier name, contact, phone or email' })
+  @ApiProperty({
+    required: false,
+    description: 'Search by supplier name, contact, phone or email',
+  })
   @IsOptional()
   @IsString()
   search?: string

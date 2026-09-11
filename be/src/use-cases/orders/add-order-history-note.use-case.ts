@@ -36,7 +36,9 @@ export class AddOrderHistoryNoteUseCase {
     }
 
     const idNum =
-      typeof identifier === 'number' ? identifier : parseInt(String(identifier), 10)
+      typeof identifier === 'number'
+        ? identifier
+        : parseInt(String(identifier), 10)
 
     let order = null
     if (!isNaN(idNum)) {

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseProductList, extractQuantityAndKeyword, findBestMatchingBook } from "./product-parser";
+import {
+  parseProductList,
+  extractQuantityAndKeyword,
+  findBestMatchingBook,
+} from "./product-parser";
 import type { Book } from "@/types";
 
 describe("Product Quick Parser", () => {
@@ -91,7 +95,8 @@ describe("Product Quick Parser", () => {
   ];
 
   it("parses user exact case: 4 quyển Học Máy Và Trí Tuệ Nhân Tạo + Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn", () => {
-    const input = "4 quyển  Học Máy Và Trí Tuệ Nhân Tạo + Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn";
+    const input =
+      "4 quyển  Học Máy Và Trí Tuệ Nhân Tạo + Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn";
     const res = parseProductList(input, mockBooks);
 
     expect(res.matchedItems).toHaveLength(3);
@@ -117,7 +122,8 @@ describe("Product Quick Parser", () => {
   });
 
   it("filters conversational vocatives like 'E oii gửi thêm cho c' and 'freesip nha'", () => {
-    const input = "E oii gửi thêm cho c  4 quyển  Học Máy Và Trí Tuệ Nhân Tạo  và  Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn freesip nha";
+    const input =
+      "E oii gửi thêm cho c  4 quyển  Học Máy Và Trí Tuệ Nhân Tạo  và  Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn freesip nha";
     const res = parseProductList(input, mockBooks);
 
     expect(res.matchedItems).toHaveLength(3);
@@ -140,7 +146,8 @@ describe("Product Quick Parser", () => {
   });
 
   it("filters conversational phrases like 'mình lấy 8 cuốn này' and 'freesip nha'", () => {
-    const input = "mình lấy 8 cuốn này  4 quyển  Học Máy Và Trí Tuệ Nhân Tạo  và  Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn freesip nha";
+    const input =
+      "mình lấy 8 cuốn này  4 quyển  Học Máy Và Trí Tuệ Nhân Tạo  và  Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn freesip nha";
     const res = parseProductList(input, mockBooks);
 
     expect(res.matchedItems).toHaveLength(3);
@@ -163,7 +170,8 @@ describe("Product Quick Parser", () => {
   });
 
   it("handles 'và' both inside book title and as conjunction separator between books", () => {
-    const input = "4 quyển  Học Máy Và Trí Tuệ Nhân Tạo  và  Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn";
+    const input =
+      "4 quyển  Học Máy Và Trí Tuệ Nhân Tạo  và  Chuyện Con Mèo Dạy Hải Âu Bay + 3 Khởi Nghiệp Tinh Gọn";
     const res = parseProductList(input, mockBooks);
 
     expect(res.matchedItems).toHaveLength(3);

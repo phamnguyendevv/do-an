@@ -35,7 +35,7 @@ export class RegisterUseCase {
     private readonly mailerService: IMailerService,
     @Inject(REDIS_SERVICE)
     private readonly redisService: IRedisCacheService,
-  ) { }
+  ) {}
 
   async execute(payload: RegisterDto) {
     const trimmedEmail = payload.email?.trim()
@@ -44,7 +44,8 @@ export class RegisterUseCase {
 
     // 1. Kiểm tra Email
     if (trimmedEmail) {
-      const existingEmail = await this.userRepository.getUserByEmail(trimmedEmail)
+      const existingEmail =
+        await this.userRepository.getUserByEmail(trimmedEmail)
       if (existingEmail) {
         throw this.exceptionsService.badRequestException({
           type: 'BadRequest',
@@ -55,7 +56,8 @@ export class RegisterUseCase {
 
     // 2. Kiểm tra Họ và tên
     if (trimmedUsername) {
-      const existingUsername = await this.userRepository.getUserByUsername(trimmedUsername)
+      const existingUsername =
+        await this.userRepository.getUserByUsername(trimmedUsername)
       if (existingUsername) {
         throw this.exceptionsService.badRequestException({
           type: 'BadRequest',
@@ -66,7 +68,8 @@ export class RegisterUseCase {
 
     // 3. Kiểm tra Số điện thoại
     if (trimmedPhone) {
-      const existingPhone = await this.userRepository.getUserByPhone(trimmedPhone)
+      const existingPhone =
+        await this.userRepository.getUserByPhone(trimmedPhone)
       if (existingPhone) {
         throw this.exceptionsService.badRequestException({
           type: 'BadRequest',
@@ -96,7 +99,11 @@ export class RegisterUseCase {
 
     await Promise.all([
       this.redisService.setValue(key, otp, 300),
-      this.redisService.setValue(pendingKey, JSON.stringify(pendingUserData), 300),
+      this.redisService.setValue(
+        pendingKey,
+        JSON.stringify(pendingUserData),
+        300,
+      ),
     ])
 
     // Gửi email xác thực trong background, không block API response

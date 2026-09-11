@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -32,6 +33,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { usePaymentSocket } from "@/hooks/use-payment-socket";
 import { useBooks, useCategories } from "@/hooks/use-store";
+import { useCustomerLookup } from "@/hooks/use-customer-lookup";
 import { defineAbilityFor } from "@/lib/ability";
 
 import { orderApi, sepayApi } from "@/lib/order-api";
@@ -39,6 +41,13 @@ import { orderService } from "@/services/order-service";
 import { storeSettingsService } from "@/services/store-settings";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import type { Book } from "@/types";
+
+// Normalize phone: remove non-digits, convert 84xxx to 0xxx
+const normalizePhone = (phone: string): string => {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  return digits.startsWith("84") ? `0${digits.slice(2)}` : digits;
+};
 
 export const Route = createFileRoute("/pos")({
   head: () => ({
@@ -68,6 +77,7 @@ export function PosPage() {
   const ability = useMemo(() => defineAbilityFor(user), [user]);
   const books = useBooks();
   const categories = useCategories();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -83,8 +93,19 @@ export function PosPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [customerName, setCustomerName] = useState("Khách lẻ");
-  const [customerPhone, setCustomerPhone] = useState("");
+  
+  // Customer lookup with suggestions
+  const {
+    customerName,
+    setCustomerName,
+    customerPhone,
+    setCustomerPhone,
+    suggestions: customerSuggestions,
+    isLoading: isLoadingCustomer,
+    showSuggestions: showPhoneSuggestions,
+    setShowSuggestions: setShowPhoneSuggestions,
+    handleSelectCustomer,
+  } = useCustomerLookup();
 
   // Mobile navigation state: "products" (chọn sách) | "cart" (giỏ hàng & thanh toán)
   const [mobileTab, setMobileTab] = useState<"products" | "cart">("products");
@@ -300,7 +321,7 @@ export function PosPage() {
         const res = await orderService.createOrder({
           orderCode: posOrderCode,
           customerName: customerName || "Khách lẻ tại quầy",
-          customerPhone: customerPhone || "0900000000",
+          customerPhone: normalizePhone(customerPhone) || "0900000000",
           customerAddress: "Bán trực tiếp tại quầy POS",
           shippingMethod: "Bán tại quầy (POS)",
           shippingFee: 0,
@@ -367,6 +388,10 @@ export function PosPage() {
         orderData,
       });
 
+      // Refresh customer stats & orders query
+      queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
+
       if (sepayCreatedOrderId) {
         orderApi.updateStatus(sepayCreatedOrderId, "DELIVERED").catch(() => {});
         orderApi.updatePayment(sepayCreatedOrderId, "PAID").catch(() => {});
@@ -375,7 +400,7 @@ export function PosPage() {
           .createOrder({
             orderCode: posOrderCode,
             customerName: customerName || "Khách lẻ tại quầy",
-            customerPhone: customerPhone || "0900000000",
+            customerPhone: normalizePhone(customerPhone) || "0900000000",
             customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
             shippingMethod: "Bán tại quầy (POS)",
             shippingFee: 0,
@@ -427,7 +452,7 @@ export function PosPage() {
         .createOrder({
           orderCode: posOrderCode,
           customerName: customerName || "Khách lẻ tại quầy",
-          customerPhone: customerPhone || "0900000000",
+          customerPhone: normalizePhone(customerPhone) || "0900000000",
           customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
           shippingMethod: "Bán tại quầy (POS)",
           shippingFee: 0,
@@ -475,6 +500,10 @@ export function PosPage() {
       orderCode: posOrderCode,
       orderData,
     });
+
+    // Refresh customer stats & orders query
+    queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
+    queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
     toast.success("✅ Đã xác nhận thanh toán SePay thành công!");
   };
 
@@ -498,6 +527,16 @@ export function PosPage() {
   const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Giỏ hàng đang trống!");
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      toast.error("Vui lòng nhập số điện thoại khách hàng");
+      return;
+    }
+
+    if (customerPhone.replace(/\D/g, "").length < 8) {
+      toast.error("Số điện thoại không hợp lệ (tối thiểu 8 ký tự)");
       return;
     }
 
@@ -557,7 +596,7 @@ export function PosPage() {
       const res = await orderService.createOrder({
         orderCode: posOrderCode,
         customerName: customerName || "Khách lẻ tại quầy",
-        customerPhone: customerPhone || "0900000000",
+        customerPhone: normalizePhone(customerPhone) || "0900000000",
         customerAddress: "Bán trực tiếp tại quầy POS",
         shippingMethod: "Bán tại quầy (POS)",
         shippingFee: 0,
@@ -599,6 +638,10 @@ export function PosPage() {
         if (res.data.id) {
           orderService.updatePayment(res.data.id, "PAID").catch(() => {});
         }
+
+        // Refresh customer stats & orders query
+        queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
+        queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
 
         setSuccessOrder(orderData);
         setPrintDialogOpen(true);
@@ -907,24 +950,48 @@ export function PosPage() {
             )}
           </div>
 
-          {/* Customer Info Minimal Inputs */}
-          <div className="p-2.5 border-b bg-muted/10 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <Input
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Tên khách hàng"
-                className="h-8 text-xs bg-background"
-              />
+          {/* Customer Info with Suggestions */}
+          <div className="p-2.5 border-b bg-muted/10 space-y-2 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Tên khách hàng"
+                  className="h-8 text-xs bg-background"
+                />
+              </div>
+              <div className="relative">
+                <Input
+                  value={customerPhone}
+                  onChange={(e) => {
+                    setCustomerPhone(e.target.value);
+                    setShowPhoneSuggestions(true);
+                  }}
+                  onFocus={() => customerPhone.trim().length >= 8 && setShowPhoneSuggestions(true)}
+                  placeholder="SĐT (bắt buộc)"
+                  className="h-8 text-xs bg-background border-red-200"
+                  required
+                />
+                {isLoadingCustomer && (
+                  <Loader2 className="absolute right-2 top-1.5 h-4 w-4 animate-spin" />
+                )}
+              </div>
             </div>
-            <div>
-              <Input
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="SĐT (tùy chọn)"
-                className="h-8 text-xs bg-background"
-              />
-            </div>
+            {showPhoneSuggestions && customerSuggestions.length > 0 && (
+              <div className="border rounded-md bg-background shadow-lg max-h-32 overflow-y-auto z-50">
+                {customerSuggestions.map((customer) => (
+                  <button
+                    key={customer.id}
+                    onClick={() => handleSelectCustomer(customer)}
+                    className="w-full text-left px-2.5 py-1.5 hover:bg-muted text-xs border-b last:border-b-0 active:bg-primary/20 transition-colors"
+                  >
+                    <div className="font-medium">{customer.name}</div>
+                    <div className="text-muted-foreground text-[11px]">{customer.phone}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Cart Items List */}
@@ -1190,7 +1257,7 @@ export function PosPage() {
                 isCashInsufficient ? "opacity-60 cursor-not-allowed" : ""
               }`}
               onClick={handleCheckout}
-              disabled={cart.length === 0 || isSubmitting || isCashInsufficient}
+              disabled={cart.length === 0 || isSubmitting || isCashInsufficient || !customerPhone.trim()}
             >
               <Printer className="h-4 w-4" />
               {isSubmitting
@@ -1355,3 +1422,6 @@ export function PosPage() {
     </div>
   );
 }
+
+
+

@@ -77,5 +77,3 @@ export class UpdateBookstoreOrderPaymentUseCase {
     return updated!
   }
 }
-
-

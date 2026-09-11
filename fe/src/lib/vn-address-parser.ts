@@ -71,14 +71,7 @@ export const PROVINCE_ALIASES: Record<string, string[]> = {
     "hai phong",
     "hp",
   ],
-  "Cần Thơ": [
-    "thanh pho can tho",
-    "tp can tho",
-    "tp. can tho",
-    "tp.can tho",
-    "can tho",
-    "ct",
-  ],
+  "Cần Thơ": ["thanh pho can tho", "tp can tho", "tp. can tho", "tp.can tho", "can tho", "ct"],
   "Bình Dương": ["tinh binh duong", "binh duong", "bd"],
   "Đồng Nai": ["tinh dong nai", "dong nai", "dnai", "bien hoa"],
   "Bà Rịa - Vũng Tàu": [
@@ -281,7 +274,11 @@ export const STREET_WARD_MAPPINGS: Array<{
 /**
  * Standardize phone number format (returns 10 digits starting with 0, or empty string)
  */
-export function extractPhoneNumber(text: string): { phone: string; rawPhone: string; remainingText: string } {
+export function extractPhoneNumber(text: string): {
+  phone: string;
+  rawPhone: string;
+  remainingText: string;
+} {
   const phoneRegex = /(?:\+?84|0)[\s.-]?[3|5|7|8|9](?:[\s.-]?\d){8}\b/;
   const match = text.match(phoneRegex);
 
@@ -361,7 +358,10 @@ export function isPotentialPersonName(candidate: string): boolean {
   const norm = normalizeText(trimmed);
 
   // Must not be a phone or address label keyword
-  if (BLACKLISTED_NAME_WORDS.has(norm) || BLACKLISTED_NAME_WORDS.has(removeVietnameseAccents(norm))) {
+  if (
+    BLACKLISTED_NAME_WORDS.has(norm) ||
+    BLACKLISTED_NAME_WORDS.has(removeVietnameseAccents(norm))
+  ) {
     return false;
   }
 
@@ -547,7 +547,7 @@ function escapeRegex(string: string) {
  */
 function findPatternMatch(
   text: string,
-  patterns: string[]
+  patterns: string[],
 ): { pattern: string; index: number; length: number } | null {
   const normText = normalizeText(text);
 
@@ -588,11 +588,14 @@ function makeDiacriticRegex(strNoAccents: string): RegExp {
       word
         .split("")
         .map((c) => diacriticMap[c.toLowerCase()] || escapeRegex(c))
-        .join("[\\s.]*")
+        .join("[\\s.]*"),
     )
     .join("[\\s.,-]+");
 
-  return new RegExp(`(?:^|[\\s,;:\\-–—"'“”«»()\\[\\]{}])${pattern}(?:$|[\\s,;:\\-–—"'“”«»()\\[\\]{}])`, "gi");
+  return new RegExp(
+    `(?:^|[\\s,;:\\-–—"'“”«»()\\[\\]{}])${pattern}(?:$|[\\s,;:\\-–—"'“”«»()\\[\\]{}])`,
+    "gi",
+  );
 }
 
 /**
@@ -603,7 +606,7 @@ export async function parseCustomerAndAddress(
   rawInput: string,
   provinces: GhnProvince[],
   loadDistricts: (provinceId: number) => Promise<GhnDistrict[]>,
-  loadWards: (districtId: number) => Promise<GhnWard[]>
+  loadWards: (districtId: number) => Promise<GhnWard[]>,
 ): Promise<ParsedAddressResult> {
   if (!rawInput.trim()) {
     return {
@@ -621,7 +624,8 @@ export async function parseCustomerAndAddress(
   let customerName = "";
 
   // 2. Extract Customer Name from explicit name labels
-  const nameLabelRegex = /(?:tên|ten|họ và tên|ho va ten|họ tên|ho ten|người nhận|nguoi nhan|khách hàng|khach hang|tên khách|ten khach|name|receiver)\s*[:：\-]\s*([^\r\n,;|\t]+)/i;
+  const nameLabelRegex =
+    /(?:tên|ten|họ và tên|ho va ten|họ tên|ho ten|người nhận|nguoi nhan|khách hàng|khach hang|tên khách|ten khach|name|receiver)\s*[:：\-]\s*([^\r\n,;|\t]+)/i;
   const nameLabelMatch = rawInput.match(nameLabelRegex);
 
   if (nameLabelMatch && isPotentialPersonName(nameLabelMatch[1])) {
@@ -685,7 +689,9 @@ export async function parseCustomerAndAddress(
 
       const normInput = normalizeText(rawInput);
       const normDist = normalizeText(matchedDistrict.DistrictName);
-      const strippedDist = normDist.replace(/^(quan|q|huyen|h|thi xa|tx|thanh pho|tp)\s+/gi, "").trim();
+      const strippedDist = normDist
+        .replace(/^(quan|q|huyen|h|thi xa|tx|thanh pho|tp)\s+/gi, "")
+        .trim();
 
       // (A) Check Street Mappings (e.g. Nguyễn Văn Cừ -> Phường Hòa Hiệp Bắc, Liên Chiểu)
       for (const sm of STREET_WARD_MAPPINGS) {
@@ -693,7 +699,9 @@ export async function parseCustomerAndAddress(
         if (distMatches) {
           const streetMatches = sm.streetKeywords.some((k) => normInput.includes(normalizeText(k)));
           if (streetMatches) {
-            const target = wards.find((w) => normalizeText(w.WardName).includes(normalizeText(sm.targetWardName)));
+            const target = wards.find((w) =>
+              normalizeText(w.WardName).includes(normalizeText(sm.targetWardName)),
+            );
             if (target) {
               matchedWard = target;
               matchedWardPattern = target.WardName;
@@ -710,7 +718,9 @@ export async function parseCustomerAndAddress(
           if (distMatches) {
             const keywordMatches = lm.keywords.some((k) => normInput.includes(normalizeText(k)));
             if (keywordMatches) {
-              const target = wards.find((w) => normalizeText(w.WardName).includes(normalizeText(lm.targetWardName)));
+              const target = wards.find((w) =>
+                normalizeText(w.WardName).includes(normalizeText(lm.targetWardName)),
+              );
               if (target) {
                 matchedWard = target;
                 matchedWardPattern = target.WardName;
@@ -738,7 +748,7 @@ export async function parseCustomerAndAddress(
       // (D) Fallback: if no ward found, check District Capital Town aliases
       if (!matchedWard) {
         const townAliases = DISTRICT_CAPITAL_TOWNS[strippedDist] || [];
-        
+
         if (townAliases.length > 0) {
           const userMentionedTownOrDistrict =
             townAliases.some((alias) => normInput.includes(alias)) ||
@@ -749,7 +759,9 @@ export async function parseCustomerAndAddress(
           if (userMentionedTownOrDistrict) {
             const townWard = wards.find((w) => {
               const normW = normalizeText(w.WardName);
-              return townAliases.some((alias) => normW.includes(alias)) || normW.startsWith("thi tran");
+              return (
+                townAliases.some((alias) => normW.includes(alias)) || normW.startsWith("thi tran")
+              );
             });
 
             if (townWard) {
@@ -761,7 +773,10 @@ export async function parseCustomerAndAddress(
       }
 
       // (E) Fallback: User wrote "Phường [Tên Quận]" without mentioning a specific ward
-      if (!matchedWard && (normInput.includes(`phuong ${strippedDist}`) || normInput.includes(`p ${strippedDist}`))) {
+      if (
+        !matchedWard &&
+        (normInput.includes(`phuong ${strippedDist}`) || normInput.includes(`p ${strippedDist}`))
+      ) {
         if (wards.length > 0) {
           matchedWard = wards[0];
           matchedWardPattern = `phuong ${strippedDist}`;
@@ -790,10 +805,14 @@ export async function parseCustomerAndAddress(
         for (const sm of STREET_WARD_MAPPINGS) {
           const distMatches = !sm.districtKeyword || normDist.includes(sm.districtKeyword);
           if (distMatches) {
-            const streetMatches = sm.streetKeywords.some((k) => normInput.includes(normalizeText(k)));
+            const streetMatches = sm.streetKeywords.some((k) =>
+              normInput.includes(normalizeText(k)),
+            );
             if (streetMatches) {
               const wards = await loadWards(dist.DistrictID);
-              const target = wards.find((w) => normalizeText(w.WardName).includes(normalizeText(sm.targetWardName)));
+              const target = wards.find((w) =>
+                normalizeText(w.WardName).includes(normalizeText(sm.targetWardName)),
+              );
               if (target) {
                 matchedWard = target;
                 matchedWardPattern = target.WardName;
@@ -834,7 +853,10 @@ export async function parseCustomerAndAddress(
   if (!customerName) {
     // 6A. Check after phone number on the SAME LINE: e.g. "sđt: 0941465476 Thảo Nguyên"
     if (rawPhone) {
-      const afterPhoneRegex = new RegExp(`${escapeRegex(rawPhone)}[ \\t,;:\\-]+([^\\r\\n,;|\\t]+)`, "i");
+      const afterPhoneRegex = new RegExp(
+        `${escapeRegex(rawPhone)}[ \\t,;:\\-]+([^\\r\\n,;|\\t]+)`,
+        "i",
+      );
       const afterMatch = rawInput.match(afterPhoneRegex);
       if (afterMatch) {
         const candidateWords = afterMatch[1].trim().split(/\s+/);
@@ -852,15 +874,26 @@ export async function parseCustomerAndAddress(
     if (!customerName && rawPhone && matchedProvincePattern) {
       const provRegex = new RegExp(makeDiacriticRegex(matchedProvincePattern).source, "i");
       const provMatch = provRegex.exec(rawInput);
-      const phoneLabelRegex = new RegExp(`(?:(?:sđt|sdt|số đt|so dt|số điện thoại|so dien thoai|phone|tel|hotline)\\s*[:：\\-]?\\s*)?${escapeRegex(rawPhone)}`, "i");
+      const phoneLabelRegex = new RegExp(
+        `(?:(?:sđt|sdt|số đt|so dt|số điện thoại|so dien thoai|phone|tel|hotline)\\s*[:：\\-]?\\s*)?${escapeRegex(rawPhone)}`,
+        "i",
+      );
       const phoneMatch = phoneLabelRegex.exec(rawInput);
 
-      if (provMatch && phoneMatch && typeof provMatch.index === "number" && typeof phoneMatch.index === "number") {
+      if (
+        provMatch &&
+        phoneMatch &&
+        typeof provMatch.index === "number" &&
+        typeof phoneMatch.index === "number"
+      ) {
         const endOfProv = provMatch.index + provMatch[0].length;
         const startOfPhone = phoneMatch.index;
 
         if (startOfPhone > endOfProv) {
-          const betweenText = rawInput.slice(endOfProv, startOfPhone).trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
+          const betweenText = rawInput
+            .slice(endOfProv, startOfPhone)
+            .trim()
+            .replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
           if (betweenText && isPotentialPersonName(betweenText)) {
             customerName = betweenText;
           }
@@ -870,7 +903,9 @@ export async function parseCustomerAndAddress(
 
     // 6C. Check before phone number at the beginning: e.g. "Nguyen Van A, 0908888888, 12 Le Duan..."
     if (!customerName && rawPhone) {
-      const beforePhoneMatch = rawInput.match(new RegExp(`^\\s*([A-ZÀ-Ỹa-zà-ỹ\\s]{2,35})[\\s,;:\\-]+${escapeRegex(rawPhone)}`, "i"));
+      const beforePhoneMatch = rawInput.match(
+        new RegExp(`^\\s*([A-ZÀ-Ỹa-zà-ỹ\\s]{2,35})[\\s,;:\\-]+${escapeRegex(rawPhone)}`, "i"),
+      );
       if (beforePhoneMatch && isPotentialPersonName(beforePhoneMatch[1])) {
         customerName = beforePhoneMatch[1].trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
       }
@@ -903,7 +938,10 @@ export async function parseCustomerAndAddress(
 
   // Strip customer name (preserve accented street names like 'Nguyễn' when name is 'Nguyên')
   if (customerName) {
-    const exactNameRegex = new RegExp(`(?:^|[\\s,;\\-])${escapeRegex(customerName)}(?:$|[\\s,;\\-])`, "gi");
+    const exactNameRegex = new RegExp(
+      `(?:^|[\\s,;\\-])${escapeRegex(customerName)}(?:$|[\\s,;\\-])`,
+      "gi",
+    );
     if (exactNameRegex.test(detailAddress)) {
       detailAddress = detailAddress.replace(exactNameRegex, " ");
     } else {
@@ -952,7 +990,9 @@ export async function parseCustomerAndAddress(
 
   // Strip extra mention of "phường/xã/thị trấn [huyện/quận]"
   if (matchedDistrict) {
-    const distNorm = normalizeText(matchedDistrict.DistrictName).replace(/^(quan|q|huyen|h|thi xa|tx|thanh pho|tp)\s+/gi, "").trim();
+    const distNorm = normalizeText(matchedDistrict.DistrictName)
+      .replace(/^(quan|q|huyen|h|thi xa|tx|thanh pho|tp)\s+/gi, "")
+      .trim();
     const regPhuongHuyen = makeDiacriticRegex(`phuong ${distNorm}`);
     detailAddress = detailAddress.replace(regPhuongHuyen, " ");
     const regXaHuyen = makeDiacriticRegex(`xa ${distNorm}`);
@@ -975,7 +1015,7 @@ export async function parseCustomerAndAddress(
   // Strip orphan administrative prefixes left behind
   detailAddress = detailAddress.replace(
     /(?:^|(?<=[\s,;]))(tỉnh|tinh|thành phố|thanh pho|quận|quan|huyện|huyen|phường|phuong|xã(?!\s*\w)|thị trấn|thi tran)\s*(?=[,;:\s]|$)/gi,
-    " "
+    " ",
   );
 
   // Clean up
@@ -985,15 +1025,14 @@ export async function parseCustomerAndAddress(
     .replace(/\s{2,}/g, " ")
     .trim();
 
-  customerName = customerName
-    .replace(/^[-–—,"'“”«»\s:]+|[-–—,"'“”«»\s:]+$/g, "")
-    .trim();
+  customerName = customerName.replace(/^[-–—,"'“”«»\s:]+|[-–—,"'“”«»\s:]+$/g, "").trim();
 
   let unmatchedWardCandidate: string | undefined;
   let warningMessage: string | undefined;
 
   if (matchedDistrict && !matchedWard) {
-    const explicitWardRegex = /\b(?:phường|phuong|p\.?|f\.?|xã|xa|x\.?|thị trấn|thi tran|tt\.?)\s*(\d{1,3}|[A-ZÀ-Ỹa-zà-ỹ\s]{2,25})\b/i;
+    const explicitWardRegex =
+      /\b(?:phường|phuong|p\.?|f\.?|xã|xa|x\.?|thị trấn|thi tran|tt\.?)\s*(\d{1,3}|[A-ZÀ-Ỹa-zà-ỹ\s]{2,25})\b/i;
     const wardMatch = rawInput.match(explicitWardRegex);
     if (wardMatch) {
       unmatchedWardCandidate = wardMatch[0].trim();
@@ -1033,7 +1072,7 @@ export async function parseCustomerAndAddress(
 export function resolve2LevelTo3Level(
   provinceId: number,
   wardCode: string,
-  allWardsInProvince: Array<GhnWard & { districtName?: string }>
+  allWardsInProvince: Array<GhnWard & { districtName?: string }>,
 ): {
   districtId?: number;
   wardCode: string;

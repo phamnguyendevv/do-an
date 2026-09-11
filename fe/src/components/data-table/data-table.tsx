@@ -98,7 +98,7 @@ export function DataTable<T>({
 
   const toggleSort = (key: string) =>
     setSort((s) =>
-      s?.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
+      s?.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
 
   const handlePageChange = (newPage: number) => {

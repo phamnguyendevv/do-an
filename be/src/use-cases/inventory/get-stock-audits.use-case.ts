@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
+
+import { StockAuditEntity } from '@domain/entities/stock-audit.entity'
 import {
   IStockAuditRepositoryInterface,
   STOCK_AUDIT_REPOSITORY,
 } from '@domain/repositories/stock-audit.repository.interface'
-import { StockAuditEntity } from '@domain/entities/stock-audit.entity'
 
 @Injectable()
 export class GetStockAuditsUseCase {
@@ -17,7 +18,10 @@ export class GetStockAuditsUseCase {
     size?: number
     status?: string
     search?: string
-  }): Promise<{ data: StockAuditEntity[]; pagination: { total: number; page: number; size: number } }> {
+  }): Promise<{
+    data: StockAuditEntity[]
+    pagination: { total: number; page: number; size: number }
+  }> {
     return await this.auditRepository.getAudits(params)
   }
 

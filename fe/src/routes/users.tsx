@@ -59,9 +59,15 @@ export const Route = createFileRoute("/users")({
   head: () => ({
     meta: [
       { title: "Người dùng — BookStock" },
-      { name: "description", content: "Quản lý tài khoản nhân viên, phân quyền ADMIN / STAFF và trạng thái hoạt động." },
+      {
+        name: "description",
+        content: "Quản lý tài khoản nhân viên, phân quyền ADMIN / STAFF và trạng thái hoạt động.",
+      },
       { property: "og:title", content: "Người dùng — BookStock" },
-      { property: "og:description", content: "Quản lý người dùng và phân quyền trong hệ thống kho sách." },
+      {
+        property: "og:description",
+        content: "Quản lý người dùng và phân quyền trong hệ thống kho sách.",
+      },
     ],
   }),
   component: UsersPage,
@@ -144,7 +150,9 @@ function UserFormDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{user ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}</DialogTitle>
-          <DialogDescription>Thông tin tài khoản và vai trò trong hệ thống BookStock.</DialogDescription>
+          <DialogDescription>
+            Thông tin tài khoản và vai trò trong hệ thống BookStock.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="space-y-1.5">
@@ -211,13 +219,7 @@ function UserFormDialog({
   );
 }
 
-function AdminResetPasswordDialog({
-  user,
-  trigger,
-}: {
-  user: User;
-  trigger: React.ReactNode;
-}) {
+function AdminResetPasswordDialog({ user, trigger }: { user: User; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(true);
@@ -311,7 +313,11 @@ function AdminResetPasswordDialog({
                   className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title="Sao chép mật khẩu"
                 >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
                 </button>
                 <button
                   type="button"
@@ -319,7 +325,11 @@ function AdminResetPasswordDialog({
                   className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showPassword ? (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -349,7 +359,8 @@ function AdminResetPasswordDialog({
           {error && <p className="text-xs text-destructive">{error}</p>}
 
           <p className="text-[11px] text-muted-foreground bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-md border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200">
-            * Sau khi cấp lại, hãy sao chép mật khẩu này và gửi riêng cho nhân viên để họ đăng nhập và đổi lại mật khẩu cá nhân.
+            * Sau khi cấp lại, hãy sao chép mật khẩu này và gửi riêng cho nhân viên để họ đăng nhập
+            và đổi lại mật khẩu cá nhân.
           </p>
         </div>
 
@@ -415,7 +426,11 @@ function UserRowActions({ user }: { user: User }) {
           <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
             <UserFormDialog
               user={user}
-              trigger={<button className="flex w-full items-center px-2 py-1.5 text-sm">Chỉnh sửa vai trò</button>}
+              trigger={
+                <button className="flex w-full items-center px-2 py-1.5 text-sm">
+                  Chỉnh sửa vai trò
+                </button>
+              }
             />
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
@@ -429,9 +444,13 @@ function UserRowActions({ user }: { user: User }) {
             />
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => toggleRoleMutation.mutate()}>
-            <ShieldCheck className="mr-2 h-4 w-4" /> Đổi sang {user.role === "ADMIN" ? "STAFF" : "ADMIN"}
+            <ShieldCheck className="mr-2 h-4 w-4" /> Đổi sang{" "}
+            {user.role === "ADMIN" ? "STAFF" : "ADMIN"}
           </DropdownMenuItem>
-          <DropdownMenuItem className={user.active ? "text-destructive" : "text-emerald-600"} onSelect={() => setConfirmOpen(true)}>
+          <DropdownMenuItem
+            className={user.active ? "text-destructive" : "text-emerald-600"}
+            onSelect={() => setConfirmOpen(true)}
+          >
             {user.active ? (
               <>
                 <UserX className="mr-2 h-4 w-4" /> Vô hiệu hóa
@@ -481,11 +500,7 @@ function UsersPage() {
     queryKey: ["admin", "users"],
     queryFn: async () => {
       const res: any = await userApi.list({ size: 200 });
-      const items = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res)
-        ? res
-        : [];
+      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       return items.map(mapApiUser);
     },
     staleTime: 10_000,
@@ -502,11 +517,46 @@ function UsersPage() {
   );
 
   const columns: DataTableColumn<User>[] = [
-    { key: "name", header: "Họ tên / Tên tài khoản", sortable: true, value: (u) => u.name, cell: (u) => <span className="font-medium">{u.name}</span> },
-    { key: "email", header: "Email", sortable: true, value: (u) => u.email, cell: (u) => <span className="text-muted-foreground">{u.email}</span> },
-    { key: "role", header: "Vai trò", cell: (u) => <StatusBadge tone={u.role === "ADMIN" ? "info" : "neutral"}>{u.role}</StatusBadge> },
-    { key: "status", header: "Trạng thái", cell: (u) => <StatusBadge tone={u.active ? "positive" : "negative"}>{u.active ? "Đang hoạt động" : "Đã vô hiệu"}</StatusBadge> },
-    { key: "lastLogin", header: "Đăng nhập gần nhất", align: "right", sortable: true, value: (u) => u.lastLogin || "", cell: (u) => <span className="text-muted-foreground text-xs">{formatDateTime(u.lastLogin)}</span> },
+    {
+      key: "name",
+      header: "Họ tên / Tên tài khoản",
+      sortable: true,
+      value: (u) => u.name,
+      cell: (u) => <span className="font-medium">{u.name}</span>,
+    },
+    {
+      key: "email",
+      header: "Email",
+      sortable: true,
+      value: (u) => u.email,
+      cell: (u) => <span className="text-muted-foreground">{u.email}</span>,
+    },
+    {
+      key: "role",
+      header: "Vai trò",
+      cell: (u) => (
+        <StatusBadge tone={u.role === "ADMIN" ? "info" : "neutral"}>{u.role}</StatusBadge>
+      ),
+    },
+    {
+      key: "status",
+      header: "Trạng thái",
+      cell: (u) => (
+        <StatusBadge tone={u.active ? "positive" : "negative"}>
+          {u.active ? "Đang hoạt động" : "Đã vô hiệu"}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "lastLogin",
+      header: "Đăng nhập gần nhất",
+      align: "right",
+      sortable: true,
+      value: (u) => u.lastLogin || "",
+      cell: (u) => (
+        <span className="text-muted-foreground text-xs">{formatDateTime(u.lastLogin)}</span>
+      ),
+    },
   ];
 
   return (

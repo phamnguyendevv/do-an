@@ -20,6 +20,8 @@ export interface IImportReceiptRepositoryInterface {
   }>
   findReceiptById(id: number): Promise<ImportReceiptEntity | null>
   findReceiptByCode(receiptCode: string): Promise<ImportReceiptEntity | null>
-  createReceipt(receipt: Partial<ImportReceiptEntity>): Promise<ImportReceiptEntity>
+  createReceipt(
+    receipt: Partial<ImportReceiptEntity>,
+  ): Promise<ImportReceiptEntity>
   count(): Promise<number>
 }

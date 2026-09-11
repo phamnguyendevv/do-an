@@ -23,10 +23,10 @@ bun run build
 
 ## Tài khoản demo
 
-| Vai trò | Email               | Mật khẩu   | Quyền                          |
-| ------- | ------------------- | ---------- | ------------------------------ |
-| ADMIN   | admin@example.com   | admin123   | Toàn bộ (kể cả Thống kê, Người dùng) |
-| STAFF   | staff@example.com   | staff123   | Sách, Kho, Đơn hàng, Vận chuyển |
+| Vai trò | Email             | Mật khẩu | Quyền                                |
+| ------- | ----------------- | -------- | ------------------------------------ |
+| ADMIN   | admin@example.com | admin123 | Toàn bộ (kể cả Thống kê, Người dùng) |
+| STAFF   | staff@example.com | staff123 | Sách, Kho, Đơn hàng, Vận chuyển      |
 
 Phiên đăng nhập lưu trong `localStorage` (`bookstock.auth`).
 

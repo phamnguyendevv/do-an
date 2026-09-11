@@ -43,7 +43,10 @@ export const Route = createFileRoute("/inventory/audit")({
   head: () => ({
     meta: [
       { title: "Kiểm kê kho — BookStock" },
-      { name: "description", content: "Kiểm đếm tồn kho thực tế, đối soát chênh lệch và cân bằng sổ kho." },
+      {
+        name: "description",
+        content: "Kiểm đếm tồn kho thực tế, đối soát chênh lệch và cân bằng sổ kho.",
+      },
     ],
   }),
   component: StockAuditPage,
@@ -61,7 +64,9 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
   const { user } = useAuth();
   const books = useBooks();
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(`Kiểm kê kho định kỳ ${new Date().toLocaleDateString("vi-VN")}`);
+  const [title, setTitle] = useState(
+    `Kiểm kê kho định kỳ ${new Date().toLocaleDateString("vi-VN")}`,
+  );
   const [note, setNote] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [draftLines, setDraftLines] = useState<AuditDraftLine[]>([]);
@@ -91,9 +96,7 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
   };
 
   const updateReason = (bookId: number, val: string) => {
-    setDraftLines((prev) =>
-      prev.map((l) => (l.bookId === bookId ? { ...l, reason: val } : l)),
-    );
+    setDraftLines((prev) => prev.map((l) => (l.bookId === bookId ? { ...l, reason: val } : l)));
   };
 
   const queryClient = useQueryClient();
@@ -127,7 +130,9 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
   const filteredLines = useMemo(() => {
     const q = searchFilter.trim().toLowerCase();
     if (!q) return draftLines;
-    return draftLines.filter((l) => l.title.toLowerCase().includes(q) || String(l.bookId).includes(q));
+    return draftLines.filter(
+      (l) => l.title.toLowerCase().includes(q) || String(l.bookId).includes(q),
+    );
   }, [draftLines, searchFilter]);
 
   const totalDiffCount = useMemo(
@@ -190,7 +195,9 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
             </div>
             <span className="text-xs text-muted-foreground">
               Tổng <strong>{draftLines.length}</strong> đầu sách • Có{" "}
-              <strong className={totalDiffCount > 0 ? "text-amber-600 font-bold" : "text-emerald-600"}>
+              <strong
+                className={totalDiffCount > 0 ? "text-amber-600 font-bold" : "text-emerald-600"}
+              >
                 {totalDiffCount}
               </strong>{" "}
               đầu sách bị chênh lệch
@@ -216,10 +223,15 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
                   const hasDiff = diff !== 0;
 
                   return (
-                    <tr key={line.bookId} className={`hover:bg-muted/40 ${hasDiff ? "bg-amber-500/5" : ""}`}>
+                    <tr
+                      key={line.bookId}
+                      className={`hover:bg-muted/40 ${hasDiff ? "bg-amber-500/5" : ""}`}
+                    >
                       <td className="p-2 text-muted-foreground">{idx + 1}</td>
                       <td className="p-2 font-medium">{line.title}</td>
-                      <td className="p-2 text-right font-semibold tabular-nums">{line.systemStock}</td>
+                      <td className="p-2 text-right font-semibold tabular-nums">
+                        {line.systemStock}
+                      </td>
                       <td className="p-2 text-right">
                         <Input
                           type="number"
@@ -235,7 +247,9 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
                         ) : (
                           <span
                             className={`px-1.5 py-0.5 rounded text-[11px] ${
-                              diff > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                              diff > 0
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-rose-100 text-rose-700"
                             }`}
                           >
                             {diff > 0 ? `+${diff}` : diff}
@@ -287,7 +301,9 @@ function DetailAuditDialog({
       return await inventoryApi.balanceAudit(audit.id);
     },
     onSuccess: () => {
-      toast.success(`Đã cân bằng kho thành công theo phiếu ${audit.auditCode}! Tồn kho và Sổ kho đã cập nhật.`);
+      toast.success(
+        `Đã cân bằng kho thành công theo phiếu ${audit.auditCode}! Tồn kho và Sổ kho đã cập nhật.`,
+      );
       queryClient.invalidateQueries({ queryKey: ["inventory", "audits"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", "movements"] });
       queryClient.invalidateQueries({ queryKey: ["books"] });
@@ -306,10 +322,12 @@ function DetailAuditDialog({
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-primary" /> Chi tiết phiếu kiểm kê {audit.auditCode}
+              <ClipboardCheck className="h-5 w-5 text-primary" /> Chi tiết phiếu kiểm kê{" "}
+              {audit.auditCode}
             </DialogTitle>
             <DialogDescription>
-              {audit.title} • Ngày kiểm: {formatDateTime(audit.auditDate)} • Người kiểm: {audit.auditedBy}
+              {audit.title} • Ngày kiểm: {formatDateTime(audit.auditDate)} • Người kiểm:{" "}
+              {audit.auditedBy}
             </DialogDescription>
           </DialogHeader>
 
@@ -317,11 +335,15 @@ function DetailAuditDialog({
             <div className="grid grid-cols-3 gap-3 p-3 rounded-lg border bg-muted/20 text-xs">
               <div>
                 <p className="text-muted-foreground">Tổng tồn HT:</p>
-                <p className="text-base font-bold tabular-nums">{formatNumber(audit.totalSystemStock)}</p>
+                <p className="text-base font-bold tabular-nums">
+                  {formatNumber(audit.totalSystemStock)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Tổng thực tế:</p>
-                <p className="text-base font-bold tabular-nums">{formatNumber(audit.totalActualStock)}</p>
+                <p className="text-base font-bold tabular-nums">
+                  {formatNumber(audit.totalActualStock)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Tổng chênh lệch:</p>
@@ -358,7 +380,9 @@ function DetailAuditDialog({
                     >
                       <td className="p-2">{item.title}</td>
                       <td className="p-2 text-right tabular-nums">{item.systemStock}</td>
-                      <td className="p-2 text-right font-semibold tabular-nums">{item.actualStock}</td>
+                      <td className="p-2 text-right font-semibold tabular-nums">
+                        {item.actualStock}
+                      </td>
                       <td className="p-2 text-center tabular-nums font-bold">
                         {item.diffQuantity === 0 ? (
                           "—"
@@ -475,7 +499,9 @@ function StockAuditPage() {
       header: "Ngày kiểm kê",
       sortable: true,
       value: (a) => a.auditDate,
-      cell: (a) => <span className="text-xs text-muted-foreground">{formatDateTime(a.auditDate)}</span>,
+      cell: (a) => (
+        <span className="text-xs text-muted-foreground">{formatDateTime(a.auditDate)}</span>
+      ),
     },
     {
       key: "stats",
@@ -483,7 +509,8 @@ function StockAuditPage() {
       align: "center",
       cell: (a) => (
         <span className="tabular-nums text-xs">
-          {formatNumber(a.totalSystemStock)} / <strong className="text-foreground">{formatNumber(a.totalActualStock)}</strong>
+          {formatNumber(a.totalSystemStock)} /{" "}
+          <strong className="text-foreground">{formatNumber(a.totalActualStock)}</strong>
         </span>
       ),
     },
@@ -532,7 +559,11 @@ function StockAuditPage() {
         <DetailAuditDialog
           audit={a}
           trigger={
-            <Button size="sm" variant={a.status === "DRAFT" ? "default" : "outline"} className="h-7 text-xs">
+            <Button
+              size="sm"
+              variant={a.status === "DRAFT" ? "default" : "outline"}
+              className="h-7 text-xs"
+            >
               {a.status === "DRAFT" ? (
                 <>
                   <Scale className="mr-1 h-3.5 w-3.5" /> Cân bằng

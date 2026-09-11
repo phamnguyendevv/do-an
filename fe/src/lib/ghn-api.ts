@@ -109,10 +109,9 @@ export interface GhnUpdateOrderPayload {
 import { apiRequest } from "./api-client";
 
 export interface GhnOrderStatus {
-
   order_code: string;
   client_order_code: string;
-  status: string;         // GHN raw status: "ready_to_pick", "picking", "delivering", "delivered", "return", ...
+  status: string; // GHN raw status: "ready_to_pick", "picking", "delivering", "delivered", "return", ...
   status_name: string;
   created_date: string;
   updated_date: string;
@@ -209,7 +208,6 @@ export const ghnApi = {
   },
 };
 
-
 /** Map GHN raw status string to our internal ShippingStatus */
 export function mapGhnStatus(ghnStatus: string): import("@/types").ShippingStatus {
   const s = ghnStatus?.toLowerCase() ?? "";
@@ -221,11 +219,18 @@ export function mapGhnStatus(ghnStatus: string): import("@/types").ShippingStatu
     s === "in_transit" ||
     s.includes("transit") ||
     s === "delivering"
-  ) return "IN_TRANSIT";
+  )
+    return "IN_TRANSIT";
   if (s === "delivery_fail" || s === "failed") return "FAILED";
-  if (s === "wait_to_return" || s === "return" || s === "returned" || s === "return_transporting" || s === "return_sorting") return "RETURNED";
+  if (
+    s === "wait_to_return" ||
+    s === "return" ||
+    s === "returned" ||
+    s === "return_transporting" ||
+    s === "return_sorting"
+  )
+    return "RETURNED";
   if (s === "delivered") return "DELIVERED";
   if (s === "out_for_delivery") return "OUT_FOR_DELIVERY";
   return "IN_TRANSIT";
 }
-

@@ -91,14 +91,20 @@ export function analyzeWarehouse(snap: IntelSnapshot, now = Date.now()) {
     insights.push({
       level: "critical",
       title: `${outOfStock.length} đầu sách đã hết hàng`,
-      detail: outOfStock.slice(0, 5).map((b) => b.title).join(", "),
+      detail: outOfStock
+        .slice(0, 5)
+        .map((b) => b.title)
+        .join(", "),
       action: "Tạo phiếu nhập bổ sung ngay để không mất đơn.",
     });
   if (lowStock.length)
     insights.push({
       level: "warning",
       title: `${lowStock.length} đầu sách sắp hết (dưới mức tồn tối thiểu)`,
-      detail: lowStock.slice(0, 5).map((b) => `${b.title} (${b.stock})`).join(", "),
+      detail: lowStock
+        .slice(0, 5)
+        .map((b) => `${b.title} (${b.stock})`)
+        .join(", "),
       action: "Ưu tiên nhập các đầu sách bán nhanh trong nhóm này.",
     });
   if (aging.length)

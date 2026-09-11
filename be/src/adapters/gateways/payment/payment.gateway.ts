@@ -8,6 +8,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets'
+
 import { Server, Socket } from 'socket.io'
 
 export interface PaymentSuccessEventPayload {
@@ -26,7 +27,9 @@ export interface PaymentSuccessEventPayload {
   },
 })
 @Injectable()
-export class PaymentGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class PaymentGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server!: Server
 

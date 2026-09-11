@@ -47,7 +47,7 @@ export class SendVerifyEmailUseCase {
   private async verifyEmail(email: string): Promise<void> {
     const user = await this.userRepository.getUserByEmail(email)
     if (!user) {
-       throw this.exceptionsService.notFoundException({
+      throw this.exceptionsService.notFoundException({
         type: 'UserNotFoundException',
         message: 'User not found',
       })

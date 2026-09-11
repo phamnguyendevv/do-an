@@ -47,4 +47,3 @@ export class CreateBookUseCase {
     return 'IN_STOCK'
   }
 }
-

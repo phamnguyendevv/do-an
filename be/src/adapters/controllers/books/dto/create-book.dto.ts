@@ -1,7 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger'
 
 import { Transform } from 'class-transformer'
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator'
 
 export class CreateBookDto {
   @ApiProperty({ example: 'Clean Code', required: true })

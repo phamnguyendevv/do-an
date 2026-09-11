@@ -39,7 +39,10 @@ const TOOLS = [
           maxStock: { type: "number" },
           minStock: { type: "number" },
           status: { type: "string", enum: ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"] },
-          sort: { type: "string", enum: ["stock_asc", "stock_desc", "price_asc", "price_desc", "best_selling"] },
+          sort: {
+            type: "string",
+            enum: ["stock_asc", "stock_desc", "price_asc", "price_desc", "best_selling"],
+          },
           limit: { type: "number" },
         },
         required: [],
@@ -57,7 +60,16 @@ const TOOLS = [
           query: { type: "string" },
           status: {
             type: "string",
-            enum: ["PENDING", "CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED", "CANCELLED", "FAILED", "RETURNED"],
+            enum: [
+              "PENDING",
+              "CONFIRMED",
+              "PREPARING",
+              "SHIPPING",
+              "DELIVERED",
+              "CANCELLED",
+              "FAILED",
+              "RETURNED",
+            ],
           },
           payment: { type: "string", enum: ["PAID", "UNPAID", "REFUNDED"] },
           period: { type: "string", enum: ["today", "7d", "30d", "all"] },
@@ -74,7 +86,10 @@ const TOOLS = [
       description: "Kiểm tra tồn kho và số lượng bán ra của một đầu sách theo tên.",
       parameters: {
         type: "object",
-        properties: { title: { type: "string" }, days: { type: "number", description: "Số ngày thống kê bán, mặc định 30" } },
+        properties: {
+          title: { type: "string" },
+          days: { type: "number", description: "Số ngày thống kê bán, mặc định 30" },
+        },
         required: ["title"],
       },
     },
@@ -195,7 +210,8 @@ export const askAssistant = createServerFn({ method: "POST" })
       }),
     });
 
-    if (res.status === 429) return { ok: false, error: "Đã vượt giới hạn yêu cầu AI, vui lòng thử lại sau." };
+    if (res.status === 429)
+      return { ok: false, error: "Đã vượt giới hạn yêu cầu AI, vui lòng thử lại sau." };
     if (res.status === 402) return { ok: false, error: "Đã hết credit AI của workspace." };
     if (!res.ok) {
       const errorData = await res.text();

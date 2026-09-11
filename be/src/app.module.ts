@@ -7,9 +7,10 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { MailerModule } from '@infrastructure/services/mailer/mailer.module'
 import { RedisModule } from '@infrastructure/services/redis/redis.module'
 
+import { AssistantModule } from '@modules/assistant.module'
 import { BooksModule } from '@modules/books.module'
 import { CategoriesModule } from '@modules/category.module'
-import { AssistantModule } from '@modules/assistant.module'
+import { CustomersModule } from '@modules/customers.module'
 import { GhnModule } from '@modules/ghn.module'
 import { InventoryModule } from '@modules/inventory.module'
 import { NotificationModule } from '@modules/notification.module'
@@ -60,6 +61,7 @@ import { HealthModule } from './modules/health.module'
     UsersModule,
     BooksModule,
     CategoriesModule,
+    CustomersModule,
     SuppliersModule,
     InventoryModule,
     OrdersModule,
@@ -79,7 +81,6 @@ import { HealthModule } from './modules/health.module'
     },
   ],
 })
-
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer

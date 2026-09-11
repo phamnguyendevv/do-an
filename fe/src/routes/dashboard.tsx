@@ -18,7 +18,12 @@ import {
 import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
-import { DateRangePicker, inDateRange, DATE_PRESETS, type DateRange } from "@/components/shared/date-range-picker";
+import {
+  DateRangePicker,
+  inDateRange,
+  DATE_PRESETS,
+  type DateRange,
+} from "@/components/shared/date-range-picker";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
@@ -31,18 +36,8 @@ import {
   StockMovementChart,
 } from "@/components/analytics/charts";
 import { stockMovement as mockStockMovement } from "@/mock/inventory";
-import {
-  useBooks,
-  useExportReceipts,
-  useImportReceipts,
-  useOrders,
-} from "@/hooks/use-store";
-import {
-  formatCompactCurrency,
-  formatCurrency,
-  formatDate,
-  formatNumber,
-} from "@/utils/format";
+import { useBooks, useExportReceipts, useImportReceipts, useOrders } from "@/hooks/use-store";
+import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import {
   bookStatusLabel,
   bookStatusTone,
@@ -62,7 +57,10 @@ export const Route = createFileRoute("/dashboard")({
         content: "Tổng quan kho sách: tồn kho, đơn hàng, doanh thu và cảnh báo sắp hết hàng.",
       },
       { property: "og:title", content: "Dashboard — BookStock" },
-      { property: "og:description", content: "Tổng quan kho sách, đơn hàng gần đây và cảnh báo tồn kho." },
+      {
+        property: "og:description",
+        content: "Tổng quan kho sách, đơn hàng gần đây và cảnh báo tồn kho.",
+      },
     ],
   }),
   component: DashboardPage,
@@ -125,9 +123,7 @@ const orderColumns: DataTableColumn<Order>[] = [
     key: "status",
     header: "Trạng thái",
     cell: (o) => (
-      <StatusBadge tone={orderStatusTone[o.status]}>
-        {orderStatusLabel[o.status]}
-      </StatusBadge>
+      <StatusBadge tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</StatusBadge>
     ),
   },
   {
@@ -159,7 +155,9 @@ const lowStockColumns: DataTableColumn<Book>[] = [
     cell: (b) => (
       <div>
         <p className="font-medium text-sm leading-snug">{b.title}</p>
-        <p className="text-xs text-muted-foreground">{b.category || "Chưa phân loại"} • {b.author}</p>
+        <p className="text-xs text-muted-foreground">
+          {b.category || "Chưa phân loại"} • {b.author}
+        </p>
       </div>
     ),
   },
@@ -199,9 +197,7 @@ const lowStockColumns: DataTableColumn<Book>[] = [
     key: "status",
     header: "Trạng thái",
     cell: (b) => (
-      <StatusBadge tone={bookStatusTone[b.status]}>
-        {bookStatusLabel[b.status]}
-      </StatusBadge>
+      <StatusBadge tone={bookStatusTone[b.status]}>{bookStatusLabel[b.status]}</StatusBadge>
     ),
   },
   {
@@ -261,9 +257,7 @@ function DashboardPage() {
     const activeRevenue = validOrders.reduce((s, o) => s + (o.total || 0), 0);
 
     // Confirmed/Paid/Delivered revenue
-    const paidOrders = validOrders.filter(
-      (o) => o.payment === "PAID" || o.status === "DELIVERED",
-    );
+    const paidOrders = validOrders.filter((o) => o.payment === "PAID" || o.status === "DELIVERED");
     const paidRevenue = paidOrders.reduce((s, o) => s + (o.total || 0), 0);
 
     // Pending revenue (COD or awaiting payment)
@@ -421,7 +415,10 @@ function DashboardPage() {
     for (const p of DATE_PRESETS) {
       const r = p.resolve();
       const fromMatch = r.from!.toDateString() === dateRange.from.toDateString();
-      const toMatch = r.to && dateRange.to ? r.to.toDateString() === dateRange.to.toDateString() : !r.to && !dateRange.to;
+      const toMatch =
+        r.to && dateRange.to
+          ? r.to.toDateString() === dateRange.to.toDateString()
+          : !r.to && !dateRange.to;
       if (fromMatch && toMatch) return p.label;
     }
     const days = dateRange.to
@@ -479,15 +476,25 @@ function DashboardPage() {
                   <h4 className="font-semibold text-sm">Cảnh báo tồn kho cần chú ý</h4>
                   <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
                     Có <strong>{outOfStockBooks.length}</strong> đầu sách đã hết hàng và{" "}
-                    <strong>{lowStockBooks.length - outOfStockBooks.length}</strong> đầu sách chạm ngưỡng tối thiểu.
+                    <strong>{lowStockBooks.length - outOfStockBooks.length}</strong> đầu sách chạm
+                    ngưỡng tối thiểu.
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 self-end sm:self-center">
-                <Button size="sm" variant="outline" asChild className="h-8 text-xs bg-background/80 hover:bg-background">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  asChild
+                  className="h-8 text-xs bg-background/80 hover:bg-background"
+                >
                   <Link to="/inventory">Xem kho</Link>
                 </Button>
-                <Button size="sm" asChild className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-500">
+                <Button
+                  size="sm"
+                  asChild
+                  className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-500"
+                >
                   <Link to="/inventory/import">
                     <PackagePlus className="mr-1.5 h-3.5 w-3.5" /> Tạo phiếu nhập
                   </Link>
@@ -496,7 +503,6 @@ function DashboardPage() {
             </div>
           </div>
         )}
-
 
         {/* 4 Core Financial & Inventory Stat Cards */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -537,7 +543,10 @@ function DashboardPage() {
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" /> Tiến độ xử lý đơn hàng
               </CardTitle>
-              <Link to="/orders" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+              <Link
+                to="/orders"
+                className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+              >
                 Tất cả đơn <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>
@@ -564,7 +573,11 @@ function DashboardPage() {
                 </div>
                 <div className="mt-2">
                   <p className="text-xl font-bold tabular-nums text-blue-600 dark:text-blue-400">
-                    {periodOrders.filter((o) => o.status === "CONFIRMED" || o.status === "PREPARING").length}
+                    {
+                      periodOrders.filter(
+                        (o) => o.status === "CONFIRMED" || o.status === "PREPARING",
+                      ).length
+                    }
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Đang đóng gói hàng</p>
                 </div>
@@ -603,7 +616,14 @@ function DashboardPage() {
                 </div>
                 <div className="mt-2">
                   <p className="text-xl font-bold tabular-nums text-destructive">
-                    {periodOrders.filter((o) => o.status === "CANCELLED" || o.status === "RETURNED" || o.status === "FAILED").length}
+                    {
+                      periodOrders.filter(
+                        (o) =>
+                          o.status === "CANCELLED" ||
+                          o.status === "RETURNED" ||
+                          o.status === "FAILED",
+                      ).length
+                    }
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Hủy hoặc trả hàng</p>
                 </div>
@@ -636,9 +656,7 @@ function DashboardPage() {
           <Card className="shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Top 5 Sách bán chạy</CardTitle>
-              <CardDescription className="text-xs">
-                Xếp theo số lượng cuốn bán ra
-              </CardDescription>
+              <CardDescription className="text-xs">Xếp theo số lượng cuốn bán ra</CardDescription>
             </CardHeader>
             <CardContent>
               <BestSellersChart data={bestSellers} />

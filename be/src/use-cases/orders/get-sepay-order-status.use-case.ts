@@ -1,6 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { OrderStatusEnum, PaymentStatusEnum } from '@domain/entities/order-enums.entity'
+import {
+  OrderStatusEnum,
+  PaymentStatusEnum,
+} from '@domain/entities/order-enums.entity'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
   IBookstoreOrderRepositoryInterface,
@@ -33,7 +36,10 @@ export class GetSepayOrderStatusUseCase {
       `ORD${digits}`,
     ].filter(Boolean)
 
-    const order = await this.orderRepository.findOrderByCodeVariants(variants, digits)
+    const order = await this.orderRepository.findOrderByCodeVariants(
+      variants,
+      digits,
+    )
 
     if (!order) {
       return {

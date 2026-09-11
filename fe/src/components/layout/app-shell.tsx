@@ -101,7 +101,11 @@ export function AppShell({ children, crumbs, requiredAbility, requiredRole }: Ap
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetContent side="left" className="w-[260px] p-0">
-              <SidebarNav collapsed={false} role={user.role} onNavigate={() => setMobileOpen(false)} />
+              <SidebarNav
+                collapsed={false}
+                role={user.role}
+                onNavigate={() => setMobileOpen(false)}
+              />
             </SheetContent>
           </Sheet>
 

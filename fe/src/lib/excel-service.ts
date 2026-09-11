@@ -137,7 +137,7 @@ export async function parseBookExcelFile(file: File): Promise<{
   }
 
   const ws = wb.Sheets[firstSheetName];
-  const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
   if (rows.length < 2) {
     return { data: [], errors: ["File Excel trống hoặc chỉ có dòng tiêu đề."] };
@@ -147,7 +147,7 @@ export async function parseBookExcelFile(file: File): Promise<{
   const errors: string[] = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
+    const row = rows[i] as unknown[] | undefined;
     if (!row || row.length === 0 || !row[0]) continue; // Bỏ qua dòng trống
 
     const title = String(row[0] || "").trim();
@@ -208,13 +208,13 @@ export async function parseInventoryImportFile(file: File): Promise<{
   }
 
   const ws = wb.Sheets[firstSheetName];
-  const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
   const data: ParsedImportRow[] = [];
   const errors: string[] = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
+    const row = rows[i] as unknown[] | undefined;
     if (!row || row.length === 0 || !row[0]) continue;
 
     const bookIdOrTitle = String(row[0]).trim();
@@ -323,7 +323,11 @@ export function exportOrdersToExcel(orders: Order[], filename = "danh_sach_don_h
     o.discount || 0,
     o.shippingFee || 0,
     o.total,
-    o.payment === "PAID" ? "Đã thanh toán" : o.payment === "REFUNDED" ? "Đã hoàn tiền" : "Chưa thanh toán",
+    o.payment === "PAID"
+      ? "Đã thanh toán"
+      : o.payment === "REFUNDED"
+        ? "Đã hoàn tiền"
+        : "Chưa thanh toán",
     o.shippingMethod,
     o.trackingCode || "",
     o.status,
@@ -464,4 +468,3 @@ export function exportOrderHistoriesToExcel(
   XLSX.utils.book_append_sheet(wb, ws, "NhatKyDonHang");
   XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
-
