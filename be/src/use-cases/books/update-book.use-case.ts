@@ -1,6 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { BookEntity } from '@domain/entities/book.entity'
+import {
+  BookEntity,
+  IBookIdInput,
+  IUpdateBookInput,
+} from '@domain/entities/book.entity'
+import { BookStatusEnum } from '@domain/entities/order-enums.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -23,8 +28,8 @@ export class UpdateBookUseCase {
   ) {}
 
   async execute(
-    params: { id: number },
-    book: Partial<BookEntity>,
+    params: IBookIdInput,
+    book: IUpdateBookInput,
   ): Promise<boolean> {
     const existing = await this.bookRepository.findBookById(params.id)
     if (!existing) {
@@ -50,10 +55,10 @@ export class UpdateBookUseCase {
     return updated
   }
 
-  private resolveStatus(stock: number, minStock: number): string {
-    if (stock === 0) return 'OUT_OF_STOCK'
-    if (stock <= minStock) return 'LOW_STOCK'
-    return 'IN_STOCK'
+  private resolveStatus(stock: number, minStock: number): BookStatusEnum {
+    if (stock === 0) return BookStatusEnum.OutOfStock
+    if (stock <= minStock) return BookStatusEnum.LowStock
+    return BookStatusEnum.InStock
   }
 }
 

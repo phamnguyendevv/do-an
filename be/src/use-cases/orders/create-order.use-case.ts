@@ -6,7 +6,10 @@ import {
   BookStatusEnum,
   OrderStatusEnum,
   PaymentStatusEnum,
+  PromotionDiscountTypeEnum,
 } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -28,6 +31,9 @@ import { StockMovement } from '@infrastructure/databases/postgresql/entities/sto
 import { Customer } from '@infrastructure/databases/postgresql/entities/customer.entity'
 import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
 import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
+import { CreateOrderInput } from '@domain/entities/bookstore-order.entity'
+
+export { CreateOrderInput }
 
 @Injectable()
 export class CreateBookstoreOrderUseCase {
@@ -43,27 +49,7 @@ export class CreateBookstoreOrderUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-  async execute(dto: {
-    orderCode?: string
-    customerName: string
-    customerPhone: string
-    customerId?: number
-    customerAddress: string
-    provinceId?: number
-    districtId?: number
-    wardCode?: string
-    items: Array<{ bookId: number | string; title: string; quantity: number; price: number }>
-    shippingFee?: number
-    discount?: number
-    promotionCode?: string
-    shippingMethod?: string
-    trackingCode?: string
-    note?: string
-    status?: OrderStatusEnum | string
-    payment?: PaymentStatusEnum | string
-    actor?: string
-    actorRole?: string
-  }): Promise<BookstoreOrderEntity> {
+  async execute(dto: CreateOrderInput): Promise<BookstoreOrderEntity> {
     if (!dto.customerName || !dto.customerPhone) {
       throw this.exceptionsService.badRequestException({
         type: 'OrderValidationException',
@@ -153,7 +139,7 @@ export class CreateBookstoreOrderUseCase {
           const movement = queryRunner.manager.create(StockMovement, {
             bookId: book.id,
             bookTitle: book.title,
-            type: 'SALE',
+            type: StockMovementTypeEnum.Sale,
             quantity: -item.quantity,
             beforeStock,
             afterStock,
@@ -185,12 +171,14 @@ export class CreateBookstoreOrderUseCase {
       const subtotal = dto.items.reduce((s, it) => s + it.price * it.quantity, 0)
       let discount = dto.discount || 0
       if (promotion && subtotal >= Number(promotion.minOrderValue)) {
-        const promotionDiscount = promotion.discountType === 'PERCENTAGE'
-          ? subtotal * Number(promotion.discountValue) / 100
-          : Number(promotion.discountValue)
-        discount += promotion.maxDiscount !== null && promotion.maxDiscount !== undefined
-          ? Math.min(promotionDiscount, Number(promotion.maxDiscount))
-          : promotionDiscount
+        const promotionDiscount =
+          promotion.discountType === PromotionDiscountTypeEnum.Percentage
+            ? (subtotal * Number(promotion.discountValue)) / 100
+            : Number(promotion.discountValue)
+        discount +=
+          promotion.maxDiscount !== null && promotion.maxDiscount !== undefined
+            ? Math.min(promotionDiscount, Number(promotion.maxDiscount))
+            : promotionDiscount
         promotion.usedCount += 1
         await queryRunner.manager.save(Promotion, promotion)
       }
@@ -202,8 +190,7 @@ export class CreateBookstoreOrderUseCase {
       const isPos =
         dto.shippingMethod?.includes('POS') ||
         dto.shippingMethod?.includes('quầy') ||
-        dto.status === OrderStatusEnum.Delivered ||
-        dto.status === 'DELIVERED'
+        dto.status === OrderStatusEnum.Delivered
 
       const status = dto.status || (isPos ? OrderStatusEnum.Delivered : OrderStatusEnum.Pending)
       const payment = dto.payment || (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
@@ -238,7 +225,7 @@ export class CreateBookstoreOrderUseCase {
       const history = queryRunner.manager.create(OrderHistory, {
         orderId: savedOrder.id,
         orderCode: savedOrder.orderCode,
-        action: 'CREATED',
+        action: OrderHistoryActionEnum.Created,
         toStatus: String(savedOrder.status),
         toPayment: String(savedOrder.payment),
         title: isPos ? 'Tạo đơn hàng tại quầy (POS)' : 'Tạo đơn hàng mới',

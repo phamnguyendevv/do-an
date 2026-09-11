@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { IVerifyOtpInput } from '@domain/entities/auth.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   IUserRepositoryInterface,
@@ -9,8 +10,6 @@ import {
   IRedisCacheService,
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
-
-import { VerifyOtpDto } from '@adapters/controllers/auth/dto/verify-email.dto'
 
 @Injectable()
 export class VerifyEmailUseCase {
@@ -23,9 +22,9 @@ export class VerifyEmailUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(verifyOtpDto: VerifyOtpDto): Promise<boolean> {
-    const trimmedEmail = verifyOtpDto.email.trim()
-    await this.checkOtp({ email: trimmedEmail, inputOtp: verifyOtpDto.inputOtp.trim() })
+  async execute(input: IVerifyOtpInput): Promise<boolean> {
+    const trimmedEmail = input.email.trim()
+    await this.checkOtp({ email: trimmedEmail, inputOtp: input.inputOtp.trim() })
 
     const pendingKey = `pending_registration:${trimmedEmail}`
     const pendingDataRaw = await this.redisService.getValue<string>(pendingKey)

@@ -1,0 +1,113 @@
+name:  Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'fe/**'
+      - 'nginx/**'
+      - '.github/workflows/frontend.yml'
+      - 'scripts/deploy-fe.sh'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'fe/**'
+
+jobs:
+
+  build:
+    name:  Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./fe
+
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name:  Install dependencies
+        run: npm ci
+
+      - name:  Run ESLint
+        run: npm run lint
+
+      - name:  Build Vite (production)
+        run: npm run build
+        env:
+          # Dùng secret để frontend biết URL của API backend
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          VITE_API_PREFIX: /api/v1
+          VITE_SEPAY_BANK: ${{ secrets.VITE_SEPAY_BANK }}
+          VITE_SEPAY_ACCOUNT: ${{ secrets.VITE_SEPAY_ACCOUNT }}
+          VITE_SEPAY_ACCOUNT_NAME: ${{ secrets.VITE_SEPAY_ACCOUNT_NAME }}
+
+      # Chỉ upload artifact khi push vào main (không upload khi PR)
+      - name:  Upload build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: fe/dist
+          retention-days: 1
+
+
+  deploy:
+    name:  Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name:  Checkout code (lấy scripts và nginx config)
+        uses: actions/checkout@v4
+
+      - name:  Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: fe/dist
+
+      - name:  Copy Nginx config lên VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "nginx/,scripts/deploy-fe.sh"
+          target: "/opt/app"
+
+      - name:  SCP frontend dist/ lên VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "fe/dist/"
+          target: "/opt/app/frontend"
+          strip_components: 2
+
+      - name:  SSH vào VPS reload Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            chmod +x /opt/app/scripts/deploy-fe.sh
+            bash /opt/app/scripts/deploy-fe.sh
+
+      - name:  Deploy Frontend hoàn tất
+        run: echo "Frontend deployed successfully at $(date)"

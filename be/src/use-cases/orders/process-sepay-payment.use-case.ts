@@ -1,33 +1,23 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import { DataSource, ILike } from 'typeorm'
 
-import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
+import { ISePayWebhookInput } from '@domain/entities/bookstore-order.entity'
 import { OrderStatusEnum, PaymentStatusEnum } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
   IBookstoreOrderRepositoryInterface,
 } from '@domain/repositories/bookstore-order.repository.interface'
+import {
+  IPaymentGateway,
+  PAYMENT_GATEWAY,
+} from '@domain/services/payment-gateway.interface'
 import {
   IRedisCacheService,
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
-
-export interface ProcessSepayWebhookDto {
-  id?: number
-  gateway?: string
-  transactionDate?: string
-  accountNumber?: string
-  subAccount?: string | null
-  transferType?: string
-  transferAmount?: number
-  accumulated?: number
-  code?: string | null
-  content?: string
-  referenceCode?: string
-  description?: string
-}
 
 export interface ProcessSepayResult {
   success: boolean
@@ -51,10 +41,11 @@ export class ProcessSepayPaymentUseCase {
     @Inject(REDIS_SERVICE)
     private readonly redisService?: IRedisCacheService,
     @Optional()
-    private readonly paymentGateway?: PaymentGateway,
+    @Inject(PAYMENT_GATEWAY)
+    private readonly paymentGateway?: IPaymentGateway,
   ) {}
 
-  async execute(payload: ProcessSepayWebhookDto): Promise<ProcessSepayResult> {
+  async execute(payload: ISePayWebhookInput): Promise<ProcessSepayResult> {
     this.logger.log(`SePay Webhook received: ${JSON.stringify(payload)}`)
 
     if (payload.transferType && payload.transferType.toLowerCase() !== 'in') {
@@ -159,11 +150,11 @@ export class ProcessSepayPaymentUseCase {
         const history = queryRunner.manager.create(OrderHistory, {
           orderId: savedNew.id,
           orderCode: savedNew.orderCode,
-          action: 'SEPAY_PAYMENT',
-          fromStatus: 'PENDING',
-          toStatus: 'DELIVERED',
-          fromPayment: 'UNPAID',
-          toPayment: 'PAID',
+          action: OrderHistoryActionEnum.SepayPayment,
+          fromStatus: OrderStatusEnum.Pending,
+          toStatus: OrderStatusEnum.Delivered,
+          fromPayment: PaymentStatusEnum.Unpaid,
+          toPayment: PaymentStatusEnum.Paid,
           title: 'Tự động tạo đơn & thanh toán SePay QR',
           note: `Nhận ${transferAmount.toLocaleString('vi-VN')}đ qua SePay (${payload.gateway || 'Ngân hàng'}). Mã tham chiếu: ${payload.referenceCode || payload.code || 'N/A'}. Nội dung: "${payload.content || ''}"`,
           actor: 'SePay Webhook',
@@ -188,7 +179,7 @@ export class ProcessSepayPaymentUseCase {
           orderCode: savedNew.orderCode,
           orderId: savedNew.id,
           amount: Number(savedNew.total),
-          paymentStatus: 'PAID',
+          paymentStatus: PaymentStatusEnum.Paid,
           transactionDate: payload.transactionDate,
           gateway: payload.gateway,
         })
@@ -224,11 +215,11 @@ export class ProcessSepayPaymentUseCase {
       const history = queryRunner.manager.create(OrderHistory, {
         orderId: updatedOrder.id,
         orderCode: updatedOrder.orderCode,
-        action: 'SEPAY_PAYMENT',
+        action: OrderHistoryActionEnum.SepayPayment,
         fromStatus: previousStatus,
         toStatus: String(updatedOrder.status),
         fromPayment: previousPayment,
-        toPayment: 'PAID',
+        toPayment: PaymentStatusEnum.Paid,
         title: 'Xác nhận thanh toán tự động qua SePay QR',
         note: `Nhận ${transferAmount.toLocaleString('vi-VN')}đ qua SePay (${payload.gateway || 'Ngân hàng'}). Mã tham chiếu: ${payload.referenceCode || payload.code || 'N/A'}. Nội dung: "${payload.content || ''}". Trạng thái đơn: ${previousStatus} → ${updatedOrder.status}.`,
         actor: 'SePay Webhook',
@@ -254,7 +245,7 @@ export class ProcessSepayPaymentUseCase {
         orderCode: updatedOrder.orderCode,
         orderId: updatedOrder.id,
         amount: Number(updatedOrder.total),
-        paymentStatus: 'PAID',
+        paymentStatus: PaymentStatusEnum.Paid,
         transactionDate: payload.transactionDate,
         gateway: payload.gateway,
       })

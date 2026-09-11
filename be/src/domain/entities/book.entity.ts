@@ -14,3 +14,42 @@ export class BookEntity {
   public readonly updatedAt?: Date
 }
 
+export interface ICreateBookInput {
+  title: string
+  author: string
+  category: string
+  purchasePrice: number
+  sellingPrice: number
+  stock: number
+  minStock?: number
+}
+
+export interface IUpdateBookInput {
+  title?: string
+  author?: string
+  category?: string
+  purchasePrice?: number
+  sellingPrice?: number
+  stock?: number
+  minStock?: number
+  status?: BookStatusEnum | string
+}
+
+export interface ISearchBooksInput {
+  size?: number
+  search?: string
+  page?: number
+  category?: string
+  status?: string
+  minPrice?: number
+  maxPrice?: number
+  startDate?: string
+  endDate?: string
+  sortBy?: string
+  sortOrder?: 'ASC' | 'DESC'
+}
+
+export interface IBookIdInput {
+  id: number
+}
+

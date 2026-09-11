@@ -1,7 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
+import {
+  BookstoreOrderEntity,
+  UpdateOrderInput,
+} from '@domain/entities/bookstore-order.entity'
 import { OrderStatusEnum } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
@@ -31,17 +35,7 @@ export class UpdateBookstoreOrderUseCase {
 
   async execute(
     identifier: string | number,
-    dto: {
-      customerName?: string
-      customerPhone?: string
-      customerAddress?: string
-      provinceId?: number
-      districtId?: number
-      wardCode?: string
-      shippingFee?: number
-      discount?: number
-      note?: string
-    },
+    dto: UpdateOrderInput,
     options?: {
       actor?: string
       actorRole?: string
@@ -65,7 +59,7 @@ export class UpdateBookstoreOrderUseCase {
       })
     }
 
-    if (order.status !== OrderStatusEnum.Pending && order.status !== 'PENDING') {
+    if (order.status !== OrderStatusEnum.Pending) {
       throw this.exceptionsService.badRequestException({
         type: 'OrderUpdateForbiddenException',
         message: 'Chỉ có thể chỉnh sửa đơn hàng ở trạng thái Chờ xử lý (PENDING)',
@@ -113,7 +107,7 @@ export class UpdateBookstoreOrderUseCase {
     await this.historyRepository.createHistory({
       orderId: order.id,
       orderCode: order.orderCode,
-      action: 'UPDATED_INFO',
+      action: OrderHistoryActionEnum.UpdatedInfo,
       fromStatus: String(order.status),
       toStatus: String(order.status),
       fromPayment: String(order.payment),

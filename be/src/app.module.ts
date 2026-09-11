@@ -11,7 +11,6 @@ import { BooksModule } from '@modules/books.module'
 import { CategoriesModule } from '@modules/category.module'
 import { GhnModule } from '@modules/ghn.module'
 import { InventoryModule } from '@modules/inventory.module'
-import { NotificationModule } from '@modules/notification.module'
 import { OrdersModule } from '@modules/orders.module'
 import { RevenueModule } from '@modules/revenue.module'
 import { SePayModule } from '@modules/sepay.module'
@@ -68,7 +67,6 @@ import { HealthModule } from './modules/health.module'
     GhnModule,
     SePayModule,
     RevenueModule,
-    NotificationModule,
     CustomersModule,
     PromotionsModule,
     ActivityLogsModule,

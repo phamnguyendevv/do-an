@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common'
 import { DataSource } from 'typeorm'
 
+import {
+  OrderStatusEnum,
+  PaymentStatusEnum,
+} from '@domain/entities/order-enums.entity'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 
 @Injectable()
 export class GetOverviewRevenueUseCase {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
   async execute(params?: { startDate?: Date; endDate?: Date }) {
     const orderRepo = this.dataSource.getRepository(BookstoreOrder)
@@ -24,23 +28,31 @@ export class GetOverviewRevenueUseCase {
 
     let totalRevenue = 0
     let pendingRevenue = 0
-    let totalOrders = orders.length
+    const totalOrders = orders.length
     let deliveredOrders = 0
     let cancelledOrders = 0
     let totalBooksSold = 0
 
     for (const order of orders) {
-      if (order.status === 'CANCELLED') {
+      if (
+        order.status === OrderStatusEnum.Cancelled
+      ) {
         cancelledOrders++
         continue
       }
 
-      if (order.status === 'DELIVERED') {
+      if (
+        order.status === OrderStatusEnum.Delivered
+
+      ) {
         deliveredOrders++
       }
 
       const totalVal = Number(order.total || 0)
-      if (order.payment === 'PAID') {
+      if (
+        order.payment === PaymentStatusEnum.Paid
+
+      ) {
         totalRevenue += totalVal
       } else {
         pendingRevenue += totalVal

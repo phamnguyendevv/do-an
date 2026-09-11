@@ -1,4 +1,18 @@
-export type StockMovementType = 'IMPORT' | 'EXPORT' | 'SALE' | 'RESTOCK' | 'ADJUST'
+export enum StockMovementTypeEnum {
+  Import = 'IMPORT',
+  Export = 'EXPORT',
+  Sale = 'SALE',
+  Restock = 'RESTOCK',
+  Adjust = 'ADJUST',
+}
+
+export type StockMovementType =
+  | StockMovementTypeEnum
+  | 'IMPORT'
+  | 'EXPORT'
+  | 'SALE'
+  | 'RESTOCK'
+  | 'ADJUST'
 
 export class StockMovementEntity {
   public readonly id!: number

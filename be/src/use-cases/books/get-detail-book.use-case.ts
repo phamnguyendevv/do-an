@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { BookEntity } from '@domain/entities/book.entity'
+import { BookEntity, IBookIdInput } from '@domain/entities/book.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -22,7 +22,7 @@ export class GetDetailBookUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(params: { id: number }): Promise<BookEntity> {
+  async execute(params: IBookIdInput): Promise<BookEntity> {
     const cacheKey = `books:detail:${params.id}`
 
     const cached = await this.redisService.getValue<BookEntity>(cacheKey)
