@@ -1,5 +1,23 @@
 services:
   # ======================================================
+  # Frontend Application
+  # ======================================================
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/do-an-frontend:latest
+    container_name: app-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/robots.txt"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ======================================================
   # Backend NestJS Application
   # ======================================================
   backend:
