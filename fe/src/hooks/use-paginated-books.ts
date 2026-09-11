@@ -83,7 +83,7 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
     ],
     queryFn: async () => {
       // Build params without undefined values to satisfy exactOptionalPropertyTypes
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const p: any = { page, size };
       if (search?.trim()) p["search"] = search.trim();
       if (category && category !== "all") p["category"] = category;
@@ -95,7 +95,6 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
       if (sortBy) p["sortBy"] = sortBy;
       if (sortOrder) p["sortOrder"] = sortOrder;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res: any = await bookApi.list(p);
 
       let items: BookApiItem[] = [];

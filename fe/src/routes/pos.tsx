@@ -526,7 +526,7 @@ export function PosPage() {
     setIsSubmitting(true);
     try {
       let orderId: number | string | null = null;
-      let orderCode = currentOrderCode;
+      const orderCode = currentOrderCode;
 
       // Nếu là SEPAY và đơn đã được tạo trước → chỉ cập nhật trạng thái
       if (paymentMethod === "SEPAY" && sepayOrderCreated && sepayCreatedOrderId) {

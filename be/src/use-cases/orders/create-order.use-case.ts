@@ -2,8 +2,10 @@ import { Inject, Injectable } from '@nestjs/common'
 
 import { DataSource } from 'typeorm'
 
-import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
-import { CreateOrderInput } from '@domain/entities/bookstore-order.entity'
+import {
+  BookstoreOrderEntity,
+  CreateOrderInput,
+} from '@domain/entities/bookstore-order.entity'
 import {
   BookStatusEnum,
   OrderStatusEnum,

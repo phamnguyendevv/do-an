@@ -78,6 +78,7 @@ export function ExcelBookImportDialog({
 
     for (let i = 0; i < parsedData.length; i++) {
       const item = parsedData[i];
+      if (!item) continue;
       try {
         await bookApi.create({
           title: item.title,
@@ -87,7 +88,7 @@ export function ExcelBookImportDialog({
           sellingPrice: item.price,
           stock: item.stock,
           minStock: item.minStock,
-          description: item.description,
+          ...(item.description !== undefined && { description: item.description }),
         });
         successCount++;
       } catch (e) {

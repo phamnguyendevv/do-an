@@ -7,6 +7,7 @@ export type BookApiItem = {
   sellingPrice: number;
   stock: number;
   minStock: number;
+  description?: string;
   status?: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
   createdAt?: string | Date;
 };

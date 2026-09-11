@@ -50,14 +50,13 @@ export function usePaginatedOrders(params: UsePaginatedOrdersParams = {}) {
   const query = useQuery({
     queryKey: ["orders", "paginated", { page, size, search, status, payment, startDate, endDate }],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const p: any = { page, size };
       if (search?.trim()) p["search"] = search.trim();
       if (status && status !== "all") p["status"] = status;
       if (payment && payment !== "all") p["payment"] = payment;
       if (startDate) p["startDate"] = startDate;
       if (endDate) p["endDate"] = endDate;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const res: any = await orderApi.list(p);
 
       let items: OrderApiItem[] = [];

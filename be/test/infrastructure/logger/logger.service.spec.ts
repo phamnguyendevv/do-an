@@ -47,11 +47,7 @@ describe('LoggerService', () => {
     loggerService.error('Context', 'Message', 'Trace')
 
     expect(errorSpy).toHaveBeenCalled()
-    expect(errorSpy.mock.calls[0]).toEqual([
-      'Message',
-      'Trace',
-      'Context',
-    ])
+    expect(errorSpy.mock.calls[0]).toEqual(['Message', 'Trace', 'Context'])
   })
 
   it('should log warn message', () => {

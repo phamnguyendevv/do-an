@@ -26,8 +26,7 @@ export type PaymentSuccessEventPayload = IPaymentSuccessPayload
 })
 @Injectable()
 export class PaymentGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, IPaymentGateway
-{
+  implements OnGatewayConnection, OnGatewayDisconnect, IPaymentGateway {
   @WebSocketServer()
   server!: Server
 
@@ -48,20 +47,20 @@ export class PaymentGateway
   ) {
     if (data?.orderCode) {
       const room = `order_${data.orderCode}`
-      client.join(room)
+      void client.join(room)
       this.logger.log(`Client ${client.id} joined room ${room}`)
       return { status: 'subscribed', room }
     }
   }
 
   @SubscribeMessage('unsubscribe_order')
-  handleUnsubscribeOrder(
+  async handleUnsubscribeOrder(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { orderCode: string },
   ) {
     if (data?.orderCode) {
       const room = `order_${data.orderCode}`
-      client.leave(room)
+      await client.leave(room)
       this.logger.log(`Client ${client.id} left room ${room}`)
       return { status: 'unsubscribed', room }
     }

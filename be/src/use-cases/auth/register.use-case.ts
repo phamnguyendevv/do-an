@@ -113,6 +113,7 @@ export class RegisterUseCase {
         `Otp for verifying your email is: ${otp}`,
       )
       .catch((err) => {
+        // eslint-disable-next-line no-console
         console.error('Failed to send verification email:', err)
       })
 

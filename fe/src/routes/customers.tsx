@@ -40,7 +40,11 @@ function CustomersPage() {
   };
   const save = async () => {
     try {
-      editing ? await customerApi.update(editing.id, form) : await customerApi.create(form);
+      if (editing) {
+        await customerApi.update(editing.id, form);
+      } else {
+        await customerApi.create(form);
+      }
       await client.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Đã lưu khách hàng");
       setEditing(null);
@@ -90,12 +94,16 @@ function CustomersPage() {
   return (
     <AppShell>
       <PageContainer>
-        <PageHeader title="Khách hàng" description="Quản lý thông tin và lịch sử mua hàng">
-          <Button onClick={() => open()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm khách hàng
-          </Button>
-        </PageHeader>
+        <PageHeader
+          title="Khách hàng"
+          description="Quản lý thông tin và lịch sử mua hàng"
+          actions={
+            <Button onClick={() => open()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm khách hàng
+            </Button>
+          }
+        />
         <div className="mb-4 flex gap-2">
           <Search className="mt-2 h-4 w-4" />
           <Input
