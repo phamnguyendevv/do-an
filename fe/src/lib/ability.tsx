@@ -3,14 +3,7 @@ import { AbilityBuilder, createMongoAbility, type MongoAbility } from "@casl/abi
 import type { User } from "@/types";
 
 export type AppAction =
-  | "manage"
-  | "create"
-  | "read"
-  | "update"
-  | "delete"
-  | "search"
-  | "approve"
-  | "reject";
+  "manage" | "create" | "read" | "update" | "delete" | "search" | "approve" | "reject";
 
 export type AppSubject =
   | "all"

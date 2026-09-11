@@ -22,14 +22,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: any) => {
-          return request?.cookies?.access_token || request?.cookies?.['access_token'] || null
+          return (
+            request?.cookies?.access_token ||
+            request?.cookies?.['access_token'] ||
+            null
+          )
         },
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
       secretOrKey: environmentConfigService.getJwtSecret(),
     })
-
   }
 
   async validate(payload: IJwtServicePayload) {

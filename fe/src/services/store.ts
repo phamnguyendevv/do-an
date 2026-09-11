@@ -36,7 +36,7 @@ function saveState(s: AppState) {
         imports: s.imports,
         exports: s.exports,
         // shipments are auto-generated from orders via useShipments hook, no need to persist
-      })
+      }),
     );
   } catch (e) {
     console.error("Lỗi lưu state vào localStorage:", e);

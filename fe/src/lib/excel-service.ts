@@ -323,7 +323,11 @@ export function exportOrdersToExcel(orders: Order[], filename = "danh_sach_don_h
     o.discount || 0,
     o.shippingFee || 0,
     o.total,
-    o.payment === "PAID" ? "Đã thanh toán" : o.payment === "REFUNDED" ? "Đã hoàn tiền" : "Chưa thanh toán",
+    o.payment === "PAID"
+      ? "Đã thanh toán"
+      : o.payment === "REFUNDED"
+        ? "Đã hoàn tiền"
+        : "Chưa thanh toán",
     o.shippingMethod,
     o.trackingCode || "",
     o.status,
@@ -464,4 +468,3 @@ export function exportOrderHistoriesToExcel(
   XLSX.utils.book_append_sheet(wb, ws, "NhatKyDonHang");
   XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
-

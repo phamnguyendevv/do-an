@@ -61,7 +61,12 @@ function NavLink({
   );
 }
 
-export function SidebarNav({ collapsed, onToggleCollapsed, role = "ADMIN", onNavigate }: SidebarNavProps) {
+export function SidebarNav({
+  collapsed,
+  onToggleCollapsed,
+  role = "ADMIN",
+  onNavigate,
+}: SidebarNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ability = useAbility();
 
@@ -122,7 +127,10 @@ export function SidebarNav({ collapsed, onToggleCollapsed, role = "ADMIN", onNav
             variant="ghost"
             size="sm"
             onClick={onToggleCollapsed}
-            className={cn("w-full justify-start gap-3 text-muted-foreground", collapsed && "justify-center px-0")}
+            className={cn(
+              "w-full justify-start gap-3 text-muted-foreground",
+              collapsed && "justify-center px-0",
+            )}
           >
             {collapsed ? (
               <PanelLeftOpen className="h-4 w-4" />

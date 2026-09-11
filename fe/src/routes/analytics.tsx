@@ -25,13 +25,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -46,12 +40,7 @@ import {
   RevenueAreaChart,
   StockMovementChart,
 } from "@/components/analytics/charts";
-import {
-  useBooks,
-  useExportReceipts,
-  useImportReceipts,
-  useOrders,
-} from "@/hooks/use-store";
+import { useBooks, useExportReceipts, useImportReceipts, useOrders } from "@/hooks/use-store";
 import {
   buildReport,
   exportFullAnalyticsReport,
@@ -60,11 +49,7 @@ import {
   reportRanges,
   type RangeKey,
 } from "@/services/report-service";
-import {
-  formatCompactCurrency,
-  formatCurrency,
-  formatNumber,
-} from "@/utils/format";
+import { formatCompactCurrency, formatCurrency, formatNumber } from "@/utils/format";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -363,7 +348,8 @@ function AnalyticsPage() {
             <Card className="shadow-none">
               <CardHeader className="pb-3 border-b bg-muted/15">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Warehouse className="h-4 w-4 text-primary" /> Bảng so sánh hiệu suất với kỳ liền trước
+                  <Warehouse className="h-4 w-4 text-primary" /> Bảng so sánh hiệu suất với kỳ liền
+                  trước
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Đối chiếu chi tiết các chỉ số tài chính và vận hành giữa 2 kỳ liên tiếp
@@ -376,7 +362,9 @@ function AnalyticsPage() {
                       <th className="py-3 px-4 font-semibold">Chỉ số kinh doanh</th>
                       <th className="py-3 px-4 text-right font-semibold">Kỳ này</th>
                       <th className="py-3 px-4 text-right font-semibold">Kỳ trước</th>
-                      <th className="py-3 px-4 text-right font-semibold">Chênh lệch / Tăng trưởng</th>
+                      <th className="py-3 px-4 text-right font-semibold">
+                        Chênh lệch / Tăng trưởng
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -458,15 +446,15 @@ function AnalyticsPage() {
                                   isUp
                                     ? "text-emerald-600 dark:text-emerald-400"
                                     : isDown
-                                    ? "text-rose-600 dark:text-rose-400"
-                                    : "text-muted-foreground"
+                                      ? "text-rose-600 dark:text-rose-400"
+                                      : "text-muted-foreground"
                                 }
                               >
                                 {row.isMargin
                                   ? `${row.diffVal >= 0 ? "+" : ""}${row.diffVal.toFixed(1)}% pts`
                                   : row.pct !== null
-                                  ? `${row.pct >= 0 ? "+" : ""}${row.pct.toFixed(1)}%`
-                                  : "—"}
+                                    ? `${row.pct >= 0 ? "+" : ""}${row.pct.toFixed(1)}%`
+                                    : "—"}
                               </span>
                             </div>
                           </td>

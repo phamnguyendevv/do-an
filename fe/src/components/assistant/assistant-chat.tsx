@@ -30,7 +30,12 @@ const SUGGESTIONS = [
 
 function systemPrompt() {
   const snap = store.getSnapshot();
-  const a = analyzeWarehouse({ books: snap.books, orders: snap.orders, imports: snap.imports, exports: snap.exports });
+  const a = analyzeWarehouse({
+    books: snap.books,
+    orders: snap.orders,
+    imports: snap.imports,
+    exports: snap.exports,
+  });
   return `Bạn là AI Warehouse Assistant của hệ thống quản lý kho sách BookStock. Trả lời bằng tiếng Việt, ngắn gọn, có cấu trúc (dùng markdown đơn giản: tiêu đề, gạch đầu dòng).
 
 Nguyên tắc:
@@ -62,7 +67,8 @@ export function AssistantChat() {
     setBubbles((b) => [...b, { id: crypto.randomUUID(), role: "user", content: question }]);
     setLoading(true);
 
-    if (history.current.length === 0) history.current.push({ role: "system", content: systemPrompt() });
+    if (history.current.length === 0)
+      history.current.push({ role: "system", content: systemPrompt() });
     history.current.push({ role: "user", content: question });
 
     const actions: PendingAction[] = [];
@@ -72,7 +78,12 @@ export function AssistantChat() {
         if (!reply.ok) {
           setBubbles((b) => [
             ...b,
-            { id: crypto.randomUUID(), role: "assistant", content: reply.error ?? "Lỗi không xác định.", error: true },
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: reply.error ?? "Lỗi không xác định.",
+              error: true,
+            },
           ]);
           return;
         }
@@ -94,7 +105,11 @@ export function AssistantChat() {
         history.current.push({
           role: "assistant",
           content: reply.content ?? "",
-          tool_calls: calls.map((c) => ({ id: c.id, type: "function" as const, function: { name: c.name, arguments: c.args } })),
+          tool_calls: calls.map((c) => ({
+            id: c.id,
+            type: "function" as const,
+            function: { name: c.name, arguments: c.args },
+          })),
         });
         for (const call of calls) {
           const outcome = executeTool(call.name, call.args);
@@ -108,12 +123,22 @@ export function AssistantChat() {
       }
       setBubbles((b) => [
         ...b,
-        { id: crypto.randomUUID(), role: "assistant", content: "Yêu cầu quá phức tạp, bạn thử chia nhỏ câu hỏi nhé.", error: true },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Yêu cầu quá phức tạp, bạn thử chia nhỏ câu hỏi nhé.",
+          error: true,
+        },
       ]);
     } catch {
       setBubbles((b) => [
         ...b,
-        { id: crypto.randomUUID(), role: "assistant", content: "Không kết nối được tới AI. Vui lòng thử lại.", error: true },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Không kết nối được tới AI. Vui lòng thử lại.",
+          error: true,
+        },
       ]);
     } finally {
       setLoading(false);
@@ -130,7 +155,8 @@ export function AssistantChat() {
               <div>
                 <p className="font-medium">Trợ lý kho AI</p>
                 <p className="text-sm text-muted-foreground">
-                  Hỏi bằng ngôn ngữ tự nhiên: tra tồn kho, lọc dữ liệu, tạo báo cáo hay chuẩn bị đơn hàng.
+                  Hỏi bằng ngôn ngữ tự nhiên: tra tồn kho, lọc dữ liệu, tạo báo cáo hay chuẩn bị đơn
+                  hàng.
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
@@ -150,17 +176,27 @@ export function AssistantChat() {
                       b.role === "user" ? "bg-muted" : "bg-primary/10 text-primary"
                     }`}
                   >
-                    {b.role === "user" ? <UserIcon className="size-4" /> : <Bot className="size-4" />}
+                    {b.role === "user" ? (
+                      <UserIcon className="size-4" />
+                    ) : (
+                      <Bot className="size-4" />
+                    )}
                   </span>
                   <div className="min-w-0 flex-1 space-y-2">
                     <div
                       className={`whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm ${
-                        b.error ? "bg-destructive/10 text-destructive" : b.role === "user" ? "bg-muted" : "bg-card border"
+                        b.error
+                          ? "bg-destructive/10 text-destructive"
+                          : b.role === "user"
+                            ? "bg-muted"
+                            : "bg-card border"
                       }`}
                     >
                       {b.content}
                     </div>
-                    {b.actions?.map((a, i) => <ActionPreview key={i} action={a} />)}
+                    {b.actions?.map((a, i) => (
+                      <ActionPreview key={i} action={a} />
+                    ))}
                   </div>
                 </li>
               ))}

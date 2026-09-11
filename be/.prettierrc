@@ -3,6 +3,7 @@
   "singleQuote": true,
   "semi": false,
   "trailingComma": "all",
+  "endOfLine": "lf",
   "importOrderParserPlugins": ["typescript", "decorators-legacy"],
   "importOrderSeparation": true,
   "importOrderSortSpecifiers": true,

@@ -49,8 +49,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         </p>
         {error ? (
           <div className="my-4 max-h-48 overflow-auto rounded-md bg-destructive/10 p-3 text-left font-mono text-xs text-destructive">
-            <p className="font-semibold">{error.name}: {error.message}</p>
-            {error.stack && <pre className="mt-1 whitespace-pre-wrap text-[11px] opacity-80">{error.stack}</pre>}
+            <p className="font-semibold">
+              {error.name}: {error.message}
+            </p>
+            {error.stack && (
+              <pre className="mt-1 whitespace-pre-wrap text-[11px] opacity-80">{error.stack}</pre>
+            )}
           </div>
         ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">

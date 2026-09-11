@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+
 import { Type } from 'class-transformer'
 import {
   IsArray,
@@ -22,7 +23,10 @@ export class CalculateFeeDto {
   @IsNotEmpty()
   toWardCode!: string
 
-  @ApiProperty({ example: 600, description: 'Tổng trọng lượng kiện hàng (gram)' })
+  @ApiProperty({
+    example: 600,
+    description: 'Tổng trọng lượng kiện hàng (gram)',
+  })
   @IsNumber()
   @Min(1)
   weight!: number
@@ -42,12 +46,20 @@ export class CalculateFeeDto {
   @IsNumber()
   height?: number
 
-  @ApiProperty({ example: 150000, required: false, description: 'Giá trị bảo hiểm (VND)' })
+  @ApiProperty({
+    example: 150000,
+    required: false,
+    description: 'Giá trị bảo hiểm (VND)',
+  })
   @IsOptional()
   @IsNumber()
   insuranceValue?: number
 
-  @ApiProperty({ example: 2, required: false, description: 'Gói dịch vụ (2: Chuẩn)' })
+  @ApiProperty({
+    example: 2,
+    required: false,
+    description: 'Gói dịch vụ (2: Chuẩn)',
+  })
   @IsOptional()
   @IsNumber()
   serviceTypeId?: number
@@ -123,7 +135,11 @@ export class CreateGhnOrderDto {
   @IsNotEmpty()
   toDistrictId!: number
 
-  @ApiProperty({ example: 150000, required: false, description: 'Tiền thu hộ COD' })
+  @ApiProperty({
+    example: 150000,
+    required: false,
+    description: 'Tiền thu hộ COD',
+  })
   @IsOptional()
   @IsNumber()
   codAmount?: number
@@ -142,7 +158,10 @@ export class CreateGhnOrderDto {
   @IsEnum(['CHOTHUHANG', 'CHOXEMHANGKHONGTHU', 'KHONGCHOXEMHANG'])
   requiredNote?: 'CHOTHUHANG' | 'CHOXEMHANGKHONGTHU' | 'KHONGCHOXEMHANG'
 
-  @ApiProperty({ example: 2, description: '1: Shop trả phí ship, 2: Khách trả phí ship' })
+  @ApiProperty({
+    example: 2,
+    description: '1: Shop trả phí ship, 2: Khách trả phí ship',
+  })
   @IsOptional()
   @IsNumber()
   paymentTypeId?: number
@@ -167,7 +186,10 @@ export class PrintTokenDto {
 }
 
 export class UpdateGhnOrderDto {
-  @ApiProperty({ example: '5F5NH3LN', description: 'Mã vận đơn GHN (bắt buộc)' })
+  @ApiProperty({
+    example: '5F5NH3LN',
+    description: 'Mã vận đơn GHN (bắt buộc)',
+  })
   @IsString()
   @IsNotEmpty()
   order_code!: string
@@ -198,7 +220,11 @@ export class UpdateGhnOrderDto {
   @IsNumber()
   to_district_id?: number
 
-  @ApiProperty({ example: 150000, required: false, description: 'Tiền thu hộ COD (max 10.000.000)' })
+  @ApiProperty({
+    example: 150000,
+    required: false,
+    description: 'Tiền thu hộ COD (max 10.000.000)',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -209,7 +235,11 @@ export class UpdateGhnOrderDto {
   @IsString()
   content?: string
 
-  @ApiProperty({ example: 600, required: false, description: 'Trọng lượng (gram, max 50.000)' })
+  @ApiProperty({
+    example: 600,
+    required: false,
+    description: 'Trọng lượng (gram, max 50.000)',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -233,13 +263,21 @@ export class UpdateGhnOrderDto {
   @IsNumber()
   height?: number
 
-  @ApiProperty({ example: 150000, required: false, description: 'Giá trị bảo hiểm (max 5.000.000)' })
+  @ApiProperty({
+    example: 150000,
+    required: false,
+    description: 'Giá trị bảo hiểm (max 5.000.000)',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   insurance_value?: number
 
-  @ApiProperty({ example: 2, required: false, description: '1: Shop trả, 2: Khách trả' })
+  @ApiProperty({
+    example: 2,
+    required: false,
+    description: '1: Shop trả, 2: Khách trả',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -266,4 +304,3 @@ export class UpdateGhnOrderDto {
   @Type(() => GhnItemDto)
   items?: GhnItemDto[]
 }
-

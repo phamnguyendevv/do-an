@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
+import { CreateOrderInput } from '@domain/entities/bookstore-order.entity'
 import {
   BookStatusEnum,
   OrderStatusEnum,
@@ -24,14 +26,13 @@ import {
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 
+import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
-import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
-import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 import { Customer } from '@infrastructure/databases/postgresql/entities/customer.entity'
+import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
-import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
-import { CreateOrderInput } from '@domain/entities/bookstore-order.entity'
+import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 
 export { CreateOrderInput }
 
@@ -71,7 +72,10 @@ export class CreateBookstoreOrderUseCase {
     try {
       // 1. Check stock with pessimistic lock and prepare update
       for (const item of dto.items) {
-        const bookIdNum = typeof item.bookId === 'number' ? item.bookId : parseInt(String(item.bookId), 10)
+        const bookIdNum =
+          typeof item.bookId === 'number'
+            ? item.bookId
+            : parseInt(String(item.bookId), 10)
         if (isNaN(bookIdNum)) {
           throw this.exceptionsService.badRequestException({
             type: 'OrderValidationException',
@@ -116,7 +120,10 @@ export class CreateBookstoreOrderUseCase {
 
       // 3. Decrement stock & record movements
       for (const item of dto.items) {
-        const bookIdNum = typeof item.bookId === 'number' ? item.bookId : parseInt(String(item.bookId), 10)
+        const bookIdNum =
+          typeof item.bookId === 'number'
+            ? item.bookId
+            : parseInt(String(item.bookId), 10)
         const book = await queryRunner.manager.findOne(Book, {
           where: { id: bookIdNum },
         })
@@ -152,23 +159,49 @@ export class CreateBookstoreOrderUseCase {
       }
 
       const customer = dto.customerId
-        ? await queryRunner.manager.findOne(Customer, { where: { id: dto.customerId } })
-        : await queryRunner.manager.findOne(Customer, { where: { phone: dto.customerPhone } })
-      const savedCustomer = customer || await queryRunner.manager.save(Customer, queryRunner.manager.create(Customer, {
-        name: dto.customerName, phone: dto.customerPhone, address: dto.customerAddress,
-      }))
+        ? await queryRunner.manager.findOne(Customer, {
+            where: { id: dto.customerId },
+          })
+        : await queryRunner.manager.findOne(Customer, {
+            where: { phone: dto.customerPhone },
+          })
+      const savedCustomer =
+        customer ||
+        (await queryRunner.manager.save(
+          Customer,
+          queryRunner.manager.create(Customer, {
+            name: dto.customerName,
+            phone: dto.customerPhone,
+            address: dto.customerAddress,
+          }),
+        ))
 
       let promotion: Promotion | null = null
       if (dto.promotionCode) {
-        promotion = await queryRunner.manager.findOne(Promotion, { where: { code: dto.promotionCode.toUpperCase(), isActive: true } })
+        promotion = await queryRunner.manager.findOne(Promotion, {
+          where: { code: dto.promotionCode.toUpperCase(), isActive: true },
+        })
         const now = new Date()
-        if (!promotion || promotion.startsAt > now || promotion.endsAt < now || (promotion.usageLimit !== null && promotion.usageLimit !== undefined && promotion.usedCount >= promotion.usageLimit)) {
-          throw this.exceptionsService.badRequestException({ type: 'PromotionValidationException', message: 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn' })
+        if (
+          !promotion ||
+          promotion.startsAt > now ||
+          promotion.endsAt < now ||
+          (promotion.usageLimit !== null &&
+            promotion.usageLimit !== undefined &&
+            promotion.usedCount >= promotion.usageLimit)
+        ) {
+          throw this.exceptionsService.badRequestException({
+            type: 'PromotionValidationException',
+            message: 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn',
+          })
         }
       }
 
       // 4. Financial totals
-      const subtotal = dto.items.reduce((s, it) => s + it.price * it.quantity, 0)
+      const subtotal = dto.items.reduce(
+        (s, it) => s + it.price * it.quantity,
+        0,
+      )
       let discount = dto.discount || 0
       if (promotion && subtotal >= Number(promotion.minOrderValue)) {
         const promotionDiscount =
@@ -192,8 +225,12 @@ export class CreateBookstoreOrderUseCase {
         dto.shippingMethod?.includes('quầy') ||
         dto.status === OrderStatusEnum.Delivered
 
-      const status = dto.status || (isPos ? OrderStatusEnum.Delivered : OrderStatusEnum.Pending)
-      const payment = dto.payment || (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
+      const status =
+        dto.status ||
+        (isPos ? OrderStatusEnum.Delivered : OrderStatusEnum.Pending)
+      const payment =
+        dto.payment ||
+        (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
 
       // 6. Save order
       const order = queryRunner.manager.create(BookstoreOrder, {
@@ -251,15 +288,26 @@ export class CreateBookstoreOrderUseCase {
       await queryRunner.manager.save(OrderHistory, history)
 
       savedCustomer.totalOrders += 1
-      savedCustomer.totalSpent = Number(savedCustomer.totalSpent) + Number(savedOrder.total)
+      savedCustomer.totalSpent =
+        Number(savedCustomer.totalSpent) + Number(savedOrder.total)
       savedCustomer.lastOrderAt = new Date()
       await queryRunner.manager.save(Customer, savedCustomer)
-      await queryRunner.manager.save(ActivityLog, queryRunner.manager.create(ActivityLog, {
-        actorName: dto.actor || (isPos ? 'Bán tại quầy (POS)' : 'Staff/Admin'),
-        actorRole: dto.actorRole, action: 'CREATE', resourceType: 'BookstoreOrder', resourceId: String(savedOrder.id),
-        description: `Tạo đơn hàng ${savedOrder.orderCode}`,
-        metadata: { total: Number(savedOrder.total), customerId: savedCustomer.id },
-      }))
+      await queryRunner.manager.save(
+        ActivityLog,
+        queryRunner.manager.create(ActivityLog, {
+          actorName:
+            dto.actor || (isPos ? 'Bán tại quầy (POS)' : 'Staff/Admin'),
+          actorRole: dto.actorRole,
+          action: 'CREATE',
+          resourceType: 'BookstoreOrder',
+          resourceId: String(savedOrder.id),
+          description: `Tạo đơn hàng ${savedOrder.orderCode}`,
+          metadata: {
+            total: Number(savedOrder.total),
+            customerId: savedCustomer.id,
+          },
+        }),
+      )
 
       await queryRunner.commitTransaction()
 
@@ -275,4 +323,3 @@ export class CreateBookstoreOrderUseCase {
     }
   }
 }
-

@@ -68,11 +68,7 @@ interface AddressBookDialogProps {
   onSelectContact: (contact: AddressBookContact) => void;
 }
 
-export function AddressBookDialog({
-  open,
-  onOpenChange,
-  onSelectContact,
-}: AddressBookDialogProps) {
+export function AddressBookDialog({ open, onOpenChange, onSelectContact }: AddressBookDialogProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Extract unique contacts from previous orders in the store + sample contacts
@@ -115,7 +111,7 @@ export function AddressBookDialog({
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.phone.includes(q) ||
-        c.address.toLowerCase().includes(q)
+        c.address.toLowerCase().includes(q),
     );
   }, [contacts, searchTerm]);
 

@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
+
 import { CookieOptions, Response } from 'express'
 
 import { CheckUserExistenceUseCase } from '@use-cases/auth/check-user-existence.use-case'
@@ -79,7 +80,10 @@ export class AuthController {
   @Post('login')
   @Throttle({ medium: { limit: 10, ttl: 60000 } })
   @ApiBody({ type: LoginDto })
-  @ApiOperation({ summary: 'Login', description: 'Login a user with rate limit (10/min)' })
+  @ApiOperation({
+    summary: 'Login',
+    description: 'Login a user with rate limit (10/min)',
+  })
   @ApiExtraModels(LoginPresenter)
   @ApiResponseType(LoginPresenter, false)
   async login(
@@ -124,7 +128,8 @@ export class AuthController {
   @Get('check-exist')
   @ApiOperation({
     summary: 'Check existence',
-    description: 'Check if email, username, or phone already exists in the system',
+    description:
+      'Check if email, username, or phone already exists in the system',
   })
   @ApiExtraModels(CheckExistPresenter)
   @ApiResponseType(CheckExistPresenter, false)

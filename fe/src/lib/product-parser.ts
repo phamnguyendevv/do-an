@@ -20,7 +20,8 @@ export interface ParsedProductListResult {
 /**
  * Noise words at the start of product keyword that should be stripped
  */
-const NOISE_PREFIX_REGEX = /^(?:bản|ban|cuốn|cuon|quyển|quyen|sách|sach|tập|tap|bộ|bo|combo|tờ|to|cái|cai|chiếc|chiec)\s+/i;
+const NOISE_PREFIX_REGEX =
+  /^(?:bản|ban|cuốn|cuon|quyển|quyen|sách|sach|tập|tap|bộ|bo|combo|tờ|to|cái|cai|chiếc|chiec)\s+/i;
 
 /**
  * Extract quantity and cleaned product keyword from a single token
@@ -33,7 +34,9 @@ export function extractQuantityAndKeyword(token: string): { quantity: number; ke
   let rawKeyword = trimmed;
 
   // Case 1: Prefix quantity with explicit multiplier or unit: "2 bản xanh lá", "3x zhenti", "2 * xanh lá", "2-xanh lá"
-  const prefixExplicitMatch = trimmed.match(/^(\d{1,4})\s*(?:x|\*|bản|ban|cuốn|cuon|quyển|quyen|c|q|k|-|\:)\s+(.+)$/i);
+  const prefixExplicitMatch = trimmed.match(
+    /^(\d{1,4})\s*(?:x|\*|bản|ban|cuốn|cuon|quyển|quyen|c|q|k|-|\:)\s+(.+)$/i,
+  );
   if (prefixExplicitMatch) {
     const num = parseInt(prefixExplicitMatch[1], 10);
     if (!isNaN(num) && num > 0 && num <= 9999) {
@@ -60,7 +63,9 @@ export function extractQuantityAndKeyword(token: string): { quantity: number; ke
         }
       } else {
         // Case 2: Suffix quantity: "xanh lá 2", "zhenti x3", "tinh giảng sl: 2", "bản xanh lá - 2"
-        const suffixMatch = trimmed.match(/^(.+?)\s*(?:x|\*|:|-|sl|số lượng|so luong)?\s*(\d{1,4})\s*(?:bản|ban|cuốn|cuon|quyển|quyen|c|q)?$/i);
+        const suffixMatch = trimmed.match(
+          /^(.+?)\s*(?:x|\*|:|-|sl|số lượng|so luong)?\s*(\d{1,4})\s*(?:bản|ban|cuốn|cuon|quyển|quyen|c|q)?$/i,
+        );
         if (suffixMatch) {
           const potentialTitle = suffixMatch[1].trim();
           const num = parseInt(suffixMatch[2], 10);
@@ -114,7 +119,11 @@ export function scoreBookMatch(book: Book, normQuery: string): number {
   }
 
   // 5. Title contains query as full word or phrase
-  if (normTitle.includes(` ${normQuery} `) || normTitle.startsWith(`${normQuery} `) || normTitle.endsWith(` ${normQuery}`)) {
+  if (
+    normTitle.includes(` ${normQuery} `) ||
+    normTitle.startsWith(`${normQuery} `) ||
+    normTitle.endsWith(` ${normQuery}`)
+  ) {
     return 650 - Math.min(100, normTitle.length - normQuery.length);
   }
 
@@ -160,7 +169,10 @@ export function scoreBookMatch(book: Book, normQuery: string): number {
 /**
  * Find the best matching book from inventory for a given keyword
  */
-export function findBestMatchingBook(keyword: string, books: Book[]): { book: Book | null; score: number } {
+export function findBestMatchingBook(
+  keyword: string,
+  books: Book[],
+): { book: Book | null; score: number } {
   const norm = normalizeText(keyword);
   if (!norm || books.length === 0) return { book: null, score: 0 };
 
@@ -258,11 +270,13 @@ export function cleanConversationalProductText(input: string): string {
 
   // 1. Remove vocatives / greetings at the beginning:
   // e.g. "E oii", "Em ơi", "Shop ơi", "Ad oiii", "Bạn ơi", "Chị oii", "Alo shop", "Hi shop", etc.
-  const vocativeRegex = /^(?:alo|hi|hello|hey)?\s*(?:shop|ad|bạn|ban|chị|chi|c|anh|a|e|em)\s*(?:ơi+|oi+|ơii+|ơiii+|oiii+|nhé|nhe|nha|ạ|a)?\s*[:,-]?\s*/i;
+  const vocativeRegex =
+    /^(?:alo|hi|hello|hey)?\s*(?:shop|ad|bạn|ban|chị|chi|c|anh|a|e|em)\s*(?:ơi+|oi+|ơii+|ơiii+|oiii+|nhé|nhe|nha|ạ|a)?\s*[:,-]?\s*/i;
 
   // 2. Remove order intent phrases at the beginning:
   // e.g. "gửi thêm cho c", "lấy thêm cho mình", "cho e đặt", "muốn mua thêm", "chốt hộ mình", "lấy 8 cuốn này", etc.
-  const orderIntentRegex = /^(?:cho|gửi|gui|ship|giao)?\s*(?:mình|minh|em|e|chị|chi|c|anh|a|tôi|toi|khách|khach|bạn|ban)?\s*(?:muốn|cần)?\s*(?:lấy|lay|đặt|dat|mua|chốt|chot|gửi|gui|ship|giao|bán|ban|order|order giúp|chốt đơn|chot don)\s*(?:thêm|them|giúp|giup|hộ|ho)?\s*(?:cho\s+(?:mình|minh|em|e|chị|chi|c|anh|a|tôi|toi|khách|khach|bạn|ban|bé|be))?\s*(?:thêm|them|giúp|giup|hộ|ho)?\s*(?:(?:\d+\s*(?:cuốn|cuon|quyển|quyen|bản|ban|sách|sach|món|mon|cái|cai|bộ|bo))\s+(?:này|nay|sau|đây|day))?\s*(?:này|nay|sau|đây|day|nhe|nhé|nha|ạ|a)?\s*[:,-]?\s*/i;
+  const orderIntentRegex =
+    /^(?:cho|gửi|gui|ship|giao)?\s*(?:mình|minh|em|e|chị|chi|c|anh|a|tôi|toi|khách|khach|bạn|ban)?\s*(?:muốn|cần)?\s*(?:lấy|lay|đặt|dat|mua|chốt|chot|gửi|gui|ship|giao|bán|ban|order|order giúp|chốt đơn|chot don)\s*(?:thêm|them|giúp|giup|hộ|ho)?\s*(?:cho\s+(?:mình|minh|em|e|chị|chi|c|anh|a|tôi|toi|khách|khach|bạn|ban|bé|be))?\s*(?:thêm|them|giúp|giup|hộ|ho)?\s*(?:(?:\d+\s*(?:cuốn|cuon|quyển|quyen|bản|ban|sách|sach|món|mon|cái|cai|bộ|bo))\s+(?:này|nay|sau|đây|day))?\s*(?:này|nay|sau|đây|day|nhe|nhé|nha|ạ|a)?\s*[:,-]?\s*/i;
 
   let prevText = "";
   while (text !== prevText) {
@@ -283,7 +297,8 @@ export function cleanConversationalProductText(input: string): string {
 
   // 3. Remove trailing shipping notes, gratitude, or conversational closing words:
   // e.g. "freesip nha", "freeship nhé shop", "fs nha", "giao nhanh giúp mình", "tks shop", "cảm ơn", etc.
-  const trailingChatRegex = /\s+(?:free\s*ship|freeship|freesip|fresship|fs|miễn\s*phí\s*ship|mien\s*phi\s*ship|free\s*ship\s*nha|freeship\s*nhé|freeship\s*nha|freeship\s*nha\s*shop|freeship\s*cho\s*em|ship\s*nhanh|giao\s*sớm|giao\s*nhanh|bọc\s*kỹ|bọc\s*cẩn\s*thận|gọi\s*trước\s*khi\s*giao|giao\s*giờ\s*hành\s*chính|gọi\s*trước|tks\s*shop|thanks\s*shop|thanks|cảm\s*ơn\s*shop|cam\s*on\s*shop|cảm\s*ơn|cam\s*on|nhé\s*shop|nha\s*shop|nhe\s*shop|nha+|nhé+|nhe+|ạ|a|nha\s*b|nhé\s*b|nha\s*e|nhé\s*e)\s*$/i;
+  const trailingChatRegex =
+    /\s+(?:free\s*ship|freeship|freesip|fresship|fs|miễn\s*phí\s*ship|mien\s*phi\s*ship|free\s*ship\s*nha|freeship\s*nhé|freeship\s*nha|freeship\s*nha\s*shop|freeship\s*cho\s*em|ship\s*nhanh|giao\s*sớm|giao\s*nhanh|bọc\s*kỹ|bọc\s*cẩn\s*thận|gọi\s*trước\s*khi\s*giao|giao\s*giờ\s*hành\s*chính|gọi\s*trước|tks\s*shop|thanks\s*shop|thanks|cảm\s*ơn\s*shop|cam\s*on\s*shop|cảm\s*ơn|cam\s*on|nhé\s*shop|nha\s*shop|nhe\s*shop|nha+|nhé+|nhe+|ạ|a|nha\s*b|nhé\s*b|nha\s*e|nhé\s*e)\s*$/i;
 
   prevText = "";
   while (text !== prevText && trailingChatRegex.test(text)) {
@@ -327,7 +342,7 @@ export function parseProductList(rawInput: string, books: Book[]): ParsedProduct
 
   for (const rawToken of rawTokens) {
     const extracted = extractQuantityAndKeyword(rawToken);
-    
+
     // Check match with extracted keyword
     const matchWithKeyword = findBestMatchingBook(extracted.keyword, books);
     // Also check match with the whole raw token (in case the leading number is part of the title like "25 tian")

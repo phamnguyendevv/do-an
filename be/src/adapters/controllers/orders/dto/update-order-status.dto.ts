@@ -5,7 +5,15 @@ import { IsNotEmpty, IsString } from 'class-validator'
 export class UpdateOrderStatusDto {
   @ApiProperty({
     example: 'CONFIRMED',
-    enum: ['PENDING', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'RETURNED'],
+    enum: [
+      'PENDING',
+      'CONFIRMED',
+      'PREPARING',
+      'SHIPPING',
+      'DELIVERED',
+      'CANCELLED',
+      'RETURNED',
+    ],
     required: true,
   })
   @IsString()

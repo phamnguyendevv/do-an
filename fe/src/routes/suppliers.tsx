@@ -4,7 +4,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Mail, MapPin, MoreHorizontal, Pencil, Phone, Plus, Trash2, User } from "lucide-react";
+import {
+  Building2,
+  Mail,
+  MapPin,
+  MoreHorizontal,
+  Pencil,
+  Phone,
+  Plus,
+  Trash2,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/layout/app-shell";

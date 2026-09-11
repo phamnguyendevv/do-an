@@ -70,7 +70,9 @@ export function ProductLines({
           >
             <div className="grid gap-3 sm:grid-cols-12 sm:items-start">
               {/* Cột 1: Sản phẩm */}
-              <div className={withPrice ? "space-y-1.5 sm:col-span-5" : "space-y-1.5 sm:col-span-7"}>
+              <div
+                className={withPrice ? "space-y-1.5 sm:col-span-5" : "space-y-1.5 sm:col-span-7"}
+              >
                 <Label className="text-xs font-semibold text-foreground">
                   Sản phẩm <span className="text-destructive">*</span>
                 </Label>
@@ -104,7 +106,10 @@ export function ProductLines({
                         <SelectItem key={b.id} value={String(b.id)}>
                           <span className="font-medium">{b.title}</span>
                           {b.author ? (
-                            <span className="ml-1 text-xs text-muted-foreground"> — {b.author}</span>
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              {" "}
+                              — {b.author}
+                            </span>
                           ) : null}
                           {checkStock ? ` (tồn ${b.stock})` : ""}
                         </SelectItem>
@@ -114,8 +119,11 @@ export function ProductLines({
                 </Select>
                 {book ? (
                   <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
-                    <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
-                      Tồn kho: <strong className="font-semibold text-foreground">{book.stock}</strong> cuốn
+                    <span
+                      className={over ? "font-medium text-destructive" : "text-muted-foreground"}
+                    >
+                      Tồn kho:{" "}
+                      <strong className="font-semibold text-foreground">{book.stock}</strong> cuốn
                     </span>
                     <span className="text-muted-foreground">•</span>
                     <span className="text-muted-foreground">
@@ -136,7 +144,9 @@ export function ProductLines({
                   min={1}
                   className="h-9"
                   value={line.quantity ?? 1}
-                  onChange={(e) => update(i, { quantity: Math.max(1, Number(e.target.value) || 1) })}
+                  onChange={(e) =>
+                    update(i, { quantity: Math.max(1, Number(e.target.value) || 1) })
+                  }
                   aria-invalid={over}
                 />
                 {over ? (

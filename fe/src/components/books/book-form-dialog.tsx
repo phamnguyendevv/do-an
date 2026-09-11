@@ -53,7 +53,7 @@ async function fetchCategoryOptions(): Promise<string[]> {
     const res = await categoryApi.list({ size: 100 });
     const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     return items
-      .map((item: any) => (typeof item === "string" ? item : item?.name))
+      .map((item: { name?: string } | string) => (typeof item === "string" ? item : item?.name))
       .filter(Boolean) as string[];
   } catch {
     return [];
@@ -82,7 +82,7 @@ export function BookFormDialog({ trigger, book }: BookFormDialogProps) {
     return Array.from(
       new Set(
         rawCategories
-          .map((c: any) => (typeof c === "string" ? c : c?.name))
+          .map((c: { name?: string } | string) => (typeof c === "string" ? c : c?.name))
           .map((s) => (typeof s === "string" ? s.trim() : ""))
           .filter((name): name is string => Boolean(name && name.length > 0)),
       ),

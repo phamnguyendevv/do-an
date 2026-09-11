@@ -48,4 +48,3 @@ export class CreateBookUseCase {
     return BookStatusEnum.InStock
   }
 }
-

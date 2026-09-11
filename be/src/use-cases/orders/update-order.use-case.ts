@@ -41,7 +41,8 @@ export class UpdateBookstoreOrderUseCase {
       actorRole?: string
     },
   ): Promise<BookstoreOrderEntity> {
-    const idNum = typeof identifier === 'number' ? identifier : parseInt(identifier, 10)
+    const idNum =
+      typeof identifier === 'number' ? identifier : parseInt(identifier, 10)
     let order: BookstoreOrderEntity | null = null
 
     if (!isNaN(idNum)) {
@@ -62,22 +63,32 @@ export class UpdateBookstoreOrderUseCase {
     if (order.status !== OrderStatusEnum.Pending) {
       throw this.exceptionsService.badRequestException({
         type: 'OrderUpdateForbiddenException',
-        message: 'Chỉ có thể chỉnh sửa đơn hàng ở trạng thái Chờ xử lý (PENDING)',
+        message:
+          'Chỉ có thể chỉnh sửa đơn hàng ở trạng thái Chờ xử lý (PENDING)',
       })
     }
 
     const patch: Partial<BookstoreOrderEntity> = {}
     const changedFields: string[] = []
 
-    if (dto.customerName !== undefined && dto.customerName !== order.customerName) {
+    if (
+      dto.customerName !== undefined &&
+      dto.customerName !== order.customerName
+    ) {
       patch.customerName = dto.customerName
       changedFields.push(`Tên khách: "${dto.customerName}"`)
     }
-    if (dto.customerPhone !== undefined && dto.customerPhone !== order.customerPhone) {
+    if (
+      dto.customerPhone !== undefined &&
+      dto.customerPhone !== order.customerPhone
+    ) {
       patch.customerPhone = dto.customerPhone
       changedFields.push(`SĐT: "${dto.customerPhone}"`)
     }
-    if (dto.customerAddress !== undefined && dto.customerAddress !== order.customerAddress) {
+    if (
+      dto.customerAddress !== undefined &&
+      dto.customerAddress !== order.customerAddress
+    ) {
       patch.customerAddress = dto.customerAddress
       changedFields.push(`Địa chỉ: "${dto.customerAddress}"`)
     }
@@ -90,12 +101,16 @@ export class UpdateBookstoreOrderUseCase {
     }
 
     if (dto.shippingFee !== undefined || dto.discount !== undefined) {
-      const shippingFee = dto.shippingFee !== undefined ? dto.shippingFee : order.shippingFee
-      const discount = dto.discount !== undefined ? dto.discount : order.discount
+      const shippingFee =
+        dto.shippingFee !== undefined ? dto.shippingFee : order.shippingFee
+      const discount =
+        dto.discount !== undefined ? dto.discount : order.discount
       patch.shippingFee = shippingFee
       patch.discount = discount
       patch.total = Math.max(0, order.subtotal - discount + shippingFee)
-      changedFields.push(`Tổng tiền mới: ${patch.total.toLocaleString('vi-VN')}đ`)
+      changedFields.push(
+        `Tổng tiền mới: ${patch.total.toLocaleString('vi-VN')}đ`,
+      )
     }
 
     await this.orderRepository.updateOrder({ id: order.id }, patch)

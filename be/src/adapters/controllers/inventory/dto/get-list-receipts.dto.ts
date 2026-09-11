@@ -1,9 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
+
 import { Type } from 'class-transformer'
 import { IsNumber, IsOptional, IsString } from 'class-validator'
 
 export class GetListReceiptsDto {
-  @ApiPropertyOptional({ description: 'Từ khóa tìm kiếm (mã phiếu, NCC, lý do, ghi chú)' })
+  @ApiPropertyOptional({
+    description: 'Từ khóa tìm kiếm (mã phiếu, NCC, lý do, ghi chú)',
+  })
   @IsOptional()
   @IsString()
   search?: string
@@ -20,13 +23,17 @@ export class GetListReceiptsDto {
   @IsNumber()
   page?: number
 
-  @ApiPropertyOptional({ description: 'ID nhà cung cấp (chỉ áp dụng cho phiếu nhập)' })
+  @ApiPropertyOptional({
+    description: 'ID nhà cung cấp (chỉ áp dụng cho phiếu nhập)',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   supplierId?: number
 
-  @ApiPropertyOptional({ description: 'Lý do xuất (chỉ áp dụng cho phiếu xuất)' })
+  @ApiPropertyOptional({
+    description: 'Lý do xuất (chỉ áp dụng cho phiếu xuất)',
+  })
   @IsOptional()
   @IsString()
   reason?: string

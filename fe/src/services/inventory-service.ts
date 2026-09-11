@@ -24,7 +24,8 @@ export function validateLines(lines: StockLine[], requirePrice: boolean): string
   if (lines.length === 0) return "Vui lòng thêm ít nhất một sản phẩm.";
   if (lines.some((l) => !l.bookId)) return "Vui lòng chọn sách cho tất cả các dòng.";
   const bookIds = lines.map((l) => l.bookId);
-  if (new Set(bookIds).size !== bookIds.length) return "Không được chọn trùng lặp sản phẩm trong cùng một phiếu.";
+  if (new Set(bookIds).size !== bookIds.length)
+    return "Không được chọn trùng lặp sản phẩm trong cùng một phiếu.";
   if (lines.some((l) => !l.quantity || l.quantity < 1)) return "Số lượng phải lớn hơn 0.";
   if (requirePrice && lines.some((l) => l.price < 0)) return "Giá không hợp lệ.";
   return null;

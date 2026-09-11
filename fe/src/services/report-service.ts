@@ -10,8 +10,7 @@ export const reportRanges: { value: RangeKey; label: string; days: number }[] = 
   { value: "1y", label: "1 năm qua", days: 365 },
 ];
 
-export const rangeDays = (key: RangeKey) =>
-  reportRanges.find((r) => r.value === key)?.days ?? 30;
+export const rangeDays = (key: RangeKey) => reportRanges.find((r) => r.value === key)?.days ?? 30;
 
 const REVENUE_STATUSES = new Set(["CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"]);
 
@@ -110,7 +109,6 @@ const totalsOf = (orders: Order[], books: Book[]): Totals => {
 /** Percentage change vs the previous period; null when there is no baseline. */
 export const growth = (current: number, previous: number): number | null =>
   previous === 0 ? null : ((current - previous) / previous) * 100;
-
 
 export const growthHint = (current: number, previous: number) => {
   const g = growth(current, previous);
@@ -279,9 +277,7 @@ export function buildReport(
     previous: previousOrders.length ? totalsOf(previousOrders, books) : emptyTotals(),
     series,
     stockMovement,
-    bestSellers: [...soldByBook.values()]
-      .sort((a, b) => b.sold - a.sold)
-      .slice(0, 5),
+    bestSellers: [...soldByBook.values()].sort((a, b) => b.sold - a.sold).slice(0, 5),
     byCategory: [...categoryMap.entries()]
       .map(([category, data]) => ({ category, value: data.value, count: data.count }))
       .sort((a, b) => b.value - a.value),
@@ -294,11 +290,7 @@ export function buildReport(
 }
 
 /** Export rich multi-section analytics report to CSV */
-export function exportFullAnalyticsReport(
-  filename: string,
-  report: Report,
-  rangeLabel: string,
-) {
+export function exportFullAnalyticsReport(filename: string, report: Report, rangeLabel: string) {
   const lines: string[] = [];
 
   lines.push(`BÁO CÁO PHÂN TÍCH KINH DOANH - BOOKSTOCK (${rangeLabel})`);

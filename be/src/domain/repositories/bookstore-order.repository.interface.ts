@@ -22,7 +22,9 @@ export interface IBookstoreOrderRepositoryInterface {
     data: BookstoreOrderEntity[]
     pagination: IPaginationParams
   }>
-  createOrder(order: Partial<BookstoreOrderEntity>): Promise<BookstoreOrderEntity>
+  createOrder(
+    order: Partial<BookstoreOrderEntity>,
+  ): Promise<BookstoreOrderEntity>
   updateOrder(
     params: {
       id: number
@@ -31,8 +33,10 @@ export interface IBookstoreOrderRepositoryInterface {
   ): Promise<boolean>
   findOrderById(id: number): Promise<BookstoreOrderEntity | null>
   findOrderByCode(orderCode: string): Promise<BookstoreOrderEntity | null>
-  findOrderByCodeVariants(variants: string[], digits?: string): Promise<BookstoreOrderEntity | null>
+  findOrderByCodeVariants(
+    variants: string[],
+    digits?: string,
+  ): Promise<BookstoreOrderEntity | null>
   findUnpaidOrderByAmount(amount: number): Promise<BookstoreOrderEntity | null>
   count(): Promise<number>
 }
-

@@ -56,7 +56,6 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-
 // Request Interceptor: Attach Access Token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -66,7 +65,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response Interceptor: Auto Refresh Token Queue
@@ -139,7 +138,7 @@ apiClient.interceptors.response.use(
               Authorization: `Bearer ${refreshToken}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         const payload = refreshResponse.data?.data ?? refreshResponse.data;
@@ -172,7 +171,7 @@ apiClient.interceptors.response.use(
       "Yêu cầu thất bại";
 
     return Promise.reject(new Error(errorMsg));
-  }
+  },
 );
 
 /**
@@ -180,7 +179,7 @@ apiClient.interceptors.response.use(
  */
 export async function apiRequest<T>(
   path: string,
-  options: (AxiosRequestConfig & { method?: string; body?: any }) | RequestInit = {}
+  options: (AxiosRequestConfig & { method?: string; body?: any }) | RequestInit = {},
 ): Promise<T> {
   const method = (options.method || "GET").toLowerCase();
 

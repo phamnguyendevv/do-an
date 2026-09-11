@@ -30,7 +30,11 @@ import {
   useImportReceipts,
   useInventorySummary,
 } from "@/hooks/use-store";
-import { inventoryApi, type StockMovementApiItem, type StockAuditApiItem } from "@/lib/inventory-api";
+import {
+  inventoryApi,
+  type StockMovementApiItem,
+  type StockAuditApiItem,
+} from "@/lib/inventory-api";
 import { exportBooksToExcel, exportMovementsToExcel } from "@/lib/excel-service";
 import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
@@ -42,7 +46,10 @@ export const Route = createFileRoute("/inventory/")({
   head: () => ({
     meta: [
       { title: "Kho hàng — BookStock" },
-      { name: "description", content: "Tổng quan tồn kho, phiếu nhập, phiếu xuất, sổ kho và kiểm kê tồn kho." },
+      {
+        name: "description",
+        content: "Tổng quan tồn kho, phiếu nhập, phiếu xuất, sổ kho và kiểm kê tồn kho.",
+      },
       { property: "og:title", content: "Kho hàng — BookStock" },
       { property: "og:description", content: "Theo dõi tồn kho, nhập xuất và cảnh báo hết hàng." },
     ],
@@ -51,33 +58,126 @@ export const Route = createFileRoute("/inventory/")({
 });
 
 const stockColumns: DataTableColumn<Book>[] = [
-  { key: "title", header: "Sách", sortable: true, value: (b) => b.title, cell: (b) => <span className="font-medium">{b.title}</span> },
-  { key: "category", header: "Danh mục", cell: (b) => <span className="text-muted-foreground">{b.category}</span> },
-  { key: "stock", header: "Tồn kho", align: "right", sortable: true, value: (b) => b.stock, cell: (b) => <span className="tabular-nums font-semibold">{formatNumber(b.stock)}</span> },
-  { key: "min", header: "Tối thiểu", align: "right", cell: (b) => <span className="tabular-nums text-muted-foreground">{b.minStock}</span> },
-  { key: "value", header: "Giá trị tồn", align: "right", sortable: true, value: (b) => b.stock * b.purchasePrice, cell: (b) => <span className="tabular-nums">{formatCurrency(b.stock * b.purchasePrice)}</span> },
-  { key: "status", header: "Trạng thái", cell: (b) => <StatusBadge tone={bookStatusTone[b.status]}>{bookStatusLabel[b.status]}</StatusBadge> },
+  {
+    key: "title",
+    header: "Sách",
+    sortable: true,
+    value: (b) => b.title,
+    cell: (b) => <span className="font-medium">{b.title}</span>,
+  },
+  {
+    key: "category",
+    header: "Danh mục",
+    cell: (b) => <span className="text-muted-foreground">{b.category}</span>,
+  },
+  {
+    key: "stock",
+    header: "Tồn kho",
+    align: "right",
+    sortable: true,
+    value: (b) => b.stock,
+    cell: (b) => <span className="tabular-nums font-semibold">{formatNumber(b.stock)}</span>,
+  },
+  {
+    key: "min",
+    header: "Tối thiểu",
+    align: "right",
+    cell: (b) => <span className="tabular-nums text-muted-foreground">{b.minStock}</span>,
+  },
+  {
+    key: "value",
+    header: "Giá trị tồn",
+    align: "right",
+    sortable: true,
+    value: (b) => b.stock * b.purchasePrice,
+    cell: (b) => <span className="tabular-nums">{formatCurrency(b.stock * b.purchasePrice)}</span>,
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    cell: (b) => (
+      <StatusBadge tone={bookStatusTone[b.status]}>{bookStatusLabel[b.status]}</StatusBadge>
+    ),
+  },
 ];
 
 const importColumns: DataTableColumn<ImportReceipt>[] = [
-  { key: "id", header: "Mã phiếu", sortable: true, value: (r) => r.id, cell: (r) => <span className="font-mono text-xs font-semibold text-primary">{r.id}</span> },
-  { key: "supplier", header: "Nhà cung cấp", sortable: true, value: (r) => r.supplier, cell: (r) => <span className="font-medium">{r.supplier}</span> },
+  {
+    key: "id",
+    header: "Mã phiếu",
+    sortable: true,
+    value: (r) => r.id,
+    cell: (r) => <span className="font-mono text-xs font-semibold text-primary">{r.id}</span>,
+  },
+  {
+    key: "supplier",
+    header: "Nhà cung cấp",
+    sortable: true,
+    value: (r) => r.supplier,
+    cell: (r) => <span className="font-medium">{r.supplier}</span>,
+  },
   { key: "date", header: "Ngày nhập", cell: (r) => formatDate(r.date) },
-  { key: "items", header: "Số lượng", align: "right", sortable: true, value: (r) => r.totalItems, cell: (r) => <span className="tabular-nums">{formatNumber(r.totalItems)}</span> },
-  { key: "value", header: "Giá trị", align: "right", sortable: true, value: (r) => r.totalValue, cell: (r) => <span className="tabular-nums font-medium">{formatCurrency(r.totalValue)}</span> },
-  { key: "note", header: "Ghi chú", cell: (r) => <span className="text-muted-foreground text-xs">{r.note || "—"}</span> },
+  {
+    key: "items",
+    header: "Số lượng",
+    align: "right",
+    sortable: true,
+    value: (r) => r.totalItems,
+    cell: (r) => <span className="tabular-nums">{formatNumber(r.totalItems)}</span>,
+  },
+  {
+    key: "value",
+    header: "Giá trị",
+    align: "right",
+    sortable: true,
+    value: (r) => r.totalValue,
+    cell: (r) => <span className="tabular-nums font-medium">{formatCurrency(r.totalValue)}</span>,
+  },
+  {
+    key: "note",
+    header: "Ghi chú",
+    cell: (r) => <span className="text-muted-foreground text-xs">{r.note || "—"}</span>,
+  },
 ];
 
 const exportColumns: DataTableColumn<ExportReceipt>[] = [
-  { key: "id", header: "Mã phiếu", sortable: true, value: (r) => r.id, cell: (r) => <span className="font-mono text-xs font-semibold text-primary">{r.id}</span> },
-  { key: "order", header: "Đơn hàng", cell: (r) => <span className="font-mono text-xs">{r.orderId || "—"}</span> },
+  {
+    key: "id",
+    header: "Mã phiếu",
+    sortable: true,
+    value: (r) => r.id,
+    cell: (r) => <span className="font-mono text-xs font-semibold text-primary">{r.id}</span>,
+  },
+  {
+    key: "order",
+    header: "Đơn hàng",
+    cell: (r) => <span className="font-mono text-xs">{r.orderId || "—"}</span>,
+  },
   { key: "date", header: "Ngày xuất", cell: (r) => formatDate(r.date) },
-  { key: "items", header: "Số lượng", align: "right", sortable: true, value: (r) => r.totalItems, cell: (r) => <span className="tabular-nums">{r.totalItems}</span> },
-  { key: "reason", header: "Lý do", cell: (r) => <span className="text-muted-foreground">{r.reason}</span> },
-  { key: "note", header: "Ghi chú", cell: (r) => <span className="text-muted-foreground text-xs">{r.note || "—"}</span> },
+  {
+    key: "items",
+    header: "Số lượng",
+    align: "right",
+    sortable: true,
+    value: (r) => r.totalItems,
+    cell: (r) => <span className="tabular-nums">{r.totalItems}</span>,
+  },
+  {
+    key: "reason",
+    header: "Lý do",
+    cell: (r) => <span className="text-muted-foreground">{r.reason}</span>,
+  },
+  {
+    key: "note",
+    header: "Ghi chú",
+    cell: (r) => <span className="text-muted-foreground text-xs">{r.note || "—"}</span>,
+  },
 ];
 
-const movementTypeMap: Record<string, { label: string; tone: "positive" | "negative" | "warning" | "neutral" | "brand" }> = {
+const movementTypeMap: Record<
+  string,
+  { label: string; tone: "positive" | "negative" | "warning" | "neutral" | "brand" }
+> = {
   IMPORT: { label: "Nhập kho", tone: "positive" },
   EXPORT: { label: "Xuất kho", tone: "negative" },
   SALE: { label: "Bán hàng", tone: "brand" },
@@ -117,7 +217,9 @@ const movementColumns: DataTableColumn<StockMovementApiItem>[] = [
     cell: (m) => {
       const isPositive = m.type === "IMPORT" || m.type === "RESTOCK";
       return (
-        <span className={`tabular-nums font-semibold ${isPositive ? "text-emerald-600" : "text-rose-600"}`}>
+        <span
+          className={`tabular-nums font-semibold ${isPositive ? "text-emerald-600" : "text-rose-600"}`}
+        >
           {isPositive ? `+${m.quantity}` : `-${m.quantity}`}
         </span>
       );
@@ -141,7 +243,11 @@ const movementColumns: DataTableColumn<StockMovementApiItem>[] = [
   {
     key: "note",
     header: "Diễn giải",
-    cell: (m) => <span className="text-muted-foreground text-xs truncate max-w-[200px] inline-block">{m.note || "—"}</span>,
+    cell: (m) => (
+      <span className="text-muted-foreground text-xs truncate max-w-[200px] inline-block">
+        {m.note || "—"}
+      </span>
+    ),
   },
 ];
 
@@ -179,7 +285,11 @@ function InventoryPage() {
               <Button size="sm" variant="outline" onClick={() => exportBooksToExcel(books)}>
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Excel Tồn kho
               </Button>
-              <Button size="sm" variant="outline" onClick={() => exportMovementsToExcel(movements as any)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => exportMovementsToExcel(movements as any)}
+              >
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Sổ kho
               </Button>
               <Can I="create" a="StockMovement">
@@ -208,10 +318,30 @@ function InventoryPage() {
         />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Tổng tồn kho" value={formatNumber(inventorySummary.totalStock)} icon={Boxes} />
-          <StatCard label="Sắp hết hàng" value={String(inventorySummary.lowStock)} hint="Cần nhập thêm" trend="down" icon={AlertTriangle} />
-          <StatCard label="Hết hàng" value={String(inventorySummary.outOfStock)} trend="down" icon={PackageX} />
-          <StatCard label="Giá trị kho" value={formatCompactCurrency(inventorySummary.inventoryValue)} hint="Theo giá nhập" icon={Wallet} />
+          <StatCard
+            label="Tổng tồn kho"
+            value={formatNumber(inventorySummary.totalStock)}
+            icon={Boxes}
+          />
+          <StatCard
+            label="Sắp hết hàng"
+            value={String(inventorySummary.lowStock)}
+            hint="Cần nhập thêm"
+            trend="down"
+            icon={AlertTriangle}
+          />
+          <StatCard
+            label="Hết hàng"
+            value={String(inventorySummary.outOfStock)}
+            trend="down"
+            icon={PackageX}
+          />
+          <StatCard
+            label="Giá trị kho"
+            value={formatCompactCurrency(inventorySummary.inventoryValue)}
+            hint="Theo giá nhập"
+            icon={Wallet}
+          />
         </div>
 
         {reorders.length > 0 ? (
@@ -232,11 +362,16 @@ function InventoryPage() {
                     <p className="truncate font-medium">{b.title}</p>
                     <p className="text-xs text-muted-foreground">
                       Tồn {formatNumber(b.stock)} / tối thiểu {b.minStock} — đề xuất nhập{" "}
-                      <span className="font-medium text-foreground">{formatNumber(b.suggestedQuantity)}</span> cuốn
+                      <span className="font-medium text-foreground">
+                        {formatNumber(b.suggestedQuantity)}
+                      </span>{" "}
+                      cuốn
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <StatusBadge tone={bookStatusTone[b.status]}>{bookStatusLabel[b.status]}</StatusBadge>
+                    <StatusBadge tone={bookStatusTone[b.status]}>
+                      {bookStatusLabel[b.status]}
+                    </StatusBadge>
                     <Button size="sm" variant="outline" asChild>
                       <Link to="/inventory/import">Nhập kho</Link>
                     </Button>

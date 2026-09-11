@@ -2,6 +2,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 
@@ -9,6 +10,7 @@ import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
 import { USER_REPOSITORY } from '@domain/repositories/user.repository.interface'
 import { BCRYPT_SERVICE } from '@domain/services/bcrypt.interface'
+
 import { AppModule } from './app.module'
 import { AllExceptionFilter } from './infrastructure/common/filter/exception.filter'
 import { LoggingInterceptor } from './infrastructure/common/interceptors/logger.interceptor'

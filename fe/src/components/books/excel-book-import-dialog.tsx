@@ -58,8 +58,9 @@ export function ExcelBookImportDialog({
       } else {
         toast.success(`Đã nhận diện ${result.data.length} đầu sách từ file Excel.`);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Lỗi khi đọc file Excel");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi khi đọc file Excel";
+      toast.error(message);
     } finally {
       setIsParsing(false);
     }
@@ -123,7 +124,8 @@ export function ExcelBookImportDialog({
       <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <FileSpreadsheet className="h-5 w-5 text-primary" /> Nhập danh sách sách hàng loạt bằng file Excel
+            <FileSpreadsheet className="h-5 w-5 text-primary" /> Nhập danh sách sách hàng loạt bằng
+            file Excel
           </DialogTitle>
           <DialogDescription>
             Tải file mẫu, điền danh sách sách và tải lên để thêm hàng loạt đầu sách vào kho.
@@ -157,11 +159,7 @@ export function ExcelBookImportDialog({
               )}
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadBookImportTemplate}
-            >
+            <Button variant="outline" size="sm" onClick={downloadBookImportTemplate}>
               <Download className="mr-1.5 h-4 w-4" /> Tải file mẫu (.xlsx)
             </Button>
           </div>
@@ -189,9 +187,7 @@ export function ExcelBookImportDialog({
                   Danh sách xem trước: <strong>{parsedData.length}</strong> cuốn sách hợp lệ
                 </span>
                 {isImporting && (
-                  <span className="font-semibold text-primary">
-                    Đang nhập: {progress}%
-                  </span>
+                  <span className="font-semibold text-primary">Đang nhập: {progress}%</span>
                 )}
               </div>
 
@@ -215,8 +211,12 @@ export function ExcelBookImportDialog({
                         <td className="p-2 font-medium">{item.title}</td>
                         <td className="p-2 text-muted-foreground">{item.author}</td>
                         <td className="p-2">{item.category}</td>
-                        <td className="p-2 text-right tabular-nums">{formatCurrency(item.importPrice)}</td>
-                        <td className="p-2 text-right font-semibold tabular-nums">{formatCurrency(item.price)}</td>
+                        <td className="p-2 text-right tabular-nums">
+                          {formatCurrency(item.importPrice)}
+                        </td>
+                        <td className="p-2 text-right font-semibold tabular-nums">
+                          {formatCurrency(item.price)}
+                        </td>
                         <td className="p-2 text-right tabular-nums">{item.stock}</td>
                       </tr>
                     ))}
@@ -231,7 +231,8 @@ export function ExcelBookImportDialog({
               <FileSpreadsheet className="h-10 w-10 mb-2 opacity-30 text-primary" />
               <p className="text-sm font-medium">Chưa có file Excel nào được chọn</p>
               <p className="text-xs text-muted-foreground max-w-sm mt-1">
-                Nhấn <strong>"Tải file mẫu (.xlsx)"</strong> để xem cấu trúc các cột, sau đó nhấn <strong>"Chọn file Excel"</strong> để tải dữ liệu lên.
+                Nhấn <strong>"Tải file mẫu (.xlsx)"</strong> để xem cấu trúc các cột, sau đó nhấn{" "}
+                <strong>"Chọn file Excel"</strong> để tải dữ liệu lên.
               </p>
             </div>
           )}
@@ -241,11 +242,10 @@ export function ExcelBookImportDialog({
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isImporting}>
             Đóng
           </Button>
-          <Button
-            onClick={handleImport}
-            disabled={parsedData.length === 0 || isImporting}
-          >
-            {isImporting ? `Đang nhập (${progress}%)...` : `Xác nhận nhập ${parsedData.length} cuốn sách`}
+          <Button onClick={handleImport} disabled={parsedData.length === 0 || isImporting}>
+            {isImporting
+              ? `Đang nhập (${progress}%)...`
+              : `Xác nhận nhập ${parsedData.length} cuốn sách`}
           </Button>
         </DialogFooter>
       </DialogContent>

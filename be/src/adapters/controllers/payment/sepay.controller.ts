@@ -11,13 +11,22 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common'
-import { ApiHeader, ApiOperation, ApiProperty, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiHeader,
+  ApiOperation,
+  ApiProperty,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
+
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator'
 import { Request } from 'express'
 
 import { verifySepayWebhookSignature } from '@domain/utils/sepay-signature.util'
+
 import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-status.use-case'
 import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
+
 import { SePayWebhookDto } from './dto/sepay-webhook.dto'
 
 export class SimulateSepayDto {
@@ -44,7 +53,9 @@ export class SePayController {
   ) {}
 
   @Get('config')
-  @ApiOperation({ summary: 'Lấy thông tin cấu hình SePay mặc định của hệ thống' })
+  @ApiOperation({
+    summary: 'Lấy thông tin cấu hình SePay mặc định của hệ thống',
+  })
   getConfig() {
     return {
       success: true,
@@ -56,14 +67,20 @@ export class SePayController {
   }
 
   @Get('status/:orderCode')
-  @ApiOperation({ summary: 'Kiểm tra trạng thái thanh toán của đơn hàng theo orderCode (Public - dùng cho POS polling)' })
+  @ApiOperation({
+    summary:
+      'Kiểm tra trạng thái thanh toán của đơn hàng theo orderCode (Public - dùng cho POS polling)',
+  })
   async checkOrderStatus(@Param('orderCode') orderCode: string) {
     return await this.getSepayOrderStatusUseCase.execute(orderCode)
   }
 
   @Post('webhook')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Webhook nhận thông báo biến động số dư và xác nhận thanh toán tự động từ SePay' })
+  @ApiOperation({
+    summary:
+      'Webhook nhận thông báo biến động số dư và xác nhận thanh toán tự động từ SePay',
+  })
   @ApiHeader({
     name: 'x-sepay-signature',
     required: false,
@@ -95,7 +112,9 @@ export class SePayController {
 
     if (!isValid) {
       this.logger.warn(`Invalid SePay webhook signature. Rejected request.`)
-      throw new UnauthorizedException('Chữ ký SePay Webhook (Signature) không hợp lệ')
+      throw new UnauthorizedException(
+        'Chữ ký SePay Webhook (Signature) không hợp lệ',
+      )
     }
 
     return await this.processSepayPaymentUseCase.execute(payload)

@@ -48,12 +48,21 @@ export const ReceiptK80 = forwardRef<HTMLDivElement, ReceiptK80Props>(
       >
         {/* Header Nhà Sách */}
         <div className="text-center space-y-1 mb-3">
-          <h1 className="text-base font-bold uppercase tracking-wider">{branding.storeName || "NHÀ SÁCH BOOKSTOCK"}</h1>
-          <p className="text-[10px] text-gray-700">Đ/c: {branding.address || "Số 123 Đường Sách, Q.1, TP. Hồ Chí Minh"}</p>
-          <p className="text-[10px] text-gray-700">Hotline: {branding.hotline || "1900 6868"} • Website: {branding.website || "bookstock.vn"}</p>
+          <h1 className="text-base font-bold uppercase tracking-wider">
+            {branding.storeName || "NHÀ SÁCH BOOKSTOCK"}
+          </h1>
+          <p className="text-[10px] text-gray-700">
+            Đ/c: {branding.address || "Số 123 Đường Sách, Q.1, TP. Hồ Chí Minh"}
+          </p>
+          <p className="text-[10px] text-gray-700">
+            Hotline: {branding.hotline || "1900 6868"} • Website:{" "}
+            {branding.website || "bookstock.vn"}
+          </p>
           <div className="border-b border-dashed border-black my-2" />
           <h2 className="text-sm font-bold uppercase">HÓA ĐƠN THANH TOÁN (POS)</h2>
-          <p className="text-[11px]">Mã HĐ: <span className="font-bold">{orderCode}</span></p>
+          <p className="text-[11px]">
+            Mã HĐ: <span className="font-bold">{orderCode}</span>
+          </p>
           <p className="text-[10px] text-gray-600">{formatDateTime(createdAt)}</p>
         </div>
 
@@ -65,7 +74,9 @@ export const ReceiptK80 = forwardRef<HTMLDivElement, ReceiptK80Props>(
           </div>
           <div className="flex justify-between">
             <span>Khách hàng:</span>
-            <span>{customerName} {customerPhone ? `(${customerPhone})` : ""}</span>
+            <span>
+              {customerName} {customerPhone ? `(${customerPhone})` : ""}
+            </span>
           </div>
         </div>
 
@@ -84,9 +95,7 @@ export const ReceiptK80 = forwardRef<HTMLDivElement, ReceiptK80Props>(
           <tbody className="divide-y divide-dashed divide-gray-300">
             {items.map((item, idx) => (
               <tr key={idx} className="py-1">
-                <td className="py-1.5 pr-1 font-medium leading-snug">
-                  {item.title}
-                </td>
+                <td className="py-1.5 pr-1 font-medium leading-snug">{item.title}</td>
                 <td className="py-1.5 text-center">{item.quantity}</td>
                 <td className="py-1.5 text-right tabular-nums">{formatCurrency(item.price)}</td>
                 <td className="py-1.5 text-right font-semibold tabular-nums">
@@ -143,7 +152,9 @@ export const ReceiptK80 = forwardRef<HTMLDivElement, ReceiptK80Props>(
               alt="QR Code"
               className="w-28 h-28 object-contain border p-1 rounded"
             />
-            <span className="text-[9px] text-gray-500 mt-1">Quét mã để thanh toán / tra cứu đơn</span>
+            <span className="text-[9px] text-gray-500 mt-1">
+              Quét mã để thanh toán / tra cứu đơn
+            </span>
           </div>
         )}
 
@@ -151,7 +162,9 @@ export const ReceiptK80 = forwardRef<HTMLDivElement, ReceiptK80Props>(
 
         {/* Lời cảm ơn */}
         <div className="text-center space-y-1 text-[10px] text-gray-700 mt-3">
-          <p className="font-semibold italic">{branding.footerNote || "Xin cảm ơn Quý khách & Hẹn gặp lại!"}</p>
+          <p className="font-semibold italic">
+            {branding.footerNote || "Xin cảm ơn Quý khách & Hẹn gặp lại!"}
+          </p>
           <p>Lưu ý: Quý khách vui lòng kiểm tra lại hóa đơn và hàng hóa trước khi rời quầy.</p>
         </div>
       </div>

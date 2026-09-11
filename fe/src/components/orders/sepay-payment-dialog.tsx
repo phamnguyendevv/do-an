@@ -1,13 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Check,
-  Copy,
-  ExternalLink,
-  Loader2,
-  QrCode,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, QrCode, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -43,7 +35,7 @@ export function SepayPaymentDialog({
   const [isChecking, setIsChecking] = useState(false);
 
   const sepayConfig = storeSettingsService.getSepayConfig();
-  const orderCode = order?.id || (order as any)?.orderCode || "";
+  const orderCode = order?.id || (order as Record<string, unknown>)?.orderCode?.toString() || "";
   const total = Number(order?.total || 0);
 
   const qrUrl = storeSettingsService.getSepayQrUrl(total, orderCode);
@@ -62,12 +54,11 @@ export function SepayPaymentDialog({
     onPaymentSuccess: (event) => {
       setIsPaid(true);
       toast.success(
-        `🎉 Đã nhận thanh toán ${formatCurrency(event.amount || total)} cho đơn ${orderCode} qua SePay!`
+        `🎉 Đã nhận thanh toán ${formatCurrency(event.amount || total)} cho đơn ${orderCode} qua SePay!`,
       );
       onPaymentSuccess?.();
     },
   });
-
 
   const handleManualCheck = async () => {
     if (!order) return;
@@ -217,11 +208,7 @@ export function SepayPaymentDialog({
               "Kiểm tra giao dịch"
             )}
           </Button>
-          <Button
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-xs"
-          >
+          <Button size="sm" onClick={() => onOpenChange(false)} className="text-xs">
             Đóng
           </Button>
         </DialogFooter>

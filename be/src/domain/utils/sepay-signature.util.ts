@@ -50,7 +50,8 @@ export function verifySepayWebhookSignature({
   // 3. HMAC-SHA256 signature verification against raw body or payload
   let bodyContent = ''
   if (rawBody) {
-    bodyContent = typeof rawBody === 'string' ? rawBody : rawBody.toString('utf-8')
+    bodyContent =
+      typeof rawBody === 'string' ? rawBody : rawBody.toString('utf-8')
   } else if (payload) {
     bodyContent = JSON.stringify(payload)
   }
@@ -59,14 +60,25 @@ export function verifySepayWebhookSignature({
     return false
   }
 
-  const expectedHex = crypto.createHmac('sha256', secret).update(bodyContent).digest('hex')
-  const expectedBase64 = crypto.createHmac('sha256', secret).update(bodyContent).digest('base64')
+  const expectedHex = crypto
+    .createHmac('sha256', secret)
+    .update(bodyContent)
+    .digest('hex')
+  const expectedBase64 = crypto
+    .createHmac('sha256', secret)
+    .update(bodyContent)
+    .digest('base64')
 
   // Check against signature header (hex or base64)
   if (sig) {
     if (sig.length === expectedHex.length) {
       try {
-        if (crypto.timingSafeEqual(Buffer.from(sig, 'utf-8'), Buffer.from(expectedHex, 'utf-8'))) {
+        if (
+          crypto.timingSafeEqual(
+            Buffer.from(sig, 'utf-8'),
+            Buffer.from(expectedHex, 'utf-8'),
+          )
+        ) {
           return true
         }
       } catch {
@@ -76,7 +88,12 @@ export function verifySepayWebhookSignature({
 
     if (sig.length === expectedBase64.length) {
       try {
-        if (crypto.timingSafeEqual(Buffer.from(sig, 'utf-8'), Buffer.from(expectedBase64, 'utf-8'))) {
+        if (
+          crypto.timingSafeEqual(
+            Buffer.from(sig, 'utf-8'),
+            Buffer.from(expectedBase64, 'utf-8'),
+          )
+        ) {
           return true
         }
       } catch {
@@ -90,7 +107,12 @@ export function verifySepayWebhookSignature({
     const cleanAuth = authorization.replace(/^(Apikey|Bearer)\s+/i, '').trim()
     if (cleanAuth.length === expectedHex.length) {
       try {
-        if (crypto.timingSafeEqual(Buffer.from(cleanAuth, 'utf-8'), Buffer.from(expectedHex, 'utf-8'))) {
+        if (
+          crypto.timingSafeEqual(
+            Buffer.from(cleanAuth, 'utf-8'),
+            Buffer.from(expectedHex, 'utf-8'),
+          )
+        ) {
           return true
         }
       } catch {}

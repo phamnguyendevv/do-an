@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import {
@@ -18,19 +19,18 @@ import {
   IMPORT_RECEIPT_REPOSITORY,
 } from '@domain/repositories/import-receipt.repository.interface'
 import {
-  STOCK_MOVEMENT_REPOSITORY,
   IStockMovementRepositoryInterface,
+  STOCK_MOVEMENT_REPOSITORY,
 } from '@domain/repositories/stock-movement.repository.interface'
 import {
   IRedisCacheService,
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 
+import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { ImportReceipt } from '@infrastructure/databases/postgresql/entities/import-receipt.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
-import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
-
 
 @Injectable()
 export class CreateImportReceiptUseCase {
@@ -92,7 +92,10 @@ export class CreateImportReceiptUseCase {
       const receiptCode = `IMP-${1000 + count + 1}`
 
       for (const line of dto.lines) {
-        const bookIdNum = typeof line.bookId === 'number' ? line.bookId : parseInt(String(line.bookId), 10)
+        const bookIdNum =
+          typeof line.bookId === 'number'
+            ? line.bookId
+            : parseInt(String(line.bookId), 10)
         if (isNaN(bookIdNum)) {
           throw this.exceptionsService.badRequestException({
             type: 'InventoryValidationException',
@@ -167,12 +170,21 @@ export class CreateImportReceiptUseCase {
         createdBy: dto.createdBy || 'Admin',
       })
 
-      const savedReceipt = await queryRunner.manager.save(ImportReceipt, receipt)
-      await queryRunner.manager.save(ActivityLog, queryRunner.manager.create(ActivityLog, {
-        actorName: dto.createdBy || 'Admin', action: 'CREATE', resourceType: 'ImportReceipt',
-        resourceId: String(savedReceipt.id), description: `Tạo phiếu nhập ${savedReceipt.receiptCode}`,
-        metadata: { totalItems, totalValue },
-      }))
+      const savedReceipt = await queryRunner.manager.save(
+        ImportReceipt,
+        receipt,
+      )
+      await queryRunner.manager.save(
+        ActivityLog,
+        queryRunner.manager.create(ActivityLog, {
+          actorName: dto.createdBy || 'Admin',
+          action: 'CREATE',
+          resourceType: 'ImportReceipt',
+          resourceId: String(savedReceipt.id),
+          description: `Tạo phiếu nhập ${savedReceipt.receiptCode}`,
+          metadata: { totalItems, totalValue },
+        }),
+      )
       await queryRunner.commitTransaction()
 
       await this.redisService.delPattern('books:*')

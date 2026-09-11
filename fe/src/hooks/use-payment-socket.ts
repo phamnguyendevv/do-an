@@ -27,7 +27,9 @@ export function usePaymentSocket({
     const handlePaymentSuccess = (event: PaymentSuccessEvent) => {
       const match =
         event.orderCode === orderCode ||
-        (event.orderCode && orderCode && event.orderCode.replace(/\D/g, "") === orderCode.replace(/\D/g, ""));
+        (event.orderCode &&
+          orderCode &&
+          event.orderCode.replace(/\D/g, "") === orderCode.replace(/\D/g, ""));
       if (match) {
         onPaymentSuccessRef.current?.(event);
       }
@@ -36,7 +38,9 @@ export function usePaymentSocket({
     const handleGlobalSepay = (event: PaymentSuccessEvent) => {
       const match =
         event.orderCode === orderCode ||
-        (event.orderCode && orderCode && event.orderCode.replace(/\D/g, "") === orderCode.replace(/\D/g, ""));
+        (event.orderCode &&
+          orderCode &&
+          event.orderCode.replace(/\D/g, "") === orderCode.replace(/\D/g, ""));
       if (match) {
         onPaymentSuccessRef.current?.(event);
       }

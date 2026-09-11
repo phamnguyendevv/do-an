@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
+
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 
 @Injectable()
 export class GetOverviewRevenueUseCase {
-  constructor(private readonly dataSource: DataSource) { }
+  constructor(private readonly dataSource: DataSource) {}
 
   async execute(params?: { startDate?: Date; endDate?: Date }) {
     const orderRepo = this.dataSource.getRepository(BookstoreOrder)
@@ -17,7 +19,9 @@ export class GetOverviewRevenueUseCase {
     const query = orderRepo.createQueryBuilder('o')
 
     if (params?.startDate) {
-      query.andWhere('o.createdAt >= :startDate', { startDate: params.startDate })
+      query.andWhere('o.createdAt >= :startDate', {
+        startDate: params.startDate,
+      })
     }
 
     if (params?.endDate) {
@@ -34,25 +38,17 @@ export class GetOverviewRevenueUseCase {
     let totalBooksSold = 0
 
     for (const order of orders) {
-      if (
-        order.status === OrderStatusEnum.Cancelled
-      ) {
+      if (order.status === OrderStatusEnum.Cancelled) {
         cancelledOrders++
         continue
       }
 
-      if (
-        order.status === OrderStatusEnum.Delivered
-
-      ) {
+      if (order.status === OrderStatusEnum.Delivered) {
         deliveredOrders++
       }
 
       const totalVal = Number(order.total || 0)
-      if (
-        order.payment === PaymentStatusEnum.Paid
-
-      ) {
+      if (order.payment === PaymentStatusEnum.Paid) {
         totalRevenue += totalVal
       } else {
         pendingRevenue += totalVal
@@ -72,7 +68,12 @@ export class GetOverviewRevenueUseCase {
       deliveredOrders,
       cancelledOrders,
       totalBooksSold,
-      averageOrderValue: totalOrders > 0 ? Math.round(totalRevenue / Math.max(1, totalOrders - cancelledOrders)) : 0,
+      averageOrderValue:
+        totalOrders > 0
+          ? Math.round(
+              totalRevenue / Math.max(1, totalOrders - cancelledOrders),
+            )
+          : 0,
     }
   }
 }

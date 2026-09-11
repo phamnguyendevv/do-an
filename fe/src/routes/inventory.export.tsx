@@ -28,7 +28,10 @@ export const Route = createFileRoute("/inventory/export")({
   head: () => ({
     meta: [
       { title: "Xuất kho — BookStock" },
-      { name: "description", content: "Tạo phiếu xuất kho theo đơn hàng, chọn sản phẩm, số lượng và lý do xuất." },
+      {
+        name: "description",
+        content: "Tạo phiếu xuất kho theo đơn hàng, chọn sản phẩm, số lượng và lý do xuất.",
+      },
       { property: "og:title", content: "Xuất kho — BookStock" },
       { property: "og:description", content: "Tạo phiếu xuất kho cho kho sách." },
     ],

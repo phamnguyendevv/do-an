@@ -57,7 +57,11 @@ export function RevenueAreaChart({ data }: { data: Array<{ period: string; reven
             <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #334155)" vertical={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--color-border, #334155)"
+          vertical={false}
+        />
         <XAxis dataKey="period" {...axisProps} />
         <YAxis {...axisProps} tickFormatter={(v: number) => `${v / 1_000_000}tr`} width={48} />
         <Tooltip
@@ -85,12 +89,19 @@ export function StockMovementChart({
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #334155)" vertical={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--color-border, #334155)"
+          vertical={false}
+        />
         <XAxis dataKey="month" {...axisProps} />
         <YAxis {...axisProps} width={40} />
         <Tooltip
           {...tooltipStyle}
-          formatter={(v: number, name: string) => [`${formatNumber(v)} cuốn`, name === "nhap" ? "Nhập kho" : "Xuất kho"]}
+          formatter={(v: number, name: string) => [
+            `${formatNumber(v)} cuốn`,
+            name === "nhap" ? "Nhập kho" : "Xuất kho",
+          ]}
         />
         <Legend wrapperStyle={{ fontSize: 12, color: "#cbd5e1" }} />
         <Bar dataKey="nhap" name="Nhập kho" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -113,7 +124,11 @@ export function BestSellersChart({
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={normalized} layout="vertical" margin={{ left: 8, right: 16, top: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #334155)" horizontal={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--color-border, #334155)"
+          horizontal={false}
+        />
         <XAxis type="number" {...axisProps} />
         <YAxis type="category" dataKey="title" {...axisProps} width={130} />
         <Tooltip
@@ -130,7 +145,11 @@ export function OrdersLineChart({ data }: { data: Array<{ period: string; orders
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #334155)" vertical={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--color-border, #334155)"
+          vertical={false}
+        />
         <XAxis dataKey="period" {...axisProps} />
         <YAxis {...axisProps} width={40} />
         <Tooltip
@@ -151,15 +170,7 @@ export function OrdersLineChart({ data }: { data: Array<{ period: string; orders
   );
 }
 
-const pieColors = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-  "#f97316",
-];
+const pieColors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
 export function CategoryPieChart({ data }: { data: Array<{ category: string; value: number }> }) {
   return (
@@ -170,7 +181,14 @@ export function CategoryPieChart({ data }: { data: Array<{ category: string; val
           formatter={(v: number, name: string) => [formatCurrency(v), name || "Doanh thu"]}
         />
         <Legend wrapperStyle={{ fontSize: 12, color: "#cbd5e1" }} />
-        <Pie data={data} dataKey="value" nameKey="category" innerRadius={55} outerRadius={90} paddingAngle={2}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="category"
+          innerRadius={55}
+          outerRadius={90}
+          paddingAngle={2}
+        >
           {data.map((_, i) => (
             <Cell key={i} fill={pieColors[i % pieColors.length]} />
           ))}

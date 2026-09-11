@@ -87,4 +87,3 @@ export interface ISePayWebhookInput {
   referenceCode?: string
   description?: string
 }
-

@@ -52,4 +52,3 @@ export interface ISearchBooksInput {
 export interface IBookIdInput {
   id: number
 }
-

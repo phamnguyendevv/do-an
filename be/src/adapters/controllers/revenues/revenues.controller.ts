@@ -1,5 +1,10 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
 
 import { GetDailyRevenueUseCase } from '@use-cases/revenue/get-daily-revenue.use-case'
 import { GetMonthlyRevenueUseCase } from '@use-cases/revenue/get-monthly-revenue.use-case'

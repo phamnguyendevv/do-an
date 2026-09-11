@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, Like } from 'typeorm'
+
+import { Like, Repository } from 'typeorm'
 
 import { StockAuditEntity } from '@domain/entities/stock-audit.entity'
 import { IStockAuditRepositoryInterface } from '@domain/repositories/stock-audit.repository.interface'
+
 import { StockAudit } from '../entities/stock-audit.entity'
 
 @Injectable()
@@ -13,7 +15,9 @@ export class StockAuditRepository implements IStockAuditRepositoryInterface {
     private readonly auditRepository: Repository<StockAudit>,
   ) {}
 
-  async createAudit(audit: Partial<StockAuditEntity>): Promise<StockAuditEntity> {
+  async createAudit(
+    audit: Partial<StockAuditEntity>,
+  ): Promise<StockAuditEntity> {
     const created = this.auditRepository.create(audit)
     return await this.auditRepository.save(created)
   }
@@ -23,7 +27,10 @@ export class StockAuditRepository implements IStockAuditRepositoryInterface {
     size?: number
     status?: string
     search?: string
-  }): Promise<{ data: StockAuditEntity[]; pagination: { total: number; page: number; size: number } }> {
+  }): Promise<{
+    data: StockAuditEntity[]
+    pagination: { total: number; page: number; size: number }
+  }> {
     const page = params?.page || 1
     const size = params?.size || 50
     const skip = (page - 1) * size
@@ -53,7 +60,10 @@ export class StockAuditRepository implements IStockAuditRepositoryInterface {
     return await this.auditRepository.findOne({ where: { id } })
   }
 
-  async updateAudit(id: number, payload: Partial<StockAuditEntity>): Promise<StockAuditEntity> {
+  async updateAudit(
+    id: number,
+    payload: Partial<StockAuditEntity>,
+  ): Promise<StockAuditEntity> {
     await this.auditRepository.update(id, payload as any)
     const updated = await this.getAuditById(id)
     if (!updated) throw new Error('Stock audit not found after update')

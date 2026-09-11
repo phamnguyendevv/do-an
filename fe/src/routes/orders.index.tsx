@@ -50,12 +50,7 @@ import { orderApi } from "@/lib/order-api";
 import { exportOrdersToExcel, exportOrderHistoriesToExcel } from "@/lib/excel-service";
 import { downloadCsv } from "@/utils/csv";
 import { formatCompactCurrency, formatCurrency, formatDate, formatDateTime } from "@/utils/format";
-import {
-  orderStatusLabel,
-  orderStatusTone,
-  paymentLabel,
-  paymentTone,
-} from "@/utils/status";
+import { orderStatusLabel, orderStatusTone, paymentLabel, paymentTone } from "@/utils/status";
 import { Can } from "@/lib/ability";
 import type { Order, OrderHistoryItem } from "@/types";
 
@@ -63,9 +58,15 @@ export const Route = createFileRoute("/orders/")({
   head: () => ({
     meta: [
       { title: "Đơn hàng & Nhật ký — BookStock" },
-      { name: "description", content: "Danh sách đơn hàng và nhật ký thao tác audit log toàn hệ thống." },
+      {
+        name: "description",
+        content: "Danh sách đơn hàng và nhật ký thao tác audit log toàn hệ thống.",
+      },
       { property: "og:title", content: "Đơn hàng & Nhật ký — BookStock" },
-      { property: "og:description", content: "Theo dõi và xử lý toàn bộ đơn hàng và lịch sử thay đổi của cửa hàng sách." },
+      {
+        property: "og:description",
+        content: "Theo dõi và xử lý toàn bộ đơn hàng và lịch sử thay đổi của cửa hàng sách.",
+      },
     ],
   }),
   component: OrdersPage,
@@ -103,26 +104,72 @@ function OrdersPage() {
   const orderActiveFilters = useMemo<ActiveFilter[]>(() => {
     const chips: ActiveFilter[] = [];
     if (debouncedSearch)
-      chips.push({ key: "search", label: `Từ khóa: "${debouncedSearch}"`, onRemove: () => { setSearch(""); resetPage(); } });
+      chips.push({
+        key: "search",
+        label: `Từ khóa: "${debouncedSearch}"`,
+        onRemove: () => {
+          setSearch("");
+          resetPage();
+        },
+      });
     if (status !== "all")
-      chips.push({ key: "status", label: `Trạng thái: ${orderStatusLabel[status] ?? status}`, onRemove: () => { setStatus("all"); resetPage(); } });
+      chips.push({
+        key: "status",
+        label: `Trạng thái: ${orderStatusLabel[status] ?? status}`,
+        onRemove: () => {
+          setStatus("all");
+          resetPage();
+        },
+      });
     if (payment !== "all")
-      chips.push({ key: "payment", label: `Thanh toán: ${paymentLabel[payment] ?? payment}`, onRemove: () => { setPayment("all"); resetPage(); } });
+      chips.push({
+        key: "payment",
+        label: `Thanh toán: ${paymentLabel[payment] ?? payment}`,
+        onRemove: () => {
+          setPayment("all");
+          resetPage();
+        },
+      });
     if (dateRange?.from) {
       const d = dateRange;
-      const label = d.to ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}` : d.from.toLocaleDateString("vi");
-      chips.push({ key: "date", label: `Ngày tạo: ${label}`, onRemove: () => { setDateRange(undefined); resetPage(); } });
+      const label = d.to
+        ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
+        : d.from.toLocaleDateString("vi");
+      chips.push({
+        key: "date",
+        label: `Ngày tạo: ${label}`,
+        onRemove: () => {
+          setDateRange(undefined);
+          resetPage();
+        },
+      });
     }
     if (totalRange.min !== undefined || totalRange.max !== undefined) {
-      const label = [totalRange.min !== undefined ? `Từ ${formatCompactCurrency(totalRange.min)}` : null, totalRange.max !== undefined ? `đến ${formatCompactCurrency(totalRange.max)}` : null].filter(Boolean).join(" ");
-      chips.push({ key: "total", label: `Giá trị: ${label}`, onRemove: () => { setTotalRange({}); resetPage(); } });
+      const label = [
+        totalRange.min !== undefined ? `Từ ${formatCompactCurrency(totalRange.min)}` : null,
+        totalRange.max !== undefined ? `đến ${formatCompactCurrency(totalRange.max)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      chips.push({
+        key: "total",
+        label: `Giá trị: ${label}`,
+        onRemove: () => {
+          setTotalRange({});
+          resetPage();
+        },
+      });
     }
     return chips;
   }, [debouncedSearch, status, payment, dateRange, totalRange]);
 
   const clearOrderFilters = () => {
-    setSearch(""); setStatus("all"); setPayment("all");
-    setDateRange(undefined); setTotalRange({}); setPage(1);
+    setSearch("");
+    setStatus("all");
+    setPayment("all");
+    setDateRange(undefined);
+    setTotalRange({});
+    setPage(1);
   };
 
   // Histories table state
@@ -233,9 +280,7 @@ function OrdersPage() {
       align: "right",
       sortable: true,
       value: (o) => o.total,
-      cell: (o) => (
-        <span className="tabular-nums font-semibold">{formatCurrency(o.total)}</span>
-      ),
+      cell: (o) => <span className="tabular-nums font-semibold">{formatCurrency(o.total)}</span>,
     },
     {
       key: "payment",
@@ -262,9 +307,7 @@ function OrdersPage() {
       align: "right",
       sortable: true,
       value: (o) => o.createdAt,
-      cell: (o) => (
-        <span className="text-muted-foreground text-xs">{formatDate(o.createdAt)}</span>
-      ),
+      cell: (o) => <span className="text-muted-foreground text-xs">{formatDate(o.createdAt)}</span>,
     },
   ];
 
@@ -378,7 +421,12 @@ function OrdersPage() {
               >
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Nhật ký
               </Button>
-              <Button size="sm" variant="outline" onClick={exportCsv} disabled={orders.length === 0}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportCsv}
+                disabled={orders.length === 0}
+              >
                 <Download className="mr-1.5 h-4 w-4" /> Xuất CSV
               </Button>
               <Can I="create" a="BookstoreOrder">
@@ -432,17 +480,26 @@ function OrdersPage() {
                     <SearchInput
                       className="sm:w-64"
                       value={search}
-                      onValueChange={(val) => { setSearch(val); resetPage(); }}
+                      onValueChange={(val) => {
+                        setSearch(val);
+                        resetPage();
+                      }}
                       placeholder="Tìm mã đơn, khách hàng..."
                     />
                     <DateRangePicker
                       value={dateRange}
-                      onValueChange={(val) => { setDateRange(val); resetPage(); }}
+                      onValueChange={(val) => {
+                        setDateRange(val);
+                        resetPage();
+                      }}
                       placeholder="Ngày tạo"
                     />
                     <Select
                       value={status}
-                      onValueChange={(val) => { setStatus(val); resetPage(); }}
+                      onValueChange={(val) => {
+                        setStatus(val);
+                        resetPage();
+                      }}
                     >
                       <SelectTrigger className="h-9 sm:w-44">
                         <SelectValue />
@@ -458,7 +515,10 @@ function OrdersPage() {
                     </Select>
                     <Select
                       value={payment}
-                      onValueChange={(val) => { setPayment(val); resetPage(); }}
+                      onValueChange={(val) => {
+                        setPayment(val);
+                        resetPage();
+                      }}
                     >
                       <SelectTrigger className="h-9 sm:w-40">
                         <SelectValue />
@@ -474,7 +534,10 @@ function OrdersPage() {
                     </Select>
                     <PriceRangeFilter
                       value={totalRange}
-                      onValueChange={(r) => { setTotalRange(r); resetPage(); }}
+                      onValueChange={(r) => {
+                        setTotalRange(r);
+                        resetPage();
+                      }}
                       label="Giá trị đơn"
                     />
                   </FilterBar>

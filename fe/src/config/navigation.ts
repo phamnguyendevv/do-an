@@ -100,9 +100,24 @@ export const mainNav: NavItem[] = [
     icon: Users,
     ability: { action: "search", subject: "User" },
   },
-  { href: "/customers", label: "Khách hàng", icon: UserRoundSearch, ability: { action: "read", subject: "Customer" } },
-  { href: "/promotions", label: "Khuyến mãi", icon: BadgePercent, ability: { action: "read", subject: "Promotion" } },
-  { href: "/activity-logs", label: "Lịch sử hoạt động", icon: History, ability: { action: "read", subject: "ActivityLog" } },
+  {
+    href: "/customers",
+    label: "Khách hàng",
+    icon: UserRoundSearch,
+    ability: { action: "read", subject: "Customer" },
+  },
+  {
+    href: "/promotions",
+    label: "Khuyến mãi",
+    icon: BadgePercent,
+    ability: { action: "read", subject: "Promotion" },
+  },
+  {
+    href: "/activity-logs",
+    label: "Lịch sử hoạt động",
+    icon: History,
+    ability: { action: "read", subject: "ActivityLog" },
+  },
 ];
 
 export const footerNav: NavItem[] = [

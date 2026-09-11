@@ -26,7 +26,14 @@ export type PendingAction =
       total: number;
       warnings: string[];
     }
-  | { kind: "import"; supplier: string; note: string; lines: ActionLine[]; total: number; warnings: string[] }
+  | {
+      kind: "import";
+      supplier: string;
+      note: string;
+      lines: ActionLine[];
+      total: number;
+      warnings: string[];
+    }
   | { kind: "export"; reason: string; orderId: string; lines: ActionLine[]; warnings: string[] }
   | { kind: "navigate"; path: string; label: string };
 
@@ -83,7 +90,13 @@ function toLines(
     const quantity = Math.max(1, Math.round(it.quantity || 1));
     if (checkStock && quantity > book.stock)
       warnings.push(`"${book.title}" chỉ còn ${book.stock} cuốn (yêu cầu ${quantity}).`);
-    lines.push({ bookId: book.id, title: book.title, quantity, price: priceOf(book), stock: book.stock });
+    lines.push({
+      bookId: book.id,
+      title: book.title,
+      quantity,
+      price: priceOf(book),
+      stock: book.stock,
+    });
   }
   return { lines, warnings };
 }
@@ -144,7 +157,9 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
       return {
         result: {
           count: list.length,
-          books: list.slice(0, limit).map((b) => ({ ...bookBrief(b), sold30d: sold.get(b.id) ?? 0 })),
+          books: list
+            .slice(0, limit)
+            .map((b) => ({ ...bookBrief(b), sold30d: sold.get(b.id) ?? 0 })),
         },
       };
     }
@@ -152,12 +167,25 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
     case "search_orders": {
       const period = args["period"] ?? "all";
       const from =
-        period === "today" ? startOfToday() : period === "7d" ? Date.now() - 7 * 86_400_000 : period === "30d" ? Date.now() - 30 * 86_400_000 : 0;
+        period === "today"
+          ? startOfToday()
+          : period === "7d"
+            ? Date.now() - 7 * 86_400_000
+            : period === "30d"
+              ? Date.now() - 30 * 86_400_000
+              : 0;
       const list = snap.orders.filter((o) => {
         if (args["status"] && o.status !== args["status"]) return false;
         if (args["payment"] && o.payment !== args["payment"]) return false;
         if (new Date(o.createdAt).getTime() < from) return false;
-        if (args["query"] && !(matches(o.customerName, args["query"]) || matches(o.id, args["query"]) || o.customerPhone.includes(args["query"])))
+        if (
+          args["query"] &&
+          !(
+            matches(o.customerName, args["query"]) ||
+            matches(o.id, args["query"]) ||
+            o.customerPhone.includes(args["query"])
+          )
+        )
           return false;
         return true;
       });
@@ -188,9 +216,13 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
           totals: r.totals,
           period: r.period,
           insights: r.insights,
-          topAging: r.aging.slice(0, 10).map((x) => ({ title: x.book.title, days: x.days, stock: x.book.stock })),
+          topAging: r.aging
+            .slice(0, 10)
+            .map((x) => ({ title: x.book.title, days: x.days, stock: x.book.stock })),
           fastMovers: r.fastMovers.map((x) => ({ title: x.book.title, sold30d: x.sold })),
-          lowStock: r.lowStock.slice(0, 10).map((b) => ({ title: b.title, stock: b.stock, minStock: b.minStock })),
+          lowStock: r.lowStock
+            .slice(0, 10)
+            .map((b) => ({ title: b.title, stock: b.stock, minStock: b.minStock })),
         },
       };
     }
@@ -208,7 +240,13 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
       };
       return {
         action,
-        result: { prepared: true, requiresConfirmation: true, lines, warnings, total: action.total },
+        result: {
+          prepared: true,
+          requiresConfirmation: true,
+          lines,
+          warnings,
+          total: action.total,
+        },
       };
     }
 
@@ -239,7 +277,11 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
 
     case "navigate":
       return {
-        action: { kind: "navigate", path: String(args["path"] ?? "/dashboard"), label: String(args["label"] ?? "Mở trang") },
+        action: {
+          kind: "navigate",
+          path: String(args["path"] ?? "/dashboard"),
+          label: String(args["label"] ?? "Mở trang"),
+        },
         result: { suggested: args["path"] },
       };
 

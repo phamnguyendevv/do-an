@@ -48,11 +48,7 @@ export function usePaginatedOrders(params: UsePaginatedOrdersParams = {}) {
   const { page = 1, size = 10, search, status, payment, startDate, endDate } = params;
 
   const query = useQuery({
-    queryKey: [
-      "orders",
-      "paginated",
-      { page, size, search, status, payment, startDate, endDate },
-    ],
+    queryKey: ["orders", "paginated", { page, size, search, status, payment, startDate, endDate }],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const p: any = { page, size };

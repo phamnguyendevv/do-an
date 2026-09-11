@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { BookStatusEnum } from '@domain/entities/order-enums.entity'
@@ -11,6 +12,7 @@ import {
   IRedisCacheService,
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
+
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { StockAudit } from '@infrastructure/databases/postgresql/entities/stock-audit.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
@@ -23,7 +25,10 @@ export class BalanceStockAuditUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(auditId: number, balancedBy = 'Admin'): Promise<StockAuditEntity> {
+  async execute(
+    auditId: number,
+    balancedBy = 'Admin',
+  ): Promise<StockAuditEntity> {
     const queryRunner = this.dataSource.createQueryRunner()
     await queryRunner.connect()
     await queryRunner.startTransaction()

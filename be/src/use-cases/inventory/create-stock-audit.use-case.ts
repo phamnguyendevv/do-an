@@ -1,14 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common'
-import {
-  IStockAuditRepositoryInterface,
-  STOCK_AUDIT_REPOSITORY,
-} from '@domain/repositories/stock-audit.repository.interface'
+
 import {
   CreateStockAuditInput,
   StockAuditEntity,
   StockAuditItemEntity,
   StockAuditStatusEnum,
 } from '@domain/entities/stock-audit.entity'
+import {
+  IStockAuditRepositoryInterface,
+  STOCK_AUDIT_REPOSITORY,
+} from '@domain/repositories/stock-audit.repository.interface'
 
 @Injectable()
 export class CreateStockAuditUseCase {
@@ -20,14 +21,16 @@ export class CreateStockAuditUseCase {
   async execute(dto: CreateStockAuditInput): Promise<StockAuditEntity> {
     const auditCode = `AUD-${Date.now().toString().slice(-6)}`
     const auditDate = dto.auditDate || new Date().toISOString()
-    const title = dto.title || `Kiểm kê kho ngày ${new Date().toLocaleDateString('vi-VN')}`
+    const title =
+      dto.title || `Kiểm kê kho ngày ${new Date().toLocaleDateString('vi-VN')}`
 
     const items: StockAuditItemEntity[] = (dto.items || []).map((it) => ({
       bookId: it.bookId,
       title: it.title,
       systemStock: Number(it.systemStock) || 0,
       actualStock: Number(it.actualStock) || 0,
-      diffQuantity: (Number(it.actualStock) || 0) - (Number(it.systemStock) || 0),
+      diffQuantity:
+        (Number(it.actualStock) || 0) - (Number(it.systemStock) || 0),
       reason: it.reason,
     }))
 

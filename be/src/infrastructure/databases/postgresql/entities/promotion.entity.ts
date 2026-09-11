@@ -10,7 +10,10 @@ import {
 @Entity('promotions')
 @Index('IDX_promotions_code', ['code'], { unique: true })
 export class Promotion {
-  @PrimaryGeneratedColumn({ type: 'bigint', primaryKeyConstraintName: 'PK_promotions_id' })
+  @PrimaryGeneratedColumn({
+    type: 'bigint',
+    primaryKeyConstraintName: 'PK_promotions_id',
+  })
   public readonly id!: number
 
   @Column({ type: 'varchar', length: 50 })
@@ -25,10 +28,22 @@ export class Promotion {
   @Column({ type: 'decimal', precision: 14, scale: 2, name: 'discount_value' })
   public discountValue!: number
 
-  @Column({ type: 'decimal', precision: 14, scale: 2, default: 0, name: 'min_order_value' })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 2,
+    default: 0,
+    name: 'min_order_value',
+  })
   public minOrderValue!: number
 
-  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true, name: 'max_discount' })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+    name: 'max_discount',
+  })
   public maxDiscount?: number
 
   @Column({ type: 'int', nullable: true, name: 'usage_limit' })

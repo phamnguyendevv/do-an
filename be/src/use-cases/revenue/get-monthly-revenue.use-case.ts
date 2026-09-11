@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
@@ -24,7 +25,10 @@ export class GetMonthlyRevenueUseCase {
       .getMany()
 
     // Map by YYYY-MM
-    const monthlyMap = new Map<string, { month: string; revenue: number; orders: number; books: number }>()
+    const monthlyMap = new Map<
+      string,
+      { month: string; revenue: number; orders: number; books: number }
+    >()
 
     for (let i = 0; i < limitMonths; i++) {
       const d = new Date(startDate)

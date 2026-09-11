@@ -47,7 +47,8 @@ export class LoginUseCase {
     if (user.status !== UserStatusEnum.Active) {
       throw this.exceptionsService.badRequestException({
         type: 'AccountDisabled',
-        message: 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên!',
+        message:
+          'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên!',
       })
     }
 

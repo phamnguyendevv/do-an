@@ -19,10 +19,14 @@ export interface UsePaginatedBooksParams {
 export const mapApiBook = (book: BookApiItem): Book => {
   const stock = Number(book?.stock ?? 0);
   const minStock = Number(book?.minStock ?? 0);
-  const purchasePrice = Number(book?.purchasePrice ?? (book as any)?.importPrice ?? 0);
-  const sellingPrice = Number(book?.sellingPrice ?? (book as any)?.price ?? 0);
+  const purchasePrice = Number(
+    book?.purchasePrice ?? (book as BookApiItem & { importPrice?: number })?.importPrice ?? 0,
+  );
+  const sellingPrice = Number(
+    book?.sellingPrice ?? (book as BookApiItem & { price?: number })?.price ?? 0,
+  );
   const rawStatus =
-    (book?.status as any) ||
+    (book?.status as string | undefined) ||
     (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
 
   return {
@@ -63,7 +67,19 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
     queryKey: [
       "books",
       "paginated",
-      { page, size, search, category, status, minPrice, maxPrice, startDate, endDate, sortBy, sortOrder },
+      {
+        page,
+        size,
+        search,
+        category,
+        status,
+        minPrice,
+        maxPrice,
+        startDate,
+        endDate,
+        sortBy,
+        sortOrder,
+      },
     ],
     queryFn: async () => {
       // Build params without undefined values to satisfy exactOptionalPropertyTypes
