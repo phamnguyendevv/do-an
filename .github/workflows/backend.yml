@@ -101,6 +101,7 @@ jobs:
   deploy:
     name:  Deploy to VPS
     runs-on: ubuntu-latest
+    environment: cicd
     needs: build-and-push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -108,22 +109,24 @@ jobs:
       - name:  Checkout code (lấy script deploy)
         uses: actions/checkout@v4
 
-      - name:  Copy deploy script lên VPS
+      - name: 📁 Copy deploy script lên VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "scripts/deploy-be.sh,docker-compose.prod.yml"
           target: "/opt/app"
 
-      - name:  SSH vào VPS và chạy deploy
+      - name: 🚀 SSH vào VPS và chạy deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
             chmod +x /opt/app/scripts/deploy-be.sh

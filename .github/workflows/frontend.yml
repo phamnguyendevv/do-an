@@ -20,6 +20,7 @@ jobs:
   build:
     name:  Lint & Build
     runs-on: ubuntu-latest
+    environment: cicd
     defaults:
       run:
         working-directory: ./fe
@@ -64,6 +65,7 @@ jobs:
   deploy:
     name:  Deploy to VPS
     runs-on: ubuntu-latest
+    environment: cicd
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -77,33 +79,36 @@ jobs:
           name: frontend-dist
           path: fe/dist
 
-      - name:  Copy Nginx config lên VPS
+      - name: 📁 Copy Nginx config lên VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "nginx/,scripts/deploy-fe.sh"
           target: "/opt/app"
 
-      - name:  SCP frontend dist/ lên VPS
+      - name: 🚀 SCP frontend dist/ lên VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "fe/dist/"
           target: "/opt/app/frontend"
           strip_components: 2
 
-      - name:  SSH vào VPS reload Nginx
+      - name: 🔄 SSH vào VPS reload Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
             chmod +x /opt/app/scripts/deploy-fe.sh

@@ -26,7 +26,8 @@ export type PaymentSuccessEventPayload = IPaymentSuccessPayload
 })
 @Injectable()
 export class PaymentGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, IPaymentGateway {
+  implements OnGatewayConnection, OnGatewayDisconnect, IPaymentGateway
+{
   @WebSocketServer()
   server!: Server
 
