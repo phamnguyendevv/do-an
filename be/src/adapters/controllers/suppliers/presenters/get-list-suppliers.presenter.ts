@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger'
+
 import { IPaginationParams } from '@domain/entities/search.entity'
 import { SupplierEntity } from '@domain/entities/supplier.entity'
+
 import { SupplierPresenter } from './supplier.presenter'
 
 class PaginationPresenter {

@@ -60,7 +60,10 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
-export const roleDescriptions: Record<"ADMIN" | "STAFF", { name: string; desc: string; permissions: string[] }> = {
+export const roleDescriptions: Record<
+  "ADMIN" | "STAFF",
+  { name: string; desc: string; permissions: string[] }
+> = {
   ADMIN: {
     name: "Quản trị viên (Admin)",
     desc: "Toàn quyền truy cập và điều hành toàn bộ chức năng kho sách, báo cáo tài chính và quản lý tài khoản người dùng.",
@@ -95,10 +98,7 @@ function ProfilePage() {
   const queryClient = useQueryClient();
 
   // Fetch full profile from API
-  const {
-    data: profileData,
-    refetch,
-  } = useQuery({
+  const { data: profileData, refetch } = useQuery({
     queryKey: ["user", "profile"],
     queryFn: async () => {
       try {
@@ -201,8 +201,10 @@ function ProfilePage() {
       if (!oldPassword) throw new Error("Vui lòng nhập mật khẩu hiện tại!");
       if (!newPassword) throw new Error("Vui lòng nhập mật khẩu mới!");
       if (newPassword.length < 6) throw new Error("Mật khẩu mới phải có tối thiểu 6 ký tự!");
-      if (newPassword !== confirmPassword) throw new Error("Xác nhận mật khẩu mới không trùng khớp!");
-      if (oldPassword === newPassword) throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ!");
+      if (newPassword !== confirmPassword)
+        throw new Error("Xác nhận mật khẩu mới không trùng khớp!");
+      if (oldPassword === newPassword)
+        throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ!");
 
       return await userApi.changePassword({
         oldPassword,
@@ -233,19 +235,15 @@ function ProfilePage() {
     toast.info("Đã khôi phục dữ liệu ban đầu.");
   };
 
-  const userRoleKey = (profileData?.role === 1 || currentAuthUser?.role === "ADMIN") ? "ADMIN" : "STAFF";
+  const userRoleKey =
+    profileData?.role === 1 || currentAuthUser?.role === "ADMIN" ? "ADMIN" : "STAFF";
   const roleInfo = roleDescriptions[userRoleKey];
   const userInitial = (username || currentAuthUser?.name || "U").slice(0, 1).toUpperCase();
   const lastLoginDisplay = profileData?.lastLogin || currentAuthUser?.lastLogin;
   const createdAtDisplay = profileData?.createdAt || currentAuthUser?.createdAt;
 
   return (
-    <AppShell
-      crumbs={[
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Hồ sơ người dùng" },
-      ]}
-    >
+    <AppShell crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Hồ sơ người dùng" }]}>
       <PageContainer>
         <PageHeader
           title="Hồ sơ người dùng"
@@ -442,7 +440,9 @@ function ProfilePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="prof-detail">Địa chỉ chi tiết (Số nhà, Tên đường, Tòa nhà)</Label>
+                    <Label htmlFor="prof-detail">
+                      Địa chỉ chi tiết (Số nhà, Tên đường, Tòa nhà)
+                    </Label>
                     <Input
                       id="prof-detail"
                       value={addressDetail}
@@ -522,7 +522,8 @@ function ProfilePage() {
                     <Lock className="h-5 w-5 text-primary" /> Đổi mật khẩu tài khoản
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Nên sử dụng mật khẩu mạnh kết hợp chữ in hoa, số và ký tự đặc biệt để bảo vệ tài khoản.
+                    Nên sử dụng mật khẩu mạnh kết hợp chữ in hoa, số và ký tự đặc biệt để bảo vệ tài
+                    khoản.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -545,7 +546,11 @@ function ProfilePage() {
                         onClick={() => setShowOldPassword((v) => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showOldPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -571,7 +576,11 @@ function ProfilePage() {
                         onClick={() => setShowNewPassword((v) => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showNewPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
 
@@ -606,14 +615,20 @@ function ProfilePage() {
                         onClick={() => setShowConfirmPassword((v) => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
 
                     {confirmPassword && newPassword && (
                       <p
                         className={`text-[11px] font-medium flex items-center gap-1 ${
-                          confirmPassword === newPassword ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
+                          confirmPassword === newPassword
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-destructive"
                         }`}
                       >
                         {confirmPassword === newPassword ? (
@@ -622,7 +637,8 @@ function ProfilePage() {
                           </>
                         ) : (
                           <>
-                            <ShieldAlert className="h-3.5 w-3.5" /> Mật khẩu xác nhận chưa trùng khớp
+                            <ShieldAlert className="h-3.5 w-3.5" /> Mật khẩu xác nhận chưa trùng
+                            khớp
                           </>
                         )}
                       </p>
@@ -651,7 +667,8 @@ function ProfilePage() {
                 <Card className="shadow-none bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2 text-blue-900 dark:text-blue-200">
-                      <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" /> Nguyên tắc bảo mật an toàn
+                      <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" /> Nguyên
+                      tắc bảo mật an toàn
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2.5 text-xs text-blue-950/80 dark:text-blue-200/80">
@@ -661,11 +678,16 @@ function ProfilePage() {
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 text-blue-600 dark:text-blue-400 font-bold">•</span>
-                      <span>Không sử dụng ngày sinh, số điện thoại hoặc mật khẩu trùng với tài khoản khác.</span>
+                      <span>
+                        Không sử dụng ngày sinh, số điện thoại hoặc mật khẩu trùng với tài khoản
+                        khác.
+                      </span>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 text-blue-600 dark:text-blue-400 font-bold">•</span>
-                      <span>Đăng xuất tài khoản khi không sử dụng trên máy tính dùng chung tại quầy POS.</span>
+                      <span>
+                        Đăng xuất tài khoản khi không sử dụng trên máy tính dùng chung tại quầy POS.
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -682,11 +704,10 @@ function ProfilePage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-base flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-primary" /> Quyền hạn của vai trò {userRoleKey}
+                        <Shield className="h-5 w-5 text-primary" /> Quyền hạn của vai trò{" "}
+                        {userRoleKey}
                       </CardTitle>
-                      <CardDescription className="text-xs mt-1">
-                        {roleInfo.desc}
-                      </CardDescription>
+                      <CardDescription className="text-xs mt-1">{roleInfo.desc}</CardDescription>
                     </div>
                   </div>
                 </CardHeader>

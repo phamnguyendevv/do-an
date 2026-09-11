@@ -21,13 +21,7 @@ export type OrderApiItem = {
   shippingMethod: string;
   trackingCode?: string;
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PREPARING"
-    | "SHIPPING"
-    | "DELIVERED"
-    | "CANCELLED"
-    | "RETURNED";
+    "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPING" | "DELIVERED" | "CANCELLED" | "RETURNED";
   note?: string;
   createdAt: string;
   updatedAt?: string;
@@ -111,17 +105,20 @@ export const orderApi = {
     });
   },
 
-  async update(id: number | string, payload: {
-    customerName?: string;
-    customerPhone?: string;
-    customerAddress?: string;
-    provinceId?: number;
-    districtId?: number;
-    wardCode?: string;
-    note?: string;
-    shippingFee?: number;
-    discount?: number;
-  }) {
+  async update(
+    id: number | string,
+    payload: {
+      customerName?: string;
+      customerPhone?: string;
+      customerAddress?: string;
+      provinceId?: number;
+      districtId?: number;
+      wardCode?: string;
+      note?: string;
+      shippingFee?: number;
+      discount?: number;
+    },
+  ) {
     return apiRequest<OrderApiItem>(`/admin/orders/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
@@ -191,4 +188,3 @@ export const sepayApi = {
     }>(`/payment/sepay/status/${encodeURIComponent(orderCode)}`);
   },
 };
-

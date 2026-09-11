@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
+
 import { DataSource, ILike } from 'typeorm'
 
 import { ISePayWebhookInput } from '@domain/entities/bookstore-order.entity'
@@ -16,6 +17,9 @@ import {
   IRedisCacheService,
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
+
+import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
+
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 
@@ -49,7 +53,10 @@ export class ProcessSepayPaymentUseCase {
     this.logger.log(`SePay Webhook received: ${JSON.stringify(payload)}`)
 
     if (payload.transferType && payload.transferType.toLowerCase() !== 'in') {
-      return { success: true, message: 'Bỏ qua giao dịch chuyển tiền đi (transferType != in)' }
+      return {
+        success: true,
+        message: 'Bỏ qua giao dịch chuyển tiền đi (transferType != in)',
+      }
     }
 
     const textToSearch = `${payload.content || ''} ${payload.description || ''} ${payload.code || ''} ${payload.referenceCode || ''}`
@@ -118,8 +125,11 @@ export class ProcessSepayPaymentUseCase {
       }
 
       if (!order) {
-        const fallbackOrderCode = codeWithHyphen || `DH-${Date.now().toString().slice(-6)}`
-        this.logger.log(`Tự động tạo đơn hàng mới từ Webhook SePay: ${fallbackOrderCode}`)
+        const fallbackOrderCode =
+          codeWithHyphen || `DH-${Date.now().toString().slice(-6)}`
+        this.logger.log(
+          `Tự động tạo đơn hàng mới từ Webhook SePay: ${fallbackOrderCode}`,
+        )
 
         order = queryRunner.manager.create(BookstoreOrder, {
           orderCode: fallbackOrderCode,
@@ -195,14 +205,19 @@ export class ProcessSepayPaymentUseCase {
       }
 
       const orderTotal = Number(order.total || 0)
-      this.logger.log(`Khớp đơn hàng ${order.orderCode} (Tổng: ${orderTotal}đ, Số tiền nhận: ${transferAmount}đ)`)
+      this.logger.log(
+        `Khớp đơn hàng ${order.orderCode} (Tổng: ${orderTotal}đ, Số tiền nhận: ${transferAmount}đ)`,
+      )
 
       const previousStatus = String(order.status)
       const previousPayment = String(order.payment)
 
       order.payment = PaymentStatusEnum.Paid
       if (order.status === OrderStatusEnum.Pending) {
-        if (order.shippingMethod?.includes('POS') || order.shippingMethod?.includes('quầy')) {
+        if (
+          order.shippingMethod?.includes('POS') ||
+          order.shippingMethod?.includes('quầy')
+        ) {
           order.status = OrderStatusEnum.Delivered
         } else {
           order.status = OrderStatusEnum.Confirmed
@@ -261,7 +276,11 @@ export class ProcessSepayPaymentUseCase {
     } catch (error: any) {
       await queryRunner.rollbackTransaction()
       this.logger.error('Lỗi khi xử lý SePay Webhook:', error)
-      return { success: false, message: 'Lỗi khi xử lý SePay Webhook', error: error.message }
+      return {
+        success: false,
+        message: 'Lỗi khi xử lý SePay Webhook',
+        error: error.message,
+      }
     } finally {
       await queryRunner.release()
     }

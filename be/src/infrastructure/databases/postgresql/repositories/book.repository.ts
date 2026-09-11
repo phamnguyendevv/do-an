@@ -96,7 +96,9 @@ export class BookRepository implements IBookRepositoryInterface {
     }
 
     if (startDate) {
-      query.andWhere('book.createdAt >= :startDate', { startDate: new Date(startDate) })
+      query.andWhere('book.createdAt >= :startDate', {
+        startDate: new Date(startDate),
+      })
     }
 
     if (endDate) {

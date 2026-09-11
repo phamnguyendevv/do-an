@@ -335,7 +335,9 @@ function RegisterPage() {
                   <Input
                     id="phone"
                     type="tel"
-                    className={phoneError ? "border-destructive focus-visible:ring-destructive" : ""}
+                    className={
+                      phoneError ? "border-destructive focus-visible:ring-destructive" : ""
+                    }
                     value={phone}
                     onChange={(e) => {
                       setPhone(e.target.value);

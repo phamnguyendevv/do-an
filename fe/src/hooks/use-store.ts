@@ -9,7 +9,14 @@ import {
   type ImportReceiptApiItem,
   type ExportReceiptApiItem,
 } from "@/lib/inventory-api";
-import type { Book, ExportReceipt, ImportReceipt, Order, OrderStatus, PaymentStatus } from "@/types";
+import type {
+  Book,
+  ExportReceipt,
+  ImportReceipt,
+  Order,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types";
 
 const mapApiBook = (book: BookApiItem): Book => {
   const stock = Number(book?.stock ?? 0);
@@ -160,8 +167,8 @@ export function useCategories(): Array<{ id: string; name: string }> {
     new Set(
       books
         .map((b) => (typeof b?.category === "string" ? b.category.trim() : ""))
-        .filter((cat) => Boolean(cat && cat.length > 0))
-    )
+        .filter((cat) => Boolean(cat && cat.length > 0)),
+    ),
   );
 
   return uniqueNames.map((name) => ({ id: name, name }));
@@ -279,12 +286,12 @@ export function useShipments(): import("@/types").Shipping[] {
             order.status === "DELIVERED"
               ? "DELIVERED"
               : order.status === "CANCELLED"
-              ? "RETURNED"
-              : order.status === "SHIPPING"
-              ? "OUT_FOR_DELIVERY"
-              : order.status === "PREPARING"
-              ? "PICKED_UP"
-              : "WAITING_PICKUP",
+                ? "RETURNED"
+                : order.status === "SHIPPING"
+                  ? "OUT_FOR_DELIVERY"
+                  : order.status === "PREPARING"
+                    ? "PICKED_UP"
+                    : "WAITING_PICKUP",
           address: order.customerAddress,
         });
       }

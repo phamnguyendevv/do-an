@@ -5,7 +5,7 @@ export const getCookieOptions = (nodeEnv: string): CookieOptions => {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
   }
 }

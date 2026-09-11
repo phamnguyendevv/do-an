@@ -70,4 +70,3 @@ export const revenueApi = {
     return this.getOverview(params);
   },
 };
-

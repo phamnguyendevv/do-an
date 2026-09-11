@@ -1,8 +1,8 @@
-import { IPaginationParams } from '@domain/entities/search.entity'
 import {
   OrderHistoryAction,
   OrderHistoryEntity,
 } from '@domain/entities/order-history.entity'
+import { IPaginationParams } from '@domain/entities/search.entity'
 
 export interface ISearchOrderHistoryParams {
   size?: number

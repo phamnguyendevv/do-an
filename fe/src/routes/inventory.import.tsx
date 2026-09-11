@@ -23,17 +23,17 @@ import {
 import { useBooks } from "@/hooks/use-store";
 import { supplierApi, type SupplierApiItem } from "@/lib/supplier-api";
 import { inventoryService } from "@/services/inventory-service";
-import {
-  downloadInventoryImportTemplate,
-  parseInventoryImportFile,
-} from "@/lib/excel-service";
+import { downloadInventoryImportTemplate, parseInventoryImportFile } from "@/lib/excel-service";
 import { formatCurrency, formatNumber } from "@/utils/format";
 
 export const Route = createFileRoute("/inventory/import")({
   head: () => ({
     meta: [
       { title: "Nhập kho — BookStock" },
-      { name: "description", content: "Tạo phiếu nhập kho: chọn nhà cung cấp, sản phẩm, số lượng và giá nhập." },
+      {
+        name: "description",
+        content: "Tạo phiếu nhập kho: chọn nhà cung cấp, sản phẩm, số lượng và giá nhập.",
+      },
       { property: "og:title", content: "Nhập kho — BookStock" },
       { property: "og:description", content: "Tạo phiếu nhập kho cho kho sách." },
     ],
@@ -103,7 +103,7 @@ function ImportPage() {
           newLines.push({
             bookId: matched.id,
             quantity: row.quantity,
-            price: row.price > 0 ? row.price : (matched.purchasePrice || matched.price * 0.7),
+            price: row.price > 0 ? row.price : matched.purchasePrice || matched.price * 0.7,
           });
         }
       }
@@ -131,7 +131,10 @@ function ImportPage() {
     setSubmitting(true);
     const res = await inventoryService.createImport({
       supplier: selectedSupplier.name,
-      supplierId: typeof selectedSupplier.id === "number" ? selectedSupplier.id : parseInt(String(selectedSupplier.id), 10),
+      supplierId:
+        typeof selectedSupplier.id === "number"
+          ? selectedSupplier.id
+          : parseInt(String(selectedSupplier.id), 10),
       date,
       note,
       lines,
@@ -141,7 +144,9 @@ function ImportPage() {
       setError(res.error ?? "Không thể tạo phiếu nhập.");
       return;
     }
-    toast.success(`Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`);
+    toast.success(
+      `Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`,
+    );
     navigate({ to: "/inventory" });
   };
 
@@ -173,18 +178,10 @@ function ImportPage() {
                 onChange={handleExcelUpload}
                 className="hidden"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadInventoryImportTemplate}
-              >
+              <Button variant="outline" size="sm" onClick={downloadInventoryImportTemplate}>
                 <Download className="mr-1.5 h-4 w-4" /> File mẫu (.xlsx)
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => excelInputRef.current?.click()}
-              >
+              <Button variant="outline" size="sm" onClick={() => excelInputRef.current?.click()}>
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Nhập từ Excel
               </Button>
             </div>
@@ -273,7 +270,9 @@ function ImportPage() {
               </div>
               <div className="flex justify-between border-t pt-3 text-sm">
                 <span className="font-medium">Tổng giá trị nhập</span>
-                <span className="font-semibold tabular-nums text-primary">{formatCurrency(totalValue)}</span>
+                <span className="font-semibold tabular-nums text-primary">
+                  {formatCurrency(totalValue)}
+                </span>
               </div>
               {error ? <p className="text-xs text-destructive">{error}</p> : null}
               <Button className="w-full" onClick={submit} disabled={submitting}>

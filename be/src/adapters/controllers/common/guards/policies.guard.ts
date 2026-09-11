@@ -39,7 +39,9 @@ export class PoliciesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user?: UserEntity }>()
     const user = request.user
     if (!user) {
-      throw new ForbiddenException('Không tìm thấy thông tin xác thực người dùng')
+      throw new ForbiddenException(
+        'Không tìm thấy thông tin xác thực người dùng',
+      )
     }
 
     const ability = this.caslAbilityFactory.createForUser(user)

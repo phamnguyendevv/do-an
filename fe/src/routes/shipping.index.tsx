@@ -8,7 +8,11 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchInput } from "@/components/shared/search-input";
 import { FilterBar } from "@/components/shared/filter-bar";
-import { DateRangePicker, inDateRange, type DateRange } from "@/components/shared/date-range-picker";
+import {
+  DateRangePicker,
+  inDateRange,
+  type DateRange,
+} from "@/components/shared/date-range-picker";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
@@ -29,7 +33,10 @@ export const Route = createFileRoute("/shipping/")({
   head: () => ({
     meta: [
       { title: "Vận chuyển — BookStock" },
-      { name: "description", content: "Danh sách vận đơn: đơn vị vận chuyển, mã tracking, phí và trạng thái giao hàng." },
+      {
+        name: "description",
+        content: "Danh sách vận đơn: đơn vị vận chuyển, mã tracking, phí và trạng thái giao hàng.",
+      },
       { property: "og:title", content: "Vận chuyển — BookStock" },
       { property: "og:description", content: "Theo dõi toàn bộ vận đơn và tiến trình giao hàng." },
     ],
@@ -64,10 +71,7 @@ function ShippingPage() {
         const customerName = (s.customerName || "").toLowerCase();
         const trackingNumber = (s.trackingNumber || "").toLowerCase();
         const matchQ =
-          !q ||
-          orderId.includes(q) ||
-          customerName.includes(q) ||
-          trackingNumber.includes(q);
+          !q || orderId.includes(q) || customerName.includes(q) || trackingNumber.includes(q);
         return (
           matchQ &&
           (status === "all" || s.status === status) &&
@@ -84,12 +88,22 @@ function ShippingPage() {
       sortable: true,
       value: (s) => s.orderId || "",
       cell: (s) => (
-        <Link to="/shipping/$shippingId" params={{ shippingId: s.id }} className="font-mono text-xs hover:text-primary">
+        <Link
+          to="/shipping/$shippingId"
+          params={{ shippingId: s.id }}
+          className="font-mono text-xs hover:text-primary"
+        >
           {s.orderId || "—"}
         </Link>
       ),
     },
-    { key: "customer", header: "Khách hàng", sortable: true, value: (s) => s.customerName || "", cell: (s) => <span className="font-medium">{s.customerName || "—"}</span> },
+    {
+      key: "customer",
+      header: "Khách hàng",
+      sortable: true,
+      value: (s) => s.customerName || "",
+      cell: (s) => <span className="font-medium">{s.customerName || "—"}</span>,
+    },
     {
       key: "carrier",
       header: "Đơn vị VC",
@@ -110,7 +124,9 @@ function ShippingPage() {
       header: "Mã vận đơn",
       cell: (s) => (
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-xs font-semibold text-foreground">{s.trackingNumber || "—"}</span>
+          <span className="font-mono text-xs font-semibold text-foreground">
+            {s.trackingNumber || "—"}
+          </span>
           {s.carrier?.includes("GHN") && s.trackingNumber ? (
             <Button
               variant="ghost"
@@ -125,15 +141,38 @@ function ShippingPage() {
         </div>
       ),
     },
-    { key: "fee", header: "Phí VC", align: "right", sortable: true, value: (s) => s.shippingFee, cell: (s) => <span className="tabular-nums">{formatCurrency(s.shippingFee)}</span> },
-    { key: "eta", header: "Dự kiến giao", align: "right", cell: (s) => <span className="text-muted-foreground">{formatDate(s.expectedDelivery)}</span> },
-    { key: "status", header: "Trạng thái", cell: (s) => <StatusBadge tone={shippingStatusTone[s.status]}>{shippingStatusLabel[s.status]}</StatusBadge> },
+    {
+      key: "fee",
+      header: "Phí VC",
+      align: "right",
+      sortable: true,
+      value: (s) => s.shippingFee,
+      cell: (s) => <span className="tabular-nums">{formatCurrency(s.shippingFee)}</span>,
+    },
+    {
+      key: "eta",
+      header: "Dự kiến giao",
+      align: "right",
+      cell: (s) => <span className="text-muted-foreground">{formatDate(s.expectedDelivery)}</span>,
+    },
+    {
+      key: "status",
+      header: "Trạng thái",
+      cell: (s) => (
+        <StatusBadge tone={shippingStatusTone[s.status]}>
+          {shippingStatusLabel[s.status]}
+        </StatusBadge>
+      ),
+    },
   ];
 
   return (
     <AppShell crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Vận chuyển" }]}>
       <PageContainer>
-        <PageHeader title="Vận chuyển" description={`${data.length}/${shipments.length} vận đơn đang theo dõi.`} />
+        <PageHeader
+          title="Vận chuyển"
+          description={`${data.length}/${shipments.length} vận đơn đang theo dõi.`}
+        />
 
         <DataTable
           columns={columns}
@@ -148,7 +187,11 @@ function ShippingPage() {
                 onValueChange={setSearch}
                 placeholder="Tìm mã đơn, khách hàng, tracking..."
               />
-              <DateRangePicker value={dateRange} onValueChange={setDateRange} placeholder="Lọc theo ngày giao dự kiến" />
+              <DateRangePicker
+                value={dateRange}
+                onValueChange={setDateRange}
+                placeholder="Lọc theo ngày giao dự kiến"
+              />
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="h-9 sm:w-48">
                   <SelectValue />

@@ -1,4 +1,14 @@
-import { IsEmail, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
+import {
+  IsEmail,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator'
+import { Transform } from 'class-transformer'
 
 export class CreateCustomerDto {
   @IsString()
@@ -52,11 +62,13 @@ export class ListCustomersDto {
   search?: string
 
   @IsOptional()
+  @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
   page?: number
 
   @IsOptional()
+  @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
   @Max(500)

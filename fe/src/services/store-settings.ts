@@ -22,17 +22,33 @@ export interface BankOption {
 
 export const VIETNAM_BANKS: BankOption[] = [
   { code: "MBBank", name: "Ngân hàng TMCP Quân Đội", shortName: "MBBank (MB)" },
-  { code: "Vietcombank", name: "Ngân hàng TMCP Ngoại Thương Việt Nam", shortName: "Vietcombank (VCB)" },
-  { code: "Techcombank", name: "Ngân hàng TMCP Kỹ Thương Việt Nam", shortName: "Techcombank (TCB)" },
+  {
+    code: "Vietcombank",
+    name: "Ngân hàng TMCP Ngoại Thương Việt Nam",
+    shortName: "Vietcombank (VCB)",
+  },
+  {
+    code: "Techcombank",
+    name: "Ngân hàng TMCP Kỹ Thương Việt Nam",
+    shortName: "Techcombank (TCB)",
+  },
   { code: "ACB", name: "Ngân hàng TMCP Á Châu", shortName: "ACB" },
   { code: "VPBank", name: "Ngân hàng TMCP Việt Nam Thịnh Vượng", shortName: "VPBank (VPB)" },
   { code: "TPBank", name: "Ngân hàng TMCP Tiên Phong", shortName: "TPBank (TPB)" },
-  { code: "VietinBank", name: "Ngân hàng TMCP Công Thương Việt Nam", shortName: "VietinBank (ICB)" },
+  {
+    code: "VietinBank",
+    name: "Ngân hàng TMCP Công Thương Việt Nam",
+    shortName: "VietinBank (ICB)",
+  },
   { code: "BIDV", name: "Ngân hàng TMCP Đầu Tư và Phát Triển Việt Nam", shortName: "BIDV" },
   { code: "Sacombank", name: "Ngân hàng TMCP Sài Gòn Thương Tín", shortName: "Sacombank (STB)" },
   { code: "VIB", name: "Ngân hàng TMCP Quốc Tế Việt Nam", shortName: "VIB" },
   { code: "HDBank", name: "Ngân hàng TMCP Phát Triển TP.HCM", shortName: "HDBank" },
-  { code: "Agribank", name: "Ngân hàng Nông nghiệp và Phát triển Nông thôn", shortName: "Agribank (VBA)" },
+  {
+    code: "Agribank",
+    name: "Ngân hàng Nông nghiệp và Phát triển Nông thôn",
+    shortName: "Agribank (VBA)",
+  },
   { code: "MSB", name: "Ngân hàng TMCP Hàng Hải Việt Nam", shortName: "MSB" },
   { code: "OCB", name: "Ngân hàng TMCP Phương Đông", shortName: "OCB" },
   { code: "SHB", name: "Ngân hàng TMCP Sài Gòn - Hà Nội", shortName: "SHB" },

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
 
+import { Request } from 'express'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
 import { UserStatusEnum } from '@domain/entities/status.entity'
@@ -21,15 +22,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: any) => {
-          return request?.cookies?.access_token || request?.cookies?.['access_token'] || null
+        (request: Request | undefined) => {
+          if (!request) return null
+          return (
+            (request.cookies as Record<string, string> | undefined)?.[
+              'access_token'
+            ] ?? null
+          )
         },
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
       secretOrKey: environmentConfigService.getJwtSecret(),
     })
-
   }
 
   async validate(payload: IJwtServicePayload) {

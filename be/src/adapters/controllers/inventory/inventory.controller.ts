@@ -141,7 +141,10 @@ export class InventoryController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Tạo phiếu kiểm kê kho' })
   @CheckPolicies({ action: 'create', subject: 'StockMovement' })
-  async createAudit(@Body() dto: CreateStockAuditControllerDto, @User('username') userName?: string) {
+  async createAudit(
+    @Body() dto: CreateStockAuditControllerDto,
+    @User('username') userName?: string,
+  ) {
     return await this.createStockAuditUseCase.execute({
       ...dto,
       auditedBy: userName || 'Admin',
@@ -166,9 +169,14 @@ export class InventoryController {
 
   @Post('audit/:id/balance')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cân bằng tồn kho theo phiếu kiểm kê (ghi log Sổ kho)' })
+  @ApiOperation({
+    summary: 'Cân bằng tồn kho theo phiếu kiểm kê (ghi log Sổ kho)',
+  })
   @CheckPolicies({ action: 'update', subject: 'StockMovement' })
-  async balanceAudit(@Param('id', ParseIntPipe) id: number, @User('username') userName?: string) {
+  async balanceAudit(
+    @Param('id', ParseIntPipe) id: number,
+    @User('username') userName?: string,
+  ) {
     return await this.balanceStockAuditUseCase.execute(id, userName || 'Admin')
   }
 }

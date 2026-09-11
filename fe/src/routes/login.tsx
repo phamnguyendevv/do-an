@@ -336,10 +336,8 @@ function LoginPage() {
             <DialogDescription className="text-xs">
               {forgotStep === "email" &&
                 "Nhập email tài khoản. Hệ thống sẽ kiểm tra tài khoản và gửi mã OTP xác thực."}
-              {forgotStep === "otp" &&
-                `Mã xác thực 6 chữ số đã được gửi đến email ${forgotEmail}.`}
-              {forgotStep === "password" &&
-                `Nhập mật khẩu mới cho tài khoản ${forgotEmail}.`}
+              {forgotStep === "otp" && `Mã xác thực 6 chữ số đã được gửi đến email ${forgotEmail}.`}
+              {forgotStep === "password" && `Nhập mật khẩu mới cho tài khoản ${forgotEmail}.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -347,9 +345,7 @@ function LoginPage() {
           <div className="flex items-center justify-between px-1 py-2 border-b text-xs">
             <div
               className={`flex items-center gap-1.5 ${
-                forgotStep === "email"
-                  ? "text-primary font-semibold"
-                  : "text-muted-foreground"
+                forgotStep === "email" ? "text-primary font-semibold" : "text-muted-foreground"
               }`}
             >
               <span
@@ -357,8 +353,8 @@ function LoginPage() {
                   forgotStep === "email"
                     ? "bg-primary text-primary-foreground font-bold"
                     : forgotStep === "otp" || forgotStep === "password"
-                    ? "bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-950 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground"
+                      ? "bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-950 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {forgotStep === "otp" || forgotStep === "password" ? "✓" : "1"}
@@ -368,9 +364,7 @@ function LoginPage() {
             <div className="h-[1px] w-6 bg-border" />
             <div
               className={`flex items-center gap-1.5 ${
-                forgotStep === "otp"
-                  ? "text-primary font-semibold"
-                  : "text-muted-foreground"
+                forgotStep === "otp" ? "text-primary font-semibold" : "text-muted-foreground"
               }`}
             >
               <span
@@ -378,8 +372,8 @@ function LoginPage() {
                   forgotStep === "otp"
                     ? "bg-primary text-primary-foreground font-bold"
                     : forgotStep === "password"
-                    ? "bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-950 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground"
+                      ? "bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-950 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {forgotStep === "password" ? "✓" : "2"}
@@ -389,9 +383,7 @@ function LoginPage() {
             <div className="h-[1px] w-6 bg-border" />
             <div
               className={`flex items-center gap-1.5 ${
-                forgotStep === "password"
-                  ? "text-primary font-semibold"
-                  : "text-muted-foreground"
+                forgotStep === "password" ? "text-primary font-semibold" : "text-muted-foreground"
               }`}
             >
               <span
@@ -595,7 +587,11 @@ function LoginPage() {
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>

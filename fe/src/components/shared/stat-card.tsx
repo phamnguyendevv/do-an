@@ -11,12 +11,21 @@ interface StatCardProps {
   className?: string;
 }
 
-export function StatCard({ label, value, hint, icon: Icon, trend = "neutral", className }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  trend = "neutral",
+  className,
+}: StatCardProps) {
   return (
     <Card className={cn("shadow-none", className)}>
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </p>
           <p className="text-2xl font-semibold tabular-nums">{value}</p>
           {hint ? (
             <p

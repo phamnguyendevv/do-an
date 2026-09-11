@@ -64,12 +64,12 @@ export const Route = createFileRoute("/shipping/$shippingId")({
           status: (order.status === "DELIVERED"
             ? "DELIVERED"
             : order.status === "CANCELLED"
-            ? "RETURNED"
-            : order.status === "SHIPPING"
-            ? "OUT_FOR_DELIVERY"
-            : order.status === "PREPARING"
-            ? "PICKED_UP"
-            : "WAITING_PICKUP") as import("@/types").ShippingStatus,
+              ? "RETURNED"
+              : order.status === "SHIPPING"
+                ? "OUT_FOR_DELIVERY"
+                : order.status === "PREPARING"
+                  ? "PICKED_UP"
+                  : "WAITING_PICKUP") as import("@/types").ShippingStatus,
           address: order.customerAddress,
         },
         order,
@@ -89,7 +89,9 @@ export const Route = createFileRoute("/shipping/$shippingId")({
     }
     return {
       meta: [
-        { title: `Vận đơn ${loaderData.shipment.trackingNumber || loaderData.shipment.orderId} — BookStock` },
+        {
+          title: `Vận đơn ${loaderData.shipment.trackingNumber || loaderData.shipment.orderId} — BookStock`,
+        },
         {
           name: "description",
           content: `Tiến trình giao hàng của đơn ${loaderData.shipment.orderId}.`,
@@ -216,15 +218,12 @@ function ShippingDetailPage() {
       if (!res.ok) {
         toast.error(res.error ?? "Không thể cập nhật trạng thái đơn hàng");
       } else {
-        toast.success(
-          `Đơn ${order.orderCode || order.id} → ${orderStatusLabel[nextStatus]}`,
-          {
-            description:
-              nextStatus === "CANCELLED" || nextStatus === "RETURNED"
-                ? "Số lượng đã được hoàn lại kho."
-                : undefined,
-          }
-        );
+        toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[nextStatus]}`, {
+          description:
+            nextStatus === "CANCELLED" || nextStatus === "RETURNED"
+              ? "Số lượng đã được hoàn lại kho."
+              : undefined,
+        });
         queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
         setNextStatus("");
       }
@@ -343,7 +342,7 @@ function ShippingDetailPage() {
                                     "absolute -left-7 top-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[9px]",
                                     isFirst
                                       ? "border-emerald-500 bg-emerald-500 text-white"
-                                      : "border-border bg-muted text-muted-foreground"
+                                      : "border-border bg-muted text-muted-foreground",
                                   )}
                                 >
                                   {isFirst ? <Check className="h-2.5 w-2.5" /> : null}
@@ -352,15 +351,13 @@ function ShippingDetailPage() {
                                   <p
                                     className={cn(
                                       "text-sm font-medium",
-                                      !isFirst && "text-muted-foreground"
+                                      !isFirst && "text-muted-foreground",
                                     )}
                                   >
                                     {ghnLogLabel(log.status)}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {log.updated_date
-                                      ? formatDateTime(log.updated_date)
-                                      : ""}
+                                    {log.updated_date ? formatDateTime(log.updated_date) : ""}
                                     {log.description ? ` — ${log.description}` : ""}
                                   </p>
                                 </div>
@@ -400,9 +397,15 @@ function ShippingDetailPage() {
                           className={cn(
                             "absolute -left-8 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px]",
                             done && !failed && "border-success bg-success text-success-foreground",
-                            done && failed && isCurrent && "border-destructive bg-destructive text-destructive-foreground",
-                            done && failed && !isCurrent && "border-success bg-success text-success-foreground",
-                            !done && "border-border bg-muted text-muted-foreground"
+                            done &&
+                              failed &&
+                              isCurrent &&
+                              "border-destructive bg-destructive text-destructive-foreground",
+                            done &&
+                              failed &&
+                              !isCurrent &&
+                              "border-success bg-success text-success-foreground",
+                            !done && "border-border bg-muted text-muted-foreground",
                           )}
                         >
                           {done ? <Check className="h-3 w-3" /> : i + 1}
@@ -454,7 +457,9 @@ function ShippingDetailPage() {
                               orderService.updateStatus(order.id, "CONFIRMED").then((res) => {
                                 if (res.ok) {
                                   toast.success(`Đã xác nhận đơn ${order.orderCode || order.id}`);
-                                  queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["orders", "live-list"],
+                                  });
                                 } else {
                                   toast.error(res.error ?? "Lỗi cập nhật trạng thái");
                                 }
@@ -474,7 +479,9 @@ function ShippingDetailPage() {
                             orderService.updateStatus(order.id, "PREPARING").then((res) => {
                               if (res.ok) {
                                 toast.success("Bắt đầu chuẩn bị hàng");
-                                queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["orders", "live-list"],
+                                });
                               }
                             });
                           }}
@@ -491,7 +498,9 @@ function ShippingDetailPage() {
                             orderService.updateStatus(order.id, "SHIPPING").then((res) => {
                               if (res.ok) {
                                 toast.success("Đơn hàng đang được vận chuyển");
-                                queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["orders", "live-list"],
+                                });
                               }
                             });
                           }}
@@ -508,7 +517,9 @@ function ShippingDetailPage() {
                             orderService.updateStatus(order.id, "DELIVERED").then((res) => {
                               if (res.ok) {
                                 toast.success("Giao hàng thành công!");
-                                queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["orders", "live-list"],
+                                });
                               }
                             });
                           }}
@@ -526,7 +537,9 @@ function ShippingDetailPage() {
                             orderService.updateStatus(order.id, "CANCELLED").then((res) => {
                               if (res.ok) {
                                 toast.success("Đã hủy đơn hàng, tồn kho đã được hoàn lại");
-                                queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["orders", "live-list"],
+                                });
                                 if (hasTracking) {
                                   ghnApi.cancelOrder([shipment.trackingNumber!]).catch(() => {});
                                 }
@@ -547,7 +560,9 @@ function ShippingDetailPage() {
                             orderService.updateStatus(order.id, "RETURNED").then((res) => {
                               if (res.ok) {
                                 toast.success("Đã ghi nhận hoàn hàng, tồn kho đã được hoàn lại");
-                                queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["orders", "live-list"],
+                                });
                               }
                             });
                           }}
@@ -579,7 +594,7 @@ function ShippingDetailPage() {
                               <SelectItem key={opt.value} value={opt.value}>
                                 {opt.label}
                               </SelectItem>
-                            )
+                            ),
                           )}
                         </SelectContent>
                       </Select>
@@ -598,7 +613,7 @@ function ShippingDetailPage() {
                   {hasTracking &&
                     ghnDetail?.status &&
                     !["delivered", "returned", "cancel"].includes(
-                      ghnDetail.status.toLowerCase()
+                      ghnDetail.status.toLowerCase(),
                     ) && (
                       <div className="border-t pt-3">
                         <Button
@@ -672,15 +687,10 @@ function ShippingDetailPage() {
                 <Row
                   label="Mã vận đơn"
                   value={
-                    <span className="font-mono text-xs">
-                      {shipment.trackingNumber || "—"}
-                    </span>
+                    <span className="font-mono text-xs">{shipment.trackingNumber || "—"}</span>
                   }
                 />
-                <Row
-                  label="Phí vận chuyển"
-                  value={formatCurrency(shipment.shippingFee)}
-                />
+                <Row label="Phí vận chuyển" value={formatCurrency(shipment.shippingFee)} />
                 <Row label="Dự kiến giao" value={formatDate(shipment.expectedDelivery)} />
                 <div className="py-2.5 text-sm">
                   <p className="text-muted-foreground">Địa chỉ giao</p>

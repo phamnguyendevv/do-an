@@ -22,7 +22,9 @@ const mapApiBook = (book: BookApiItem): Book => {
   const minStock = Number(book?.minStock ?? 0);
   const purchasePrice = Number(book?.purchasePrice ?? (book as any)?.importPrice ?? 0);
   const sellingPrice = Number(book?.sellingPrice ?? (book as any)?.price ?? 0);
-  const rawStatus = (book?.status as any) || (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
+  const rawStatus =
+    (book?.status as any) ||
+    (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
 
   return {
     id: String(book?.id ?? ""),
@@ -36,7 +38,10 @@ const mapApiBook = (book: BookApiItem): Book => {
     stock,
     minStock,
     status: rawStatus,
-    createdAt: typeof book?.createdAt === "string" ? book.createdAt : new Date(book?.createdAt ?? Date.now()).toISOString(),
+    createdAt:
+      typeof book?.createdAt === "string"
+        ? book.createdAt
+        : new Date(book?.createdAt ?? Date.now()).toISOString(),
   };
 };
 
@@ -52,14 +57,25 @@ export const Route = createFileRoute("/books/$bookId")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Không tìm thấy sách — BookStock" }, { name: "robots", content: "noindex" }] };
+      return {
+        meta: [
+          { title: "Không tìm thấy sách — BookStock" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     }
     return {
       meta: [
         { title: `${loaderData.book.title} — BookStock` },
-        { name: "description", content: `Chi tiết đầu sách ${loaderData.book.title} của ${loaderData.book.author}.` },
+        {
+          name: "description",
+          content: `Chi tiết đầu sách ${loaderData.book.title} của ${loaderData.book.author}.`,
+        },
         { property: "og:title", content: `${loaderData.book.title} — BookStock` },
-        { property: "og:description", content: `Thông tin giá, tồn kho và danh mục của ${loaderData.book.title}.` },
+        {
+          property: "og:description",
+          content: `Thông tin giá, tồn kho và danh mục của ${loaderData.book.title}.`,
+        },
       ],
     };
   },
@@ -117,10 +133,19 @@ function BookDetailPage() {
         />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Tồn kho" value={formatNumber(book.stock)} hint={`Tối thiểu ${book.minStock}`} />
+          <StatCard
+            label="Tồn kho"
+            value={formatNumber(book.stock)}
+            hint={`Tối thiểu ${book.minStock}`}
+          />
           <StatCard label="Giá bán" value={formatCurrency(sellingPrice)} />
           <StatCard label="Giá nhập" value={formatCurrency(purchasePrice)} />
-          <StatCard label="Lợi nhuận / cuốn" value={formatCurrency(margin)} hint={`${marginPct}% biên lợi nhuận`} trend="up" />
+          <StatCard
+            label="Lợi nhuận / cuốn"
+            value={formatCurrency(margin)}
+            hint={`${marginPct}% biên lợi nhuận`}
+            trend="up"
+          />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -142,7 +167,14 @@ function BookDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="divide-y">
-                <Row label="Trạng thái" value={<StatusBadge tone={bookStatusTone[book.status]}>{bookStatusLabel[book.status]}</StatusBadge>} />
+                <Row
+                  label="Trạng thái"
+                  value={
+                    <StatusBadge tone={bookStatusTone[book.status]}>
+                      {bookStatusLabel[book.status]}
+                    </StatusBadge>
+                  }
+                />
                 <Row label="Tồn hiện tại" value={formatNumber(book.stock)} />
                 <Row label="Tồn tối thiểu" value={formatNumber(book.minStock)} />
                 <Row label="Giá trị tồn" value={formatCurrency(book.stock * purchasePrice)} />

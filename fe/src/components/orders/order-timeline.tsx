@@ -200,7 +200,8 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
               </span>
             </CardTitle>
             <CardDescription className="text-xs">
-              Ghi nhận tự động mọi thay đổi trạng thái, thanh toán, đồng bộ vận chuyển và ghi chú nội bộ.
+              Ghi nhận tự động mọi thay đổi trạng thái, thanh toán, đồng bộ vận chuyển và ghi chú
+              nội bộ.
             </CardDescription>
           </div>
           <Button
@@ -301,9 +302,7 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                     {/* Header Row */}
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-xs text-foreground">
-                          {item.title}
-                        </span>
+                        <span className="font-semibold text-xs text-foreground">{item.title}</span>
                         <StatusBadge tone={cfg.badgeTone} className="text-[10px] py-0 px-1.5">
                           {cfg.label}
                         </StatusBadge>
@@ -343,18 +342,20 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                         </div>
                       )}
 
-                      {item.fromPayment && item.toPayment && item.fromPayment !== item.toPayment && (
-                        <div className="flex items-center gap-1 text-[11px]">
-                          <span className="text-muted-foreground">Thanh toán:</span>
-                          <span className="font-medium text-muted-foreground">
-                            {paymentLabel[item.fromPayment as any] || item.fromPayment}
-                          </span>
-                          <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
-                          <span className="font-semibold text-emerald-600">
-                            {paymentLabel[item.toPayment as any] || item.toPayment}
-                          </span>
-                        </div>
-                      )}
+                      {item.fromPayment &&
+                        item.toPayment &&
+                        item.fromPayment !== item.toPayment && (
+                          <div className="flex items-center gap-1 text-[11px]">
+                            <span className="text-muted-foreground">Thanh toán:</span>
+                            <span className="font-medium text-muted-foreground">
+                              {paymentLabel[item.fromPayment as any] || item.fromPayment}
+                            </span>
+                            <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                            <span className="font-semibold text-emerald-600">
+                              {paymentLabel[item.toPayment as any] || item.toPayment}
+                            </span>
+                          </div>
+                        )}
                     </div>
 
                     {/* Note Content */}

@@ -63,7 +63,19 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
     queryKey: [
       "books",
       "paginated",
-      { page, size, search, category, status, minPrice, maxPrice, startDate, endDate, sortBy, sortOrder },
+      {
+        page,
+        size,
+        search,
+        category,
+        status,
+        minPrice,
+        maxPrice,
+        startDate,
+        endDate,
+        sortBy,
+        sortOrder,
+      },
     ],
     queryFn: async () => {
       // Build params without undefined values to satisfy exactOptionalPropertyTypes

@@ -52,7 +52,11 @@ export function ActionPreview({ action }: { action: PendingAction }) {
           shippingMethod: "Giao hàng tiêu chuẩn",
           shippingFee: 0,
           discount: 0,
-          lines: action.lines.map((l) => ({ bookId: l.bookId, quantity: l.quantity, price: l.price })),
+          lines: action.lines.map((l) => ({
+            bookId: l.bookId,
+            quantity: l.quantity,
+            price: l.price,
+          })),
         });
         if (!res.ok) {
           toast.error(res.error ?? "Không tạo được đơn hàng.");
@@ -65,7 +69,11 @@ export function ActionPreview({ action }: { action: PendingAction }) {
           supplier: action.supplier || "Nhà cung cấp khác",
           date: new Date().toISOString(),
           note: action.note,
-          lines: action.lines.map((l) => ({ bookId: l.bookId, quantity: l.quantity, price: l.price })),
+          lines: action.lines.map((l) => ({
+            bookId: l.bookId,
+            quantity: l.quantity,
+            price: l.price,
+          })),
         });
         if (!res.ok) {
           toast.error(res.error ?? "Không tạo được phiếu nhập.");
@@ -77,7 +85,11 @@ export function ActionPreview({ action }: { action: PendingAction }) {
         const res = await inventoryService.createExport({
           orderId: action.orderId,
           reason: action.reason,
-          lines: action.lines.map((l) => ({ bookId: l.bookId, quantity: l.quantity, price: l.price })),
+          lines: action.lines.map((l) => ({
+            bookId: l.bookId,
+            quantity: l.quantity,
+            price: l.price,
+          })),
         });
         if (!res.ok) {
           toast.error(res.error ?? "Không tạo được phiếu xuất.");
@@ -99,16 +111,23 @@ export function ActionPreview({ action }: { action: PendingAction }) {
       <CardContent className="space-y-3 text-sm">
         {action.kind === "create_order" && (
           <div className="text-muted-foreground">
-            <p>Khách hàng: <span className="text-foreground font-medium">{action.customerName || "—"}</span></p>
+            <p>
+              Khách hàng:{" "}
+              <span className="text-foreground font-medium">{action.customerName || "—"}</span>
+            </p>
             {action.customerPhone ? <p>SĐT: {action.customerPhone}</p> : null}
             {action.customerAddress ? <p>Địa chỉ: {action.customerAddress}</p> : null}
           </div>
         )}
         {action.kind === "import" && (
-          <p className="text-muted-foreground">Nhà cung cấp: <span className="text-foreground">{action.supplier || "—"}</span></p>
+          <p className="text-muted-foreground">
+            Nhà cung cấp: <span className="text-foreground">{action.supplier || "—"}</span>
+          </p>
         )}
         {action.kind === "export" && (
-          <p className="text-muted-foreground">Lý do: <span className="text-foreground">{action.reason}</span></p>
+          <p className="text-muted-foreground">
+            Lý do: <span className="text-foreground">{action.reason}</span>
+          </p>
         )}
 
         <Separator />
@@ -121,7 +140,9 @@ export function ActionPreview({ action }: { action: PendingAction }) {
               </span>
             </li>
           ))}
-          {blocked ? <li className="text-muted-foreground">Không có dòng sản phẩm hợp lệ.</li> : null}
+          {blocked ? (
+            <li className="text-muted-foreground">Không có dòng sản phẩm hợp lệ.</li>
+          ) : null}
         </ul>
 
         {action.kind !== "export" && (
@@ -146,7 +167,12 @@ export function ActionPreview({ action }: { action: PendingAction }) {
           <p className="text-sm font-medium text-success">{done}</p>
         ) : (
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setDone("Đã hủy thao tác.")} disabled={busy}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setDone("Đã hủy thao tác.")}
+              disabled={busy}
+            >
               Hủy
             </Button>
             <Button size="sm" onClick={confirm} disabled={busy || blocked}>

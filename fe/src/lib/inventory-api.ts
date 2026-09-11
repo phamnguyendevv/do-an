@@ -85,7 +85,14 @@ export const inventoryApi = {
     return apiRequest<InventorySummaryApiResponse>(`/admin/inventory/summary`);
   },
 
-  async listImports(params?: { supplierId?: number; search?: string; startDate?: string; endDate?: string; page?: number; size?: number }) {
+  async listImports(params?: {
+    supplierId?: number;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+  }) {
     const search = new URLSearchParams();
     if (params?.supplierId) search.set("supplierId", String(params.supplierId));
     if (params?.search) search.set("search", params.search);
@@ -95,9 +102,10 @@ export const inventoryApi = {
     if (params?.size) search.set("size", String(params.size));
 
     const qs = search.toString();
-    return apiRequest<{ data: ImportReceiptApiItem[]; pagination: { total: number; page: number; size: number } }>(
-      `/admin/inventory/import${qs ? `?${qs}` : ""}`
-    );
+    return apiRequest<{
+      data: ImportReceiptApiItem[];
+      pagination: { total: number; page: number; size: number };
+    }>(`/admin/inventory/import${qs ? `?${qs}` : ""}`);
   },
 
   async getImportDetail(id: number | string) {
@@ -117,7 +125,15 @@ export const inventoryApi = {
     });
   },
 
-  async listExports(params?: { orderId?: string; reason?: string; search?: string; startDate?: string; endDate?: string; page?: number; size?: number }) {
+  async listExports(params?: {
+    orderId?: string;
+    reason?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+  }) {
     const search = new URLSearchParams();
     if (params?.orderId) search.set("orderId", params.orderId);
     if (params?.reason) search.set("reason", params.reason);
@@ -128,9 +144,10 @@ export const inventoryApi = {
     if (params?.size) search.set("size", String(params.size));
 
     const qs = search.toString();
-    return apiRequest<{ data: ExportReceiptApiItem[]; pagination: { total: number; page: number; size: number } }>(
-      `/admin/inventory/export${qs ? `?${qs}` : ""}`
-    );
+    return apiRequest<{
+      data: ExportReceiptApiItem[];
+      pagination: { total: number; page: number; size: number };
+    }>(`/admin/inventory/export${qs ? `?${qs}` : ""}`);
   },
 
   async getExportDetail(id: number | string) {
@@ -149,7 +166,14 @@ export const inventoryApi = {
     });
   },
 
-  async listMovements(params?: { bookId?: number; type?: string; startDate?: string; endDate?: string; page?: number; size?: number }) {
+  async listMovements(params?: {
+    bookId?: number;
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+  }) {
     const search = new URLSearchParams();
     if (params?.bookId) search.set("bookId", String(params.bookId));
     if (params?.type) search.set("type", params.type);
@@ -159,12 +183,20 @@ export const inventoryApi = {
     if (params?.size) search.set("size", String(params.size));
 
     const qs = search.toString();
-    return apiRequest<{ data: StockMovementApiItem[]; pagination: { total: number; page: number; size: number } }>(
-      `/admin/inventory/movements${qs ? `?${qs}` : ""}`
-    );
+    return apiRequest<{
+      data: StockMovementApiItem[];
+      pagination: { total: number; page: number; size: number };
+    }>(`/admin/inventory/movements${qs ? `?${qs}` : ""}`);
   },
 
-  async listAudits(params?: { status?: string; search?: string; startDate?: string; endDate?: string; page?: number; size?: number }) {
+  async listAudits(params?: {
+    status?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+  }) {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
     if (params?.search) search.set("search", params.search);
@@ -174,9 +206,10 @@ export const inventoryApi = {
     if (params?.size) search.set("size", String(params.size));
 
     const qs = search.toString();
-    return apiRequest<{ data: StockAuditApiItem[]; pagination: { total: number; page: number; size: number } }>(
-      `/admin/inventory/audit${qs ? `?${qs}` : ""}`
-    );
+    return apiRequest<{
+      data: StockAuditApiItem[];
+      pagination: { total: number; page: number; size: number };
+    }>(`/admin/inventory/audit${qs ? `?${qs}` : ""}`);
   },
 
   async getAudit(id: number | string) {

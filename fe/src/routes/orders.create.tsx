@@ -29,11 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -48,13 +44,19 @@ import { useBooks, useOrders } from "@/hooks/use-store";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
 import { normalizeText, parseCustomerAndAddress } from "@/lib/vn-address-parser";
 import { parseProductList } from "@/lib/product-parser";
-import { AddressBookDialog, type AddressBookContact } from "@/components/orders/address-book-dialog";
+import {
+  AddressBookDialog,
+  type AddressBookContact,
+} from "@/components/orders/address-book-dialog";
 
 export const Route = createFileRoute("/orders/create")({
   head: () => ({
     meta: [
       { title: "Tạo đơn hàng — BookStock" },
-      { name: "description", content: "Tạo đơn hàng mới tích hợp vận chuyển Giao Hàng Nhanh (GHN)." },
+      {
+        name: "description",
+        content: "Tạo đơn hàng mới tích hợp vận chuyển Giao Hàng Nhanh (GHN).",
+      },
       { property: "og:title", content: "Tạo đơn hàng — BookStock" },
       { property: "og:description", content: "Form tạo đơn hàng và đẩy vận đơn GHN tự động." },
     ],
@@ -94,7 +96,9 @@ function CreateOrderPage() {
 
   // Vận chuyển GHN
   const [carrierType, setCarrierType] = useState<"GHN" | "STORE" | "OTHER">("GHN");
-  const [requiredNote, setRequiredNote] = useState<"CHOXEMHANGKHONGTHU" | "KHONGCHOXEMHANG" | "CHOTHUHANG">("CHOXEMHANGKHONGTHU");
+  const [requiredNote, setRequiredNote] = useState<
+    "CHOXEMHANGKHONGTHU" | "KHONGCHOXEMHANG" | "CHOTHUHANG"
+  >("CHOXEMHANGKHONGTHU");
   const [paymentTypeId, setPaymentTypeId] = useState<number>(2); // 1: Shop trả, 2: Khách trả
   const [autoCreateGhnOrder, setAutoCreateGhnOrder] = useState(true);
 
@@ -171,13 +175,11 @@ function CreateOrderPage() {
         const wardPromises = dists.map(async (d) => {
           try {
             const ws = await ghnApi.getWards(d.DistrictID);
-            return (Array.isArray(ws) ? ws : []).map(
-              (w): WardOption => ({
-                ...w,
-                DistrictID: d.DistrictID,
-                districtName: d.DistrictName,
-              })
-            );
+            return (Array.isArray(ws) ? ws : []).map((w): WardOption => ({
+              ...w,
+              DistrictID: d.DistrictID,
+              districtName: d.DistrictName,
+            }));
           } catch {
             return [];
           }
@@ -200,9 +202,7 @@ function CreateOrderPage() {
     if (!wardSearchFilter.trim()) return allProvinceWards;
     const q = normalizeText(wardSearchFilter);
     return allProvinceWards.filter(
-      (w) =>
-        normalizeText(w.WardName).includes(q) ||
-        normalizeText(w.districtName).includes(q)
+      (w) => normalizeText(w.WardName).includes(q) || normalizeText(w.districtName).includes(q),
     );
   }, [allProvinceWards, wardSearchFilter]);
 
@@ -227,7 +227,9 @@ function CreateOrderPage() {
     if (!q || q.length < 1) return [];
     const qNorm = normalizeText(q);
     return pastCustomers
-      .filter((c) => normalizeText(c.name).includes(qNorm) || normalizeText(c.phone).includes(qNorm))
+      .filter(
+        (c) => normalizeText(c.name).includes(qNorm) || normalizeText(c.phone).includes(qNorm),
+      )
       .slice(0, 6);
   }, [customer.name, pastCustomers]);
 
@@ -248,14 +250,29 @@ function CreateOrderPage() {
     if (c.address) {
       setIsAutoParsing(true);
       try {
-        const parsed = await parseCustomerAndAddress(c.address, provinces, ghnApi.getDistricts, ghnApi.getWards);
-        setCustomer((prev) => ({ ...prev, name: c.name, phone: c.phone, detailAddress: parsed.detailAddress || c.address }));
+        const parsed = await parseCustomerAndAddress(
+          c.address,
+          provinces,
+          ghnApi.getDistricts,
+          ghnApi.getWards,
+        );
+        setCustomer((prev) => ({
+          ...prev,
+          name: c.name,
+          phone: c.phone,
+          detailAddress: parsed.detailAddress || c.address,
+        }));
         if (parsed.provinceId) setProvinceId(parsed.provinceId);
         if (parsed.districtId) setDistrictId(parsed.districtId);
         if (parsed.wardCode) setWardCode(parsed.wardCode);
         toast.success(`Đã điền thông tin khách hàng: ${c.name}`);
       } catch {
-        setCustomer((prev) => ({ ...prev, name: c.name, phone: c.phone, detailAddress: c.address }));
+        setCustomer((prev) => ({
+          ...prev,
+          name: c.name,
+          phone: c.phone,
+          detailAddress: c.address,
+        }));
       } finally {
         setIsAutoParsing(false);
       }
@@ -265,7 +282,7 @@ function CreateOrderPage() {
   // Thông tin tên Tỉnh, Huyện, Xã đang chọn
   const currentProvinceName = useMemo(
     () => provinces.find((p) => p.ProvinceID === provinceId)?.ProvinceName,
-    [provinces, provinceId]
+    [provinces, provinceId],
   );
   const currentDistrictName = useMemo(() => {
     const fromDist = districts.find((d) => d.DistrictID === districtId)?.DistrictName;
@@ -351,11 +368,9 @@ function CreateOrderPage() {
   // Ghép chuỗi địa chỉ đầy đủ
   const fullAddress = useMemo(() => {
     if (addressType === "NEW_2_LEVEL") {
-      const parts = [
-        customer.detailAddress,
-        currentDistrictName,
-        currentProvinceName,
-      ].filter(Boolean);
+      const parts = [customer.detailAddress, currentDistrictName, currentProvinceName].filter(
+        Boolean,
+      );
       return parts.join(", ");
     }
     const parts = [
@@ -365,7 +380,13 @@ function CreateOrderPage() {
       currentProvinceName,
     ].filter(Boolean);
     return parts.join(", ");
-  }, [addressType, customer.detailAddress, currentWardName, currentDistrictName, currentProvinceName]);
+  }, [
+    addressType,
+    customer.detailAddress,
+    currentWardName,
+    currentDistrictName,
+    currentProvinceName,
+  ]);
 
   // Xử lý Phân tích và Dán tự động từ Textarea / Clipboard
   const handleAutoParseAndPaste = async () => {
@@ -396,7 +417,7 @@ function CreateOrderPage() {
         textToParse,
         provinces,
         ghnApi.getDistricts,
-        ghnApi.getWards
+        ghnApi.getWards,
       );
 
       // Cập nhật thông tin khách hàng
@@ -460,7 +481,7 @@ function CreateOrderPage() {
                 parsed.warningMessage ||
                 `Không tìm thấy Phường/Xã trong ${parsed.districtName ? `${parsed.districtName}, ` : ""}${parsed.provinceName || ""}. Vui lòng kiểm tra và chọn Phường / Xã thủ công.`,
               duration: 8000,
-            }
+            },
           );
         } else {
           const summaryParts = [
@@ -504,7 +525,9 @@ function CreateOrderPage() {
       }
 
       if (!textToParse) {
-        toast.info("Vui lòng nhập hoặc dán danh sách sản phẩm (ví dụ: 2 bản xanh lá + zhenti + tinh giảng).");
+        toast.info(
+          "Vui lòng nhập hoặc dán danh sách sản phẩm (ví dụ: 2 bản xanh lá + zhenti + tinh giảng).",
+        );
         return;
       }
 
@@ -534,7 +557,7 @@ function CreateOrderPage() {
           {
             description: `Đã thêm: ${matchedNames.join(", ")}. Không tìm thấy: ${parsed.unmatchedTokens.join(", ")}`,
             duration: 7000,
-          }
+          },
         );
       } else {
         toast.success(`Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
@@ -564,7 +587,7 @@ function CreateOrderPage() {
         contact.address,
         provinces,
         ghnApi.getDistricts,
-        ghnApi.getWards
+        ghnApi.getWards,
       );
 
       setCustomer((prev) => ({
@@ -652,7 +675,12 @@ function CreateOrderPage() {
       provinceId,
       districtId,
       wardCode,
-      shippingMethod: carrierType === "GHN" ? "Giao Hàng Nhanh (GHN)" : carrierType === "STORE" ? "Tại cửa hàng" : "Vận chuyển khác",
+      shippingMethod:
+        carrierType === "GHN"
+          ? "Giao Hàng Nhanh (GHN)"
+          : carrierType === "STORE"
+            ? "Tại cửa hàng"
+            : "Vận chuyển khác",
       shippingFee,
       discount,
       trackingCode: ghnTrackingCode,
@@ -671,7 +699,9 @@ function CreateOrderPage() {
     queryClient.invalidateQueries({ queryKey: ["orders"] });
     queryClient.invalidateQueries({ queryKey: ["order-audit-logs"] });
 
-    toast.success(`Tạo đơn hàng ${res.data?.orderCode || res.data?.id} thành công — tồn kho đã được trừ`);
+    toast.success(
+      `Tạo đơn hàng ${res.data?.orderCode || res.data?.id} thành công — tồn kho đã được trừ`,
+    );
     navigate({ to: "/orders" });
   };
 
@@ -728,13 +758,19 @@ function CreateOrderPage() {
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="NEW_2_LEVEL" id="addr-new-2" />
-                      <Label htmlFor="addr-new-2" className="cursor-pointer text-sm font-medium text-amber-950 dark:text-amber-200">
+                      <Label
+                        htmlFor="addr-new-2"
+                        className="cursor-pointer text-sm font-medium text-amber-950 dark:text-amber-200"
+                      >
                         Địa chỉ MỚI (2 cấp)
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="OLD_3_LEVEL" id="addr-old-3" />
-                      <Label htmlFor="addr-old-3" className="cursor-pointer text-sm font-medium text-amber-950 dark:text-amber-200">
+                      <Label
+                        htmlFor="addr-old-3"
+                        className="cursor-pointer text-sm font-medium text-amber-950 dark:text-amber-200"
+                      >
                         Địa chỉ CŨ (3 cấp)
                       </Label>
                     </div>
@@ -743,9 +779,7 @@ function CreateOrderPage() {
 
                 {/* KHUNG NHẬP TỰ ĐỘNG (Textarea & Button Dán và nhập tự động) */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-foreground">
-                    Nhập tự động
-                  </Label>
+                  <Label className="text-xs font-semibold text-foreground">Nhập tự động</Label>
                   <Textarea
                     rows={3}
                     value={autoInputText}
@@ -755,7 +789,8 @@ function CreateOrderPage() {
                   />
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
                     <p className="text-[12px] text-muted-foreground leading-tight">
-                      Ví dụ: Nguyen Van A, 0908888888, 12 Le Duan, Phuong Ben Nghe, Quan 1, TP. Ho Chi Minh
+                      Ví dụ: Nguyen Van A, 0908888888, 12 Le Duan, Phuong Ben Nghe, Quan 1, TP. Ho
+                      Chi Minh
                     </p>
                     <Button
                       type="button"
@@ -804,7 +839,9 @@ function CreateOrderPage() {
                     {showNameSuggestions && nameSuggestions.length > 0 && (
                       <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
                         <div className="px-2.5 py-1.5 border-b border-border/60">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Khách hàng cũ</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            Khách hàng cũ
+                          </p>
                         </div>
                         <ul className="py-1 max-h-52 overflow-y-auto">
                           {nameSuggestions.map((c) => (
@@ -856,7 +893,9 @@ function CreateOrderPage() {
                     {showPhoneSuggestions && phoneSuggestions.length > 0 && (
                       <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
                         <div className="px-2.5 py-1.5 border-b border-border/60">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Khách hàng cũ</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            Khách hàng cũ
+                          </p>
                         </div>
                         <ul className="py-1 max-h-52 overflow-y-auto">
                           {phoneSuggestions.map((c) => (
@@ -913,7 +952,11 @@ function CreateOrderPage() {
                           }}
                         >
                           <SelectTrigger className="h-9">
-                            <SelectValue placeholder={loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"} />
+                            <SelectValue
+                              placeholder={
+                                loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
                             {provinces.map((p) => (
@@ -953,8 +996,8 @@ function CreateOrderPage() {
                                 !provinceId
                                   ? "Chọn Tỉnh / TP trước"
                                   : loadingDistricts
-                                  ? "Đang tải khu vực..."
-                                  : "Chọn Khu vực"
+                                    ? "Đang tải khu vực..."
+                                    : "Chọn Khu vực"
                               }
                             />
                           </SelectTrigger>
@@ -986,7 +1029,11 @@ function CreateOrderPage() {
                           }}
                         >
                           <SelectTrigger className="h-9">
-                            <SelectValue placeholder={loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"} />
+                            <SelectValue
+                              placeholder={
+                                loadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn Tỉnh / TP"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
                             {provinces.map((p) => (
@@ -1013,7 +1060,11 @@ function CreateOrderPage() {
                           }}
                         >
                           <SelectTrigger className="h-9">
-                            <SelectValue placeholder={loadingDistricts ? "Đang tải quận/huyện..." : "Chọn Quận / Huyện"} />
+                            <SelectValue
+                              placeholder={
+                                loadingDistricts ? "Đang tải quận/huyện..." : "Chọn Quận / Huyện"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
                             {districts.map((d) => (
@@ -1036,7 +1087,11 @@ function CreateOrderPage() {
                           onValueChange={setWardCode}
                         >
                           <SelectTrigger className="h-9">
-                            <SelectValue placeholder={loadingWards ? "Đang tải phường/xã..." : "Chọn Phường / Xã"} />
+                            <SelectValue
+                              placeholder={
+                                loadingWards ? "Đang tải phường/xã..." : "Chọn Phường / Xã"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
                             {wards.map((w) => (
@@ -1090,7 +1145,11 @@ function CreateOrderPage() {
                   <span>2. Sản phẩm xuất bán</span>
                   {lines.some((l) => l.bookId) && (
                     <span className="text-xs font-normal text-muted-foreground">
-                      Tổng số lượng: <strong className="text-foreground">{lines.reduce((s, l) => s + (l.bookId ? Number(l.quantity) || 0 : 0), 0)}</strong> cuốn
+                      Tổng số lượng:{" "}
+                      <strong className="text-foreground">
+                        {lines.reduce((s, l) => s + (l.bookId ? Number(l.quantity) || 0 : 0), 0)}
+                      </strong>{" "}
+                      cuốn
                     </span>
                   )}
                 </CardTitle>
@@ -1099,8 +1158,12 @@ function CreateOrderPage() {
                 {/* KHUNG NHẬP NHANH DANH SÁCH SẢN PHẨM */}
                 <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3.5 dark:bg-primary/10">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="quick-product-input" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Nhập nhanh danh sách sản phẩm
+                    <Label
+                      htmlFor="quick-product-input"
+                      className="text-xs font-semibold text-foreground flex items-center gap-1.5"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Nhập nhanh danh sách sản
+                      phẩm
                     </Label>
                     <span className="text-[11px] text-muted-foreground hidden sm:inline">
                       Cú pháp: <code>[Số lượng] [Tên sách]</code>
@@ -1116,7 +1179,8 @@ function CreateOrderPage() {
                   />
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
                     <p className="text-[12px] text-muted-foreground leading-tight">
-                      Phân tách bằng dấu cộng (<code>+</code>), dấu phẩy (<code>,</code>) hoặc xuống dòng.
+                      Phân tách bằng dấu cộng (<code>+</code>), dấu phẩy (<code>,</code>) hoặc xuống
+                      dòng.
                     </p>
                     <Button
                       type="button"
@@ -1185,7 +1249,9 @@ function CreateOrderPage() {
                     }`}
                   >
                     <div className="font-semibold text-sm">Nhận tại cửa hàng</div>
-                    <p className="text-xs text-muted-foreground mt-1">Khách lấy trực tiếp tại quầy (0 ₫)</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Khách lấy trực tiếp tại quầy (0 ₫)
+                    </p>
                   </button>
 
                   <button
@@ -1207,7 +1273,9 @@ function CreateOrderPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 text-sm">
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">Trọng lượng ước tính:</span>
-                        <strong className="font-semibold">{formatNumber(estimatedWeight)} gram</strong>
+                        <strong className="font-semibold">
+                          {formatNumber(estimatedWeight)} gram
+                        </strong>
                         <span className="text-xs text-muted-foreground">({totalItems} cuốn)</span>
                       </div>
 
@@ -1234,10 +1302,7 @@ function CreateOrderPage() {
                     <div className="grid gap-3 sm:grid-cols-2 pt-1">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Lưu ý xem hàng của GHN</Label>
-                        <Select
-                          value={requiredNote}
-                          onValueChange={(v: any) => setRequiredNote(v)}
-                        >
+                        <Select value={requiredNote} onValueChange={(v: any) => setRequiredNote(v)}>
                           <SelectTrigger className="h-9">
                             <SelectValue />
                           </SelectTrigger>
@@ -1351,7 +1416,9 @@ function CreateOrderPage() {
               {carrierType === "GHN" && autoCreateGhnOrder && (
                 <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-xs text-emerald-700 dark:text-emerald-300 flex items-start gap-2">
                   <PackageCheck className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>Đơn sẽ được tự động đồng bộ sang GHN và xuất mã vận đơn để in tem dán gói hàng.</span>
+                  <span>
+                    Đơn sẽ được tự động đồng bộ sang GHN và xuất mã vận đơn để in tem dán gói hàng.
+                  </span>
                 </div>
               )}
 

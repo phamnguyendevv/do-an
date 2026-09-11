@@ -123,7 +123,9 @@ export class SuppliersController {
   @CheckPolicies({ action: 'delete', subject: 'Supplier' })
   @ApiResponse({ status: 200, description: 'Supplier deleted successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
-  async deleteSupplier(@Param('id', ParseIntPipe) id: number): Promise<boolean> {
+  async deleteSupplier(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<boolean> {
     return await this.deleteSupplierUseCase.execute({ id })
   }
 }

@@ -23,7 +23,14 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -50,7 +57,11 @@ export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
       { title: "Cài đặt hệ thống & Thanh toán — BookStock" },
-      { name: "description", content: "Cấu hình tài khoản ngân hàng SePay, cổng thanh toán VietQR và thông tin nhà sách." },
+      {
+        name: "description",
+        content:
+          "Cấu hình tài khoản ngân hàng SePay, cổng thanh toán VietQR và thông tin nhà sách.",
+      },
     ],
   }),
   component: SettingsPage,
@@ -171,13 +182,18 @@ function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-base flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-primary" /> Cấu hình tài khoản SePay (VietQR)
+                        <Wallet className="h-5 w-5 text-primary" /> Cấu hình tài khoản SePay
+                        (VietQR)
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
-                        Tiền thanh toán sẽ chuyển <strong>trực tiếp 100%</strong> vào số tài khoản này khi khách quét mã.
+                        Tiền thanh toán sẽ chuyển <strong>trực tiếp 100%</strong> vào số tài khoản
+                        này khi khách quét mã.
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300"
+                    >
                       Tự động gạch nợ
                     </Badge>
                   </div>
@@ -222,7 +238,10 @@ function SettingsPage() {
                         id="account-name"
                         value={sepayConfig.accountName}
                         onChange={(e) =>
-                          setSepayConfig({ ...sepayConfig, accountName: e.target.value.toUpperCase() })
+                          setSepayConfig({
+                            ...sepayConfig,
+                            accountName: e.target.value.toUpperCase(),
+                          })
                         }
                         placeholder="Ví dụ: PHAM TRUNG NGUYEN"
                         className="uppercase font-medium"
@@ -240,9 +259,13 @@ function SettingsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="compact">Gọn gàng (Compact - Khuyên dùng cho POS)</SelectItem>
+                        <SelectItem value="compact">
+                          Gọn gàng (Compact - Khuyên dùng cho POS)
+                        </SelectItem>
                         <SelectItem value="compact2">Compact 2 (Kèm Logo ngân hàng)</SelectItem>
-                        <SelectItem value="qr_only">Chỉ mã QR (QR Only - Thích hợp in hóa đơn K80)</SelectItem>
+                        <SelectItem value="qr_only">
+                          Chỉ mã QR (QR Only - Thích hợp in hóa đơn K80)
+                        </SelectItem>
                         <SelectItem value="default">Đầy đủ thông tin (Default)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -251,7 +274,9 @@ function SettingsPage() {
                   <div className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-xs text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 flex items-start gap-2">
                     <Info className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>
-                      Sau khi lưu cấu hình, tất cả mã QR tại màn hình <strong>Bán lẻ POS</strong>, <strong>In hóa đơn K80</strong> và <strong>Chi tiết đơn hàng</strong> sẽ tự động cập nhật ngay lập tức theo tài khoản của bạn.
+                      Sau khi lưu cấu hình, tất cả mã QR tại màn hình <strong>Bán lẻ POS</strong>,{" "}
+                      <strong>In hóa đơn K80</strong> và <strong>Chi tiết đơn hàng</strong> sẽ tự
+                      động cập nhật ngay lập tức theo tài khoản của bạn.
                     </span>
                   </div>
                 </CardContent>
@@ -277,7 +302,8 @@ function SettingsPage() {
                     </Badge>
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Quét thử bằng App Ngân hàng bất kỳ trên điện thoại để kiểm tra thông tin người nhận.
+                    Quét thử bằng App Ngân hàng bất kỳ trên điện thoại để kiểm tra thông tin người
+                    nhận.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-center">
@@ -296,7 +322,9 @@ function SettingsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Số tài khoản:</span>
-                      <span className="font-mono font-bold text-foreground">{sepayConfig.accountNumber}</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {sepayConfig.accountNumber}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Chủ tài khoản:</span>
@@ -312,7 +340,9 @@ function SettingsPage() {
 
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div className="space-y-1 text-left">
-                      <Label className="text-[11px] text-muted-foreground">Số tiền thử nghiệm</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        Số tiền thử nghiệm
+                      </Label>
                       <Input
                         type="number"
                         min="10000"
@@ -344,7 +374,8 @@ function SettingsPage() {
                   <Store className="h-5 w-5 text-primary" /> Thông tin Nhà sách & Hóa đơn in K80
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Thông tin này sẽ được in ở phần đầu và chân trang trên hóa đơn nhiệt K80 tại quầy POS.
+                  Thông tin này sẽ được in ở phần đầu và chân trang trên hóa đơn nhiệt K80 tại quầy
+                  POS.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -428,7 +459,8 @@ function SettingsPage() {
                     <Zap className="h-5 w-5 text-amber-500" /> Hướng dẫn tạo Webhook trên SePay.vn
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Để khi tiền vào tài khoản ngân hàng, hệ thống tự động gạch nợ và đổi trạng thái đơn sang <strong>Đã thanh toán (PAID)</strong>.
+                    Để khi tiền vào tài khoản ngân hàng, hệ thống tự động gạch nợ và đổi trạng thái
+                    đơn sang <strong>Đã thanh toán (PAID)</strong>.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs sm:text-sm">
@@ -452,7 +484,9 @@ function SettingsPage() {
                       </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      * Lưu ý: Nếu chạy thử nghiệm trên localhost, hãy sử dụng <strong>ngrok</strong> hoặc <strong>Cloudflare Tunnel</strong> để tạo URL công khai (Public URL).
+                      * Lưu ý: Nếu chạy thử nghiệm trên localhost, hãy sử dụng{" "}
+                      <strong>ngrok</strong> hoặc <strong>Cloudflare Tunnel</strong> để tạo URL công
+                      khai (Public URL).
                     </p>
                   </div>
 
@@ -462,21 +496,43 @@ function SettingsPage() {
                     </h4>
                     <ol className="list-decimal list-inside space-y-2 text-xs leading-relaxed text-foreground">
                       <li>
-                        Đăng nhập vào <strong><a href="https://my.sepay.vn" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-0.5">my.sepay.vn <ExternalLink className="h-3 w-3" /></a></strong>.
+                        Đăng nhập vào{" "}
+                        <strong>
+                          <a
+                            href="https://my.sepay.vn"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary underline inline-flex items-center gap-0.5"
+                          >
+                            my.sepay.vn <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </strong>
+                        .
                       </li>
                       <li>
-                        Vào mục <strong>Tích hợp Webhook (Webhooks)</strong> ➔ Bấm <strong>Tạo Webhook mới</strong>.
+                        Vào mục <strong>Tích hợp Webhook (Webhooks)</strong> ➔ Bấm{" "}
+                        <strong>Tạo Webhook mới</strong>.
                       </li>
                       <li>
                         Điền các thông số:
                         <ul className="list-disc list-inside ml-4 mt-1 space-y-1 text-muted-foreground">
-                          <li><strong>URL nhận Webhook:</strong> Dán đường link ở ô trên vào.</li>
-                          <li><strong>Phương thức:</strong> Chọn <code>POST</code></li>
-                          <li><strong>Kiểu dữ liệu:</strong> Chọn <code>JSON</code></li>
-                          <li><strong>Sự kiện:</strong> Chọn <strong>Tiền vào (in)</strong></li>
+                          <li>
+                            <strong>URL nhận Webhook:</strong> Dán đường link ở ô trên vào.
+                          </li>
+                          <li>
+                            <strong>Phương thức:</strong> Chọn <code>POST</code>
+                          </li>
+                          <li>
+                            <strong>Kiểu dữ liệu:</strong> Chọn <code>JSON</code>
+                          </li>
+                          <li>
+                            <strong>Sự kiện:</strong> Chọn <strong>Tiền vào (in)</strong>
+                          </li>
                         </ul>
                       </li>
-                      <li>Bấm <strong>Lưu lại (Save)</strong>. Vậy là hoàn tất!</li>
+                      <li>
+                        Bấm <strong>Lưu lại (Save)</strong>. Vậy là hoàn tất!
+                      </li>
                     </ol>
                   </div>
                 </CardContent>
@@ -489,7 +545,8 @@ function SettingsPage() {
                     <Play className="h-4 w-4" /> Công cụ Kiểm thử Webhook ngay lập tức
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Giả lập một bản tin Webhook gửi về backend để kiểm tra tính năng tự động gạch nợ mà không cần chuyển khoản tiền thật.
+                    Giả lập một bản tin Webhook gửi về backend để kiểm tra tính năng tự động gạch nợ
+                    mà không cần chuyển khoản tiền thật.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">

@@ -25,7 +25,13 @@ export type UserListApiResponse = {
 };
 
 export const userApi = {
-  async list(params?: { search?: string; role?: number; status?: number; page?: number; size?: number }) {
+  async list(params?: {
+    search?: string;
+    role?: number;
+    status?: number;
+    page?: number;
+    size?: number;
+  }) {
     const search = new URLSearchParams();
     if (params?.search) search.set("search", params.search);
     if (params?.role !== undefined) search.set("role", String(params.role));

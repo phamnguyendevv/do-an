@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+
 import { DataSource } from 'typeorm'
 
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
@@ -15,6 +16,7 @@ import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bo
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 import { GhnService } from '@infrastructure/services/ghn/ghn.service'
+
 import {
   CalculateFeeDto,
   CreateGhnOrderDto,
@@ -78,7 +80,9 @@ export class GhnController {
   }
 
   @Post('calculate-fee')
-  @ApiOperation({ summary: 'Tính cước phí vận chuyển GHN theo trọng lượng & địa chỉ' })
+  @ApiOperation({
+    summary: 'Tính cước phí vận chuyển GHN theo trọng lượng & địa chỉ',
+  })
   async calculateFee(@Body() dto: CalculateFeeDto) {
     return await this.ghnService.calculateFee(dto)
   }
@@ -125,20 +129,29 @@ export class GhnController {
     this.logger.log(`GHN Webhook received: ${JSON.stringify(payload)}`)
 
     const ghnTrackingCode = String(
-      payload?.OrderCode || payload?.order_code || payload?.data?.OrderCode || '',
+      payload?.OrderCode ||
+        payload?.order_code ||
+        payload?.data?.OrderCode ||
+        '',
     ).trim()
     const rawStatus = String(
       payload?.Status || payload?.status || payload?.data?.Status || '',
     ).toLowerCase()
 
     if (!ghnTrackingCode) {
-      return { status: 'ignored', message: 'Không tìm thấy OrderCode trong webhook GHN' }
+      return {
+        status: 'ignored',
+        message: 'Không tìm thấy OrderCode trong webhook GHN',
+      }
     }
 
     const mappedStatus = GHN_STATUS_MAP[rawStatus]
     if (!mappedStatus) {
       this.logger.warn(`Trạng thái GHN chưa map: ${rawStatus}`)
-      return { status: 'ignored', message: `Trạng thái ${rawStatus} không yêu cầu đồng bộ` }
+      return {
+        status: 'ignored',
+        message: `Trạng thái ${rawStatus} không yêu cầu đồng bộ`,
+      }
     }
 
     const queryRunner = this.dataSource.createQueryRunner()
@@ -147,12 +160,17 @@ export class GhnController {
 
     try {
       const order = await queryRunner.manager.findOne(BookstoreOrder, {
-        where: [{ trackingCode: ghnTrackingCode }, { orderCode: ghnTrackingCode }],
+        where: [
+          { trackingCode: ghnTrackingCode },
+          { orderCode: ghnTrackingCode },
+        ],
         lock: { mode: 'pessimistic_write' },
       })
 
       if (!order) {
-        this.logger.warn(`Không tìm thấy đơn hàng có mã tracking: ${ghnTrackingCode}`)
+        this.logger.warn(
+          `Không tìm thấy đơn hàng có mã tracking: ${ghnTrackingCode}`,
+        )
         await queryRunner.rollbackTransaction()
         return {
           status: 'not_found',
@@ -169,7 +187,9 @@ export class GhnController {
       if (shouldRestock && order.items && Array.isArray(order.items)) {
         for (const item of order.items) {
           const bookIdNum =
-            typeof item.bookId === 'number' ? item.bookId : parseInt(String(item.bookId), 10)
+            typeof item.bookId === 'number'
+              ? item.bookId
+              : parseInt(String(item.bookId), 10)
           if (!isNaN(bookIdNum)) {
             const book = await queryRunner.manager.findOne(Book, {
               where: { id: bookIdNum },
@@ -179,7 +199,11 @@ export class GhnController {
               const beforeStock = Number(book.stock)
               const afterStock = beforeStock + (item.quantity || 0)
               const newBookStatus =
-                afterStock === 0 ? 'OUT_OF_STOCK' : afterStock <= (book.minStock || 10) ? 'LOW_STOCK' : 'IN_STOCK'
+                afterStock === 0
+                  ? 'OUT_OF_STOCK'
+                  : afterStock <= (book.minStock || 10)
+                    ? 'LOW_STOCK'
+                    : 'IN_STOCK'
 
               book.stock = afterStock
               book.status = newBookStatus
@@ -238,7 +262,9 @@ export class GhnController {
 
       await queryRunner.commitTransaction()
 
-      this.logger.log(`GHN Webhook: Đã đồng bộ đơn ${order.orderCode} sang ${mappedStatus}`)
+      this.logger.log(
+        `GHN Webhook: Đã đồng bộ đơn ${order.orderCode} sang ${mappedStatus}`,
+      )
 
       return {
         status: 'success',

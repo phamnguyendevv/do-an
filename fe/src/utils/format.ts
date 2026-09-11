@@ -1,9 +1,11 @@
 export const formatCurrency = (value: number | string | null | undefined) => {
   const num = typeof value === "number" ? value : Number(value) || 0;
   const safeNum = isNaN(num) ? 0 : num;
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(
-    safeNum,
-  );
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(safeNum);
 };
 
 export const formatCompactCurrency = (value: number | string | null | undefined) => {

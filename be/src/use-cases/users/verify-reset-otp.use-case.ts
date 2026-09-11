@@ -20,7 +20,10 @@ export class VerifyResetOtpUseCase {
     const key = `otp:${params.email}`
     const storedOtp = await this.redisService.getValue<string>(key)
 
-    if (!storedOtp || String(storedOtp).trim() !== String(params.inputOtp).trim()) {
+    if (
+      !storedOtp ||
+      String(storedOtp).trim() !== String(params.inputOtp).trim()
+    ) {
       throw this.exceptionsService.badRequestException({
         type: 'OtpInvalidException',
         message: 'Mã OTP không chính xác hoặc đã hết hạn',

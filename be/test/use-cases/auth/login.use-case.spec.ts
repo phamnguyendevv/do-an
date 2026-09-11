@@ -11,6 +11,7 @@ import {
   IBcryptService,
 } from '@domain/services/bcrypt.interface'
 import { IJwtService, JWT_SERVICE } from '@domain/services/jwt.interface'
+
 import { LoginUseCase } from '@use-cases/auth/login.use-case'
 
 describe('LoginUseCase', () => {
@@ -67,10 +68,14 @@ describe('LoginUseCase', () => {
       status: UserStatusEnum.Active,
     }
 
-    jest.spyOn(userRepository, 'getUserByEmail').mockResolvedValue(mockUser as any)
+    jest
+      .spyOn(userRepository, 'getUserByEmail')
+      .mockResolvedValue(mockUser as any)
     jest.spyOn(bcryptService, 'compare').mockResolvedValue(true)
     jest.spyOn(jwtService, 'createToken').mockResolvedValue('test_token')
-    jest.spyOn(userRepository, 'updateLastLogin').mockResolvedValue(mockUser as any)
+    jest
+      .spyOn(userRepository, 'updateLastLogin')
+      .mockResolvedValue(mockUser as any)
 
     const result = await useCase.execute({
       email: 'admin@example.com',

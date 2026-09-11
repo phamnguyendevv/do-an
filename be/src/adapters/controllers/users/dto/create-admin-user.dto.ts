@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator'
+
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator'
 
 import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
@@ -21,12 +29,18 @@ export class CreateAdminUserDto {
   @MinLength(6)
   password?: string
 
-  @ApiPropertyOptional({ description: 'Vai trò (1: Admin, 2: Staff, 3: Client)', default: UserRoleEnum.Staff })
+  @ApiPropertyOptional({
+    description: 'Vai trò (1: Admin, 2: Staff, 3: Client)',
+    default: UserRoleEnum.Staff,
+  })
   @IsOptional()
   @IsEnum(UserRoleEnum)
   role?: UserRoleEnum
 
-  @ApiPropertyOptional({ description: 'Trạng thái (1: Active, 2: Inactive)', default: UserStatusEnum.Active })
+  @ApiPropertyOptional({
+    description: 'Trạng thái (1: Active, 2: Inactive)',
+    default: UserStatusEnum.Active,
+  })
   @IsOptional()
   @IsEnum(UserStatusEnum)
   status?: UserStatusEnum

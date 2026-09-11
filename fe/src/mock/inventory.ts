@@ -13,7 +13,6 @@ export const mockImportReceipts: ImportReceipt[] = Array.from({ length: 12 }).ma
 
 export const mockExportReceipts: ExportReceipt[] = [];
 
-
 export const inventorySummary = {
   totalStock: 1250,
   lowStock: 4,

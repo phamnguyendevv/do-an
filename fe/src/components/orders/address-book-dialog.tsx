@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookUser, Check, MapPin, Phone, Search, User } from "lucide-react";
 import {
   Dialog,
@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { store } from "@/services/store";
+import { customersApi, type CustomerApiItem } from "@/lib/customer-api";
 
 export interface AddressBookContact {
   id: string;
@@ -68,12 +69,10 @@ interface AddressBookDialogProps {
   onSelectContact: (contact: AddressBookContact) => void;
 }
 
-export function AddressBookDialog({
-  open,
-  onOpenChange,
-  onSelectContact,
-}: AddressBookDialogProps) {
+export function AddressBookDialog({ open, onOpenChange, onSelectContact }: AddressBookDialogProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [serverContacts, setServerContacts] = useState<CustomerApiItem[] | null>(null);
+  const [loadingServer, setLoadingServer] = useState(false);
 
   // Extract unique contacts from previous orders in the store + sample contacts
   const contacts = useMemo(() => {
@@ -108,16 +107,72 @@ export function AddressBookDialog({
     return Array.from(contactMap.values());
   }, [open]);
 
+  // Merge local contacts with server results when searching
+  useEffect(() => {
+    let mounted = true;
+    const term = searchTerm.trim();
+    if (!term || term.length < 3) {
+      setServerContacts(null);
+      setLoadingServer(false);
+      return;
+    }
+
+    setLoadingServer(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await customersApi.list(term as string);
+        if (!mounted) return;
+        setServerContacts(Array.isArray(res?.data) ? res.data : []);
+      } catch (e) {
+        console.error("Failed to fetch customers:", e);
+        if (mounted) setServerContacts([]);
+      } finally {
+        if (mounted) setLoadingServer(false);
+      }
+    }, 300);
+
+    return () => {
+      mounted = false;
+      clearTimeout(t);
+    };
+  }, [searchTerm]);
+
   const filteredContacts = useMemo(() => {
-    if (!searchTerm.trim()) return contacts;
     const q = searchTerm.toLowerCase().trim();
-    return contacts.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        c.address.toLowerCase().includes(q)
+    if (!q) return contacts;
+
+    // If server results exist, merge them with local contacts (dedup by phone)
+    const map = new Map<string, AddressBookContact>();
+
+    if (serverContacts && serverContacts.length > 0) {
+      serverContacts.forEach((s) => {
+        map.set(s.phone, {
+          id: `srv-${s.id}`,
+          name: s.name,
+          phone: s.phone,
+          address: s.address || "",
+          orderCount: undefined,
+        });
+      });
+    }
+
+    // Overlay local contacts (giving them priority for orderCount/address)
+    contacts.forEach((c) => {
+      const existing = map.get(c.phone);
+      if (existing) {
+        existing.name = c.name || existing.name;
+        existing.address = c.address || existing.address;
+        existing.orderCount = (c.orderCount || 0) + (existing.orderCount || 0);
+      } else {
+        map.set(c.phone, c);
+      }
+    });
+
+    const all = Array.from(map.values());
+    return all.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.address.toLowerCase().includes(q),
     );
-  }, [contacts, searchTerm]);
+  }, [contacts, serverContacts, searchTerm]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
