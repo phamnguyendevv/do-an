@@ -18,3 +18,18 @@ export class ExportReceiptEntity {
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
+
+export interface ExportReceiptLineInput {
+  bookId: number | string
+  quantity: number
+  price?: number
+}
+
+export interface CreateExportReceiptInput {
+  orderId?: string
+  reason: string
+  exportDate?: string
+  note?: string
+  lines: ExportReceiptLineInput[]
+  createdBy?: string
+}

@@ -11,14 +11,12 @@ import {
 
 import { Server, Socket } from 'socket.io'
 
-export interface PaymentSuccessEventPayload {
-  orderCode: string
-  orderId?: number
-  amount: number
-  paymentStatus: string
-  transactionDate?: string
-  gateway?: string
-}
+import {
+  IPaymentGateway,
+  IPaymentSuccessPayload,
+} from '@domain/services/payment-gateway.interface'
+
+export type PaymentSuccessEventPayload = IPaymentSuccessPayload
 
 @WebSocketGateway({
   cors: {
@@ -28,8 +26,7 @@ export interface PaymentSuccessEventPayload {
 })
 @Injectable()
 export class PaymentGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayConnection, OnGatewayDisconnect, IPaymentGateway {
   @WebSocketServer()
   server!: Server
 
@@ -76,9 +73,9 @@ export class PaymentGateway
     }
 
     const room = `order_${payload.orderCode}`
-    // 1. Emit to the room subscribed for this order code
+
     this.server.to(room).emit('payment_success', payload)
-    // 2. Broadcast globally for all active POS screens listening for SePay updates
+
     this.server.emit('sepay_payment_received', payload)
 
     this.logger.log(

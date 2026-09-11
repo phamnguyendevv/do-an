@@ -8,20 +8,12 @@ import {
   IStockAuditRepositoryInterface,
   STOCK_AUDIT_REPOSITORY,
 } from '@domain/repositories/stock-audit.repository.interface'
-
-export interface CreateStockAuditDto {
-  title?: string
-  auditDate?: string
-  note?: string
-  auditedBy?: string
-  items: Array<{
-    bookId: number
-    title: string
-    systemStock: number
-    actualStock: number
-    reason?: string
-  }>
-}
+import {
+  CreateStockAuditInput,
+  StockAuditEntity,
+  StockAuditItemEntity,
+  StockAuditStatusEnum,
+} from '@domain/entities/stock-audit.entity'
 
 @Injectable()
 export class CreateStockAuditUseCase {
@@ -30,7 +22,7 @@ export class CreateStockAuditUseCase {
     private readonly auditRepository: IStockAuditRepositoryInterface,
   ) {}
 
-  async execute(dto: CreateStockAuditDto): Promise<StockAuditEntity> {
+  async execute(dto: CreateStockAuditInput): Promise<StockAuditEntity> {
     const auditCode = `AUD-${Date.now().toString().slice(-6)}`
     const auditDate = dto.auditDate || new Date().toISOString()
     const title =
@@ -54,7 +46,7 @@ export class CreateStockAuditUseCase {
       auditCode,
       title,
       auditDate,
-      status: 'DRAFT',
+      status: StockAuditStatusEnum.Draft,
       items,
       totalSystemStock,
       totalActualStock,

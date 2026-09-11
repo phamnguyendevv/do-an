@@ -29,3 +29,62 @@ export class BookstoreOrderEntity {
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }
+
+export interface CreateOrderItemInput {
+  bookId: number | string
+  title: string
+  quantity: number
+  price: number
+}
+
+export interface CreateOrderInput {
+  customerId?: number
+  orderCode?: string
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  provinceId?: number
+  districtId?: number
+  wardCode?: string
+  items: CreateOrderItemInput[]
+  shippingFee?: number
+  discount?: number
+  promotionCode?: string
+  shippingMethod?: string
+  trackingCode?: string
+  note?: string
+  status?: string
+  payment?: string
+  actor?: string
+  actorRole?: string
+}
+
+export interface UpdateOrderInput {
+  customerName?: string
+  customerPhone?: string
+  customerAddress?: string
+  provinceId?: number
+  districtId?: number
+  wardCode?: string
+  shippingFee?: number
+  discount?: number
+  note?: string
+  status?: string
+  payment?: string
+}
+
+export interface ISePayWebhookInput {
+  id?: number
+  gateway?: string
+  transactionDate?: string
+  accountNumber?: string
+  subAccount?: string | null
+  transferType?: string
+  transferAmount?: number
+  accumulated?: number
+  code?: string | null
+  content?: string
+  referenceCode?: string
+  description?: string
+}
+

@@ -19,3 +19,18 @@ export class ImportReceiptEntity {
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
+
+export interface ImportReceiptLineInput {
+  bookId: number | string
+  quantity: number
+  price: number
+}
+
+export interface CreateImportReceiptInput {
+  supplierId?: number
+  supplierName: string
+  importDate?: string
+  note?: string
+  lines: ImportReceiptLineInput[]
+  createdBy?: string
+}

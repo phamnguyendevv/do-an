@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 
 import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
 import { PaymentStatusEnum } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
@@ -56,7 +57,7 @@ export class UpdateBookstoreOrderPaymentUseCase {
     await this.historyRepository.createHistory({
       orderId: order.id,
       orderCode: order.orderCode,
-      action: 'PAYMENT_CHANGE',
+      action: OrderHistoryActionEnum.PaymentChange,
       fromStatus: String(order.status),
       toStatus: String(order.status),
       fromPayment: previousPayment,
@@ -64,7 +65,7 @@ export class UpdateBookstoreOrderPaymentUseCase {
       title: `Cập nhật thanh toán: ${previousPayment} → ${payment}`,
       note:
         options?.note ||
-        `Thanh toán đơn hàng chuyển sang ${payment} (${payment === 'PAID' ? 'Đã thanh toán' : payment === 'REFUNDED' ? 'Đã hoàn tiền' : 'Chưa thanh toán'}).`,
+        `Thanh toán đơn hàng chuyển sang ${payment} (${payment === PaymentStatusEnum.Paid ? 'Đã thanh toán' : payment === PaymentStatusEnum.Refunded ? 'Đã hoàn tiền' : 'Chưa thanh toán'}).`,
       actor: options?.actor || 'Staff/Admin',
       actorRole: options?.actorRole,
       metadata: {

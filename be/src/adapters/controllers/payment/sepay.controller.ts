@@ -25,72 +25,8 @@ import { Request } from 'express'
 import { verifySepayWebhookSignature } from '@domain/utils/sepay-signature.util'
 
 import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-status.use-case'
-import {
-  ProcessSepayPaymentUseCase,
-  ProcessSepayWebhookDto,
-} from '@use-cases/orders/process-sepay-payment.use-case'
-
-export class SePayWebhookDto implements ProcessSepayWebhookDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  id?: number
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  gateway?: string
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  transactionDate?: string
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  accountNumber?: string
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  subAccount?: string | null
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  transferType?: string
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  transferAmount?: number
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  accumulated?: number
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  code?: string | null
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  content?: string
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  referenceCode?: string
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  description?: string
-}
+import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
+import { SePayWebhookDto } from './dto/sepay-webhook.dto'
 
 export class SimulateSepayDto {
   @ApiProperty({ example: 'ORD-2025001', required: true })

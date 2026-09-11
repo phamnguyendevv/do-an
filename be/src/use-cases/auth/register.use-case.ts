@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { IRegisterInput } from '@domain/entities/auth.entity'
 import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
@@ -20,8 +21,6 @@ import {
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 
-import { RegisterDto } from '@adapters/controllers/auth/dto/register.dto'
-
 @Injectable()
 export class RegisterUseCase {
   constructor(
@@ -37,7 +36,7 @@ export class RegisterUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(payload: RegisterDto) {
+  async execute(payload: IRegisterInput) {
     const trimmedEmail = payload.email?.trim()
     const trimmedUsername = payload.username?.trim()
     const trimmedPhone = payload.phone?.trim()

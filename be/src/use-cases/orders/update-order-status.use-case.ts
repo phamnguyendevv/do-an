@@ -8,6 +8,8 @@ import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -81,16 +83,13 @@ export class UpdateBookstoreOrderStatusUseCase {
 
       let nextPayment = order.payment
       if (
-        (targetStatus === OrderStatusEnum.Delivered ||
-          targetStatus === 'DELIVERED') &&
-        (order.payment === PaymentStatusEnum.Unpaid ||
-          order.payment === 'UNPAID')
+        targetStatus === OrderStatusEnum.Delivered &&
+        order.payment === PaymentStatusEnum.Unpaid
       ) {
         nextPayment = PaymentStatusEnum.Paid
       } else if (
-        (targetStatus === OrderStatusEnum.Returned ||
-          targetStatus === 'RETURNED') &&
-        (order.payment === PaymentStatusEnum.Paid || order.payment === 'PAID')
+        targetStatus === OrderStatusEnum.Returned &&
+        order.payment === PaymentStatusEnum.Paid
       ) {
         nextPayment = PaymentStatusEnum.Refunded
       }
@@ -125,7 +124,7 @@ export class UpdateBookstoreOrderStatusUseCase {
               const movement = queryRunner.manager.create(StockMovement, {
                 bookId: book.id,
                 bookTitle: book.title,
-                type: 'RESTOCK',
+                type: StockMovementTypeEnum.Restock,
                 quantity: item.quantity,
                 beforeStock,
                 afterStock,
@@ -145,12 +144,12 @@ export class UpdateBookstoreOrderStatusUseCase {
       const updatedOrder = await queryRunner.manager.save(BookstoreOrder, order)
 
       // 3. Record Order History
-      const isCancelled =
-        targetStatus === OrderStatusEnum.Cancelled ||
-        targetStatus === 'CANCELLED'
-      const action = isCancelled ? 'CANCELLED' : 'STATUS_CHANGE'
+      const isCancelled = targetStatus === OrderStatusEnum.Cancelled
+      const action = isCancelled
+        ? OrderHistoryActionEnum.Cancelled
+        : OrderHistoryActionEnum.StatusChange
       const title = isCancelled
-        ? `Hủy đơn hàng: ${previousStatus} → CANCELLED`
+        ? `Hủy đơn hàng: ${previousStatus} → ${OrderStatusEnum.Cancelled}`
         : `Chuyển trạng thái: ${previousStatus} → ${targetStatus}`
 
       const history = queryRunner.manager.create(OrderHistory, {
