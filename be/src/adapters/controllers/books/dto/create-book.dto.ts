@@ -20,10 +20,25 @@ export class CreateBookDto {
   @IsNotEmpty()
   author!: string
 
-  @ApiProperty({ example: 'Công nghệ', required: true })
+  @ApiProperty({
+    example: 'Công nghệ',
+    required: true,
+    description: 'Tên thể loại',
+  })
   @IsString()
   @IsNotEmpty()
   category!: string
+
+  @ApiProperty({
+    example: 1,
+    required: false,
+    description:
+      'ID thể loại (FK tới bảng categories — khi có, sẽ populate category_id)',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Transform(({ value }) => Number(value))
+  categoryId?: number
 
   @ApiProperty({ example: 210000, required: true })
   @IsNumber()

@@ -4,7 +4,10 @@ export class BookEntity {
   public readonly id!: number
   public title!: string
   public author!: string
+  /** Tên thể loại (string, backward compat) */
   public category!: string
+  /** FK tới categories(id) — nullable */
+  public categoryId?: number
   public purchasePrice!: number
   public sellingPrice!: number
   public stock!: number
@@ -17,7 +20,10 @@ export class BookEntity {
 export interface ICreateBookInput {
   title: string
   author: string
+  /** Tên thể loại (string) */
   category: string
+  /** FK tới categories(id) — optional */
+  categoryId?: number
   purchasePrice: number
   sellingPrice: number
   stock: number
@@ -28,6 +34,7 @@ export interface IUpdateBookInput {
   title?: string
   author?: string
   category?: string
+  categoryId?: number
   purchasePrice?: number
   sellingPrice?: number
   stock?: number
@@ -40,6 +47,7 @@ export interface ISearchBooksInput {
   search?: string
   page?: number
   category?: string
+  categoryId?: number
   status?: string
   minPrice?: number
   maxPrice?: number

@@ -222,13 +222,13 @@ if [ ! -f /opt/app/.env.production ]; then
 GITHUB_REPOSITORY_OWNER=your_github_username
 DATABASE_SYNCHRONIZE=false
 DATABASE_ENGINE=postgres
-DATABASE_HOST=postgres
+DATABASE_HOST=host.docker.internal
 DATABASE_NAME=myapp
 DATABASE_PORT=5432
 DATABASE_USER=postgres
 DATABASE_PASSWORD=CHANGE_ME_STRONG_PASSWORD
 DATABASE_SCHEMA=public
-REDIS_HOST=redis
+REDIS_HOST=host.docker.internal
 REDIS_PORT=6379
 NODE_ENV=production
 PORT=3000

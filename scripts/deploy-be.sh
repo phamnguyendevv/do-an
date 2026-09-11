@@ -19,7 +19,6 @@ error() { echo -e "${RED}[$(date '+%H:%M:%S')] ✗ $1${NC}"; exit 1; }
 APP_DIR="/opt/app"
 COMPOSE_FILE="$APP_DIR/docker-compose.prod.yml"
 ENV_FILE="$APP_DIR/.env.production"
-BACKUP_DIR="$APP_DIR/backups"
 IMAGE="ghcr.io/${GITHUB_ACTOR}/do-an-backend:latest"
 
 # ============================================================
@@ -32,74 +31,29 @@ log "Bắt đầu deploy Backend..."
 log "Image: $IMAGE"
 
 # ============================================================
-# 1. Backup Database trước khi deploy
+# 1. Login GitHub Container Registry
 # ============================================================
-log "Backup database PostgreSQL..."
-mkdir -p "$BACKUP_DIR"
-BACKUP_FILE="$BACKUP_DIR/db-$(date +%Y%m%d_%H%M%S).sql"
-
-# Lấy thông tin DB từ .env.production
-DB_USER=$(grep '^DATABASE_USER=' "$ENV_FILE" | cut -d'=' -f2)
-DB_NAME=$(grep '^DATABASE_NAME=' "$ENV_FILE" | cut -d'=' -f2)
-DB_PASS=$(grep '^DATABASE_PASSWORD=' "$ENV_FILE" | cut -d'=' -f2)
-
-# Thực hiện backup (nếu postgres container đang chạy)
-if docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps postgres 2>/dev/null | grep -q "running"; then
-    PGPASSWORD="$DB_PASS" docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-        exec -T postgres \
-        pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null && \
-        log "Backup thành công: $BACKUP_FILE" || \
-        warn "Backup thất bại (bỏ qua nếu đây là lần deploy đầu tiên)"
-
-    # Giữ tối đa 7 bản backup gần nhất
-    ls -t "$BACKUP_DIR"/db-*.sql 2>/dev/null | tail -n +8 | xargs rm -f
-else
-    warn "Postgres chưa chạy, bỏ qua backup (lần deploy đầu tiên)"
+if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_ACTOR" ]; then
+    log "Đăng nhập GitHub Container Registry..."
+    echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin 2>/dev/null || \
+        warn "GITHUB_TOKEN không hợp lệ, thử kéo image không xác thực..."
 fi
 
 # ============================================================
-# 2. Login GitHub Container Registry
+# 2. Pull image Backend mới nhất
 # ============================================================
-log "Đăng nhập GitHub Container Registry..."
-echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin 2>/dev/null || \
-    warn "GITHUB_TOKEN không có, thử kéo image không xác thực..."
-
-# ============================================================
-# 3. Pull image mới nhất
-# ============================================================
-log "Pull Docker image mới nhất..."
-docker pull "$IMAGE" || error "Không thể pull image $IMAGE"
-
-# ============================================================
-# 4. Khởi động/cập nhật containers
-# ============================================================
-log "Khởi động containers..."
 cd "$APP_DIR"
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --remove-orphans
+log "Pull Docker image mới nhất..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend || docker pull "$IMAGE" || error "Không thể pull image $IMAGE"
 
 # ============================================================
-# 5. Chạy TypeORM Migrations
+# 3. Khởi động/cập nhật container Backend
 # ============================================================
-log "Chờ database sẵn sàng..."
-sleep 5
-
-log "Chạy database migrations..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-    exec -T backend \
-    node dist/src/infrastructure/databases/postgresql/typeorm.config.js \
-    2>/dev/null || \
-    warn "Migration bỏ qua (có thể chưa có migration mới)"
-
-# Cách thứ 2: chạy migration qua npm script nếu có
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-    exec -T backend sh -c "node -e \"
-        const { DataSource } = require('typeorm');
-        // Migration sẽ tự chạy qua synchronize hoặc migration:run
-        console.log('Migration check done');
-    \"" 2>/dev/null || true
+log "Khởi chạy container Backend..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d backend
 
 # ============================================================
-# 6. Health check
+# 4. Health check
 # ============================================================
 log "Kiểm tra health của Backend..."
 sleep 10  # Chờ app khởi động
@@ -129,7 +83,7 @@ else
 fi
 
 # ============================================================
-# 7. Dọn dẹp Docker images cũ
+# 5. Dọn dẹp Docker images cũ
 # ============================================================
 log "Dọn dẹp Docker images cũ..."
 docker image prune -f --filter "until=24h" 2>/dev/null || true

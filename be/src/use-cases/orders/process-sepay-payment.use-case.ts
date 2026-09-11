@@ -23,6 +23,7 @@ import {
 
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
+import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
 
 export interface ProcessSepayResult {
   success: boolean
@@ -89,11 +90,36 @@ export class ProcessSepayPaymentUseCase {
       codeWithoutHyphen = `DH${rawCode}`
     }
 
+    const referenceCode = String(
+      payload.referenceCode || payload.code || payload.id || '',
+    ).trim()
+
     const queryRunner = this.dataSource.createQueryRunner()
     await queryRunner.connect()
     await queryRunner.startTransaction()
 
     try {
+      if (referenceCode) {
+        const existingTx = await queryRunner.manager.findOne(
+          PaymentTransaction,
+          {
+            where: { referenceCode },
+          },
+        )
+        if (existingTx) {
+          this.logger.warn(
+            `SePay Webhook duplicate referenceCode: ${referenceCode}`,
+          )
+          await queryRunner.rollbackTransaction()
+          return {
+            success: true,
+            message: 'Giao dịch đã được xử lý trước đó (Idempotency duplicate)',
+            orderCode: existingTx.orderCode,
+            status: existingTx.status,
+          }
+        }
+      }
+
       let order: BookstoreOrder | null = null
 
       if (extractedDigits) {
@@ -181,6 +207,21 @@ export class ProcessSepayPaymentUseCase {
         })
         await queryRunner.manager.save(OrderHistory, history)
 
+        if (referenceCode) {
+          const paymentTx = queryRunner.manager.create(PaymentTransaction, {
+            referenceCode,
+            gateway: payload.gateway,
+            accountNumber: payload.accountNumber,
+            transferAmount,
+            orderCode: savedNew.orderCode,
+            orderId: savedNew.id,
+            content: payload.content,
+            status: 'AUTO_CREATED',
+            rawPayload: payload as unknown as Record<string, unknown>,
+          })
+          await queryRunner.manager.save(PaymentTransaction, paymentTx)
+        }
+
         await queryRunner.commitTransaction()
 
         await this.redisService?.delPattern('orders:*')
@@ -251,6 +292,21 @@ export class ProcessSepayPaymentUseCase {
         },
       })
       await queryRunner.manager.save(OrderHistory, history)
+
+      if (referenceCode) {
+        const paymentTx = queryRunner.manager.create(PaymentTransaction, {
+          referenceCode,
+          gateway: payload.gateway,
+          accountNumber: payload.accountNumber,
+          transferAmount,
+          orderCode: updatedOrder.orderCode,
+          orderId: updatedOrder.id,
+          content: payload.content,
+          status: 'SUCCESS',
+          rawPayload: payload as unknown as Record<string, unknown>,
+        })
+        await queryRunner.manager.save(PaymentTransaction, paymentTx)
+      }
 
       await queryRunner.commitTransaction()
 
