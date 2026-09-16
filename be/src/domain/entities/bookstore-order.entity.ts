@@ -29,4 +29,3 @@ export class BookstoreOrderEntity {
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }
-

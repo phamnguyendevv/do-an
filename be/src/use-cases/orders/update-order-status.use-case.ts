@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
@@ -26,7 +27,10 @@ import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bo
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 
-const RESTOCK_STATUSES: string[] = [OrderStatusEnum.Cancelled, OrderStatusEnum.Returned]
+const RESTOCK_STATUSES: string[] = [
+  OrderStatusEnum.Cancelled,
+  OrderStatusEnum.Returned,
+]
 
 @Injectable()
 export class UpdateBookstoreOrderStatusUseCase {
@@ -72,16 +76,20 @@ export class UpdateBookstoreOrderStatusUseCase {
       const previousPayment = String(order.payment)
       const targetStatus = String(nextStatus)
       const shouldRestock =
-        RESTOCK_STATUSES.includes(targetStatus) && !RESTOCK_STATUSES.includes(previousStatus)
+        RESTOCK_STATUSES.includes(targetStatus) &&
+        !RESTOCK_STATUSES.includes(previousStatus)
 
       let nextPayment = order.payment
       if (
-        (targetStatus === OrderStatusEnum.Delivered || targetStatus === 'DELIVERED') &&
-        (order.payment === PaymentStatusEnum.Unpaid || order.payment === 'UNPAID')
+        (targetStatus === OrderStatusEnum.Delivered ||
+          targetStatus === 'DELIVERED') &&
+        (order.payment === PaymentStatusEnum.Unpaid ||
+          order.payment === 'UNPAID')
       ) {
         nextPayment = PaymentStatusEnum.Paid
       } else if (
-        (targetStatus === OrderStatusEnum.Returned || targetStatus === 'RETURNED') &&
+        (targetStatus === OrderStatusEnum.Returned ||
+          targetStatus === 'RETURNED') &&
         (order.payment === PaymentStatusEnum.Paid || order.payment === 'PAID')
       ) {
         nextPayment = PaymentStatusEnum.Refunded
@@ -91,7 +99,9 @@ export class UpdateBookstoreOrderStatusUseCase {
       if (shouldRestock && order.items && Array.isArray(order.items)) {
         for (const item of order.items) {
           const bookIdNum =
-            typeof item.bookId === 'number' ? item.bookId : parseInt(String(item.bookId), 10)
+            typeof item.bookId === 'number'
+              ? item.bookId
+              : parseInt(String(item.bookId), 10)
           if (!isNaN(bookIdNum)) {
             const book = await queryRunner.manager.findOne(Book, {
               where: { id: bookIdNum },
@@ -135,7 +145,9 @@ export class UpdateBookstoreOrderStatusUseCase {
       const updatedOrder = await queryRunner.manager.save(BookstoreOrder, order)
 
       // 3. Record Order History
-      const isCancelled = targetStatus === OrderStatusEnum.Cancelled || targetStatus === 'CANCELLED'
+      const isCancelled =
+        targetStatus === OrderStatusEnum.Cancelled ||
+        targetStatus === 'CANCELLED'
       const action = isCancelled ? 'CANCELLED' : 'STATUS_CHANGE'
       const title = isCancelled
         ? `Hủy đơn hàng: ${previousStatus} → CANCELLED`
@@ -183,4 +195,3 @@ export class UpdateBookstoreOrderStatusUseCase {
     }
   }
 }
-

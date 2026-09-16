@@ -45,26 +45,37 @@ export class GetListBookstoreOrdersDto {
 
   @ApiProperty({ required: false, description: 'Minimum order total (VND)' })
   @IsOptional()
-  @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? Number(value) : undefined,
+  )
   @IsNumber()
   @Min(0)
   minTotal?: number
 
   @ApiProperty({ required: false, description: 'Maximum order total (VND)' })
   @IsOptional()
-  @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? Number(value) : undefined,
+  )
   @IsNumber()
   @Min(0)
   maxTotal?: number
 
-  @ApiProperty({ required: false, description: 'Sort field (createdAt, total)', example: 'createdAt' })
+  @ApiProperty({
+    required: false,
+    description: 'Sort field (createdAt, total)',
+    example: 'createdAt',
+  })
   @IsOptional()
   @IsString()
   sortBy?: string
 
-  @ApiProperty({ required: false, enum: ['ASC', 'DESC'], description: 'Sort direction' })
+  @ApiProperty({
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Sort direction',
+  })
   @IsOptional()
   @IsString()
   sortOrder?: 'ASC' | 'DESC'
 }
-

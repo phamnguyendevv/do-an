@@ -53,7 +53,10 @@ export class CreateBookstoreOrderDto {
   @IsNotEmpty()
   customerPhone!: string
 
-  @ApiProperty({ example: '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', required: true })
+  @ApiProperty({
+    example: '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
+    required: true,
+  })
   @IsString()
   @IsNotEmpty()
   customerAddress!: string

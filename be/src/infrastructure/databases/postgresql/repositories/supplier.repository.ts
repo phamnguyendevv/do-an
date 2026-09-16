@@ -3,11 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm'
 
 import { Repository } from 'typeorm'
 
-import { SupplierEntity } from '@domain/entities/supplier.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
+import { SupplierEntity } from '@domain/entities/supplier.entity'
 import {
-  ISupplierRepositoryInterface,
   ISearchSupplierParams,
+  ISupplierRepositoryInterface,
 } from '@domain/repositories/supplier.repository.interface'
 
 import { Supplier } from '../entities/supplier.entity'

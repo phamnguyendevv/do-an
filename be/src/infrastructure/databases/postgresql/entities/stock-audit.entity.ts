@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
+
 import { StockAuditItemEntity } from '@domain/entities/stock-audit.entity'
 
 @Entity('stock_audits')
@@ -42,7 +43,12 @@ export class StockAudit {
   @Column({ type: 'text', nullable: true })
   public note?: string
 
-  @Column({ type: 'varchar', length: 100, name: 'audited_by', default: 'Admin' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'audited_by',
+    default: 'Admin',
+  })
   public auditedBy!: string
 
   @Column({ type: 'timestamp', name: 'balanced_at', nullable: true })

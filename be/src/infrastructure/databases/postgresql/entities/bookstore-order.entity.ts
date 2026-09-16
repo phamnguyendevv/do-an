@@ -7,7 +7,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm'
 
-import { OrderStatusEnum, PaymentStatusEnum } from '@domain/entities/order-enums.entity'
+import {
+  OrderStatusEnum,
+  PaymentStatusEnum,
+} from '@domain/entities/order-enums.entity'
 
 export interface BookstoreOrderItem {
   bookId: number | string
@@ -65,10 +68,21 @@ export class BookstoreOrder {
   @Column({ type: 'bigint', nullable: true, name: 'promotion_id' })
   public promotionId?: number
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'promotion_code' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'promotion_code',
+  })
   public promotionCode?: string
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'shipping_fee' })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'shipping_fee',
+  })
   public shippingFee!: number
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
@@ -77,10 +91,20 @@ export class BookstoreOrder {
   @Column({ type: 'varchar', length: 50, default: PaymentStatusEnum.Unpaid })
   public payment!: PaymentStatusEnum | string
 
-  @Column({ type: 'varchar', length: 100, name: 'shipping_method', default: 'Giao Hàng Nhanh (GHN)' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'shipping_method',
+    default: 'Giao Hàng Nhanh (GHN)',
+  })
   public shippingMethod!: string
 
-  @Column({ type: 'varchar', length: 100, name: 'tracking_code', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'tracking_code',
+    nullable: true,
+  })
   public trackingCode?: string
 
   @Column({ type: 'varchar', length: 50, default: OrderStatusEnum.Pending })

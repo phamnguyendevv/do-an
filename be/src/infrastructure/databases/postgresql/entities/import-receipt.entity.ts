@@ -25,13 +25,23 @@ export class ImportReceipt {
   @Column({ type: 'varchar', length: 255, name: 'supplier_name' })
   public supplierName!: string
 
-  @Column({ type: 'timestamp', name: 'import_date', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: 'timestamp',
+    name: 'import_date',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   public importDate!: Date
 
   @Column({ type: 'int', name: 'total_items', default: 0 })
   public totalItems!: number
 
-  @Column({ type: 'decimal', precision: 14, scale: 2, default: 0, name: 'total_value' })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 2,
+    default: 0,
+    name: 'total_value',
+  })
   public totalValue!: number
 
   @Column({ type: 'text', nullable: true })

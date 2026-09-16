@@ -1,5 +1,8 @@
-import { StockMovementEntity, StockMovementType } from '@domain/entities/stock-movement.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
+import {
+  StockMovementEntity,
+  StockMovementType,
+} from '@domain/entities/stock-movement.entity'
 
 export interface ISearchStockMovementParams {
   size?: number
@@ -18,7 +21,9 @@ export interface IStockMovementRepositoryInterface {
     data: StockMovementEntity[]
     pagination: IPaginationParams
   }>
-  createMovement(movement: Partial<StockMovementEntity>): Promise<StockMovementEntity>
+  createMovement(
+    movement: Partial<StockMovementEntity>,
+  ): Promise<StockMovementEntity>
   getMovementStats(params: { startDate?: Date; endDate?: Date }): Promise<{
     totalImportQty: number
     totalExportQty: number

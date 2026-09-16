@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+
 import { Type } from 'class-transformer'
 import {
   IsArray,
@@ -27,12 +28,16 @@ export class ExportReceiptLineDto {
 }
 
 export class CreateExportReceiptDto {
-  @ApiPropertyOptional({ description: 'Mã đơn hàng liên kết (nếu xuất theo đơn)' })
+  @ApiPropertyOptional({
+    description: 'Mã đơn hàng liên kết (nếu xuất theo đơn)',
+  })
   @IsOptional()
   @IsString()
   orderId?: string
 
-  @ApiProperty({ description: 'Lý do xuất kho (Xuất bán, Xuất hủy/hỏng, Xuất mẫu,...)' })
+  @ApiProperty({
+    description: 'Lý do xuất kho (Xuất bán, Xuất hủy/hỏng, Xuất mẫu,...)',
+  })
   @IsString()
   @IsNotEmpty()
   reason!: string
@@ -42,7 +47,10 @@ export class CreateExportReceiptDto {
   @IsString()
   note?: string
 
-  @ApiProperty({ type: [ExportReceiptLineDto], description: 'Danh sách sản phẩm xuất' })
+  @ApiProperty({
+    type: [ExportReceiptLineDto],
+    description: 'Danh sách sản phẩm xuất',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ExportReceiptLineDto)

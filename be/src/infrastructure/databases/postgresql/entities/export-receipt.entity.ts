@@ -25,7 +25,11 @@ export class ExportReceipt {
   @Column({ type: 'varchar', length: 255 })
   public reason!: string
 
-  @Column({ type: 'timestamp', name: 'export_date', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: 'timestamp',
+    name: 'export_date',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   public exportDate!: Date
 
   @Column({ type: 'int', name: 'total_items', default: 0 })

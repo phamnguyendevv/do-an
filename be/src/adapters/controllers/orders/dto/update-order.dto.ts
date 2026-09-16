@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+
 import { IsNumber, IsOptional, IsString } from 'class-validator'
 
 export class UpdateBookstoreOrderDto {
@@ -12,7 +13,10 @@ export class UpdateBookstoreOrderDto {
   @IsString()
   customerPhone?: string
 
-  @ApiProperty({ example: '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM', required: false })
+  @ApiProperty({
+    example: '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   customerAddress?: string

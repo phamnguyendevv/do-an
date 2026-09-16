@@ -6,4 +6,3 @@ export interface IRedisCacheService {
   delValue(key: string): Promise<void>
   delPattern(pattern: string): Promise<void>
 }
-

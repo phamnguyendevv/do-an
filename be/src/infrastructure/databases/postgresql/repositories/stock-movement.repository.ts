@@ -3,17 +3,19 @@ import { InjectRepository } from '@nestjs/typeorm'
 
 import { Repository } from 'typeorm'
 
-import { StockMovementEntity } from '@domain/entities/stock-movement.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
+import { StockMovementEntity } from '@domain/entities/stock-movement.entity'
 import {
-  IStockMovementRepositoryInterface,
   ISearchStockMovementParams,
+  IStockMovementRepositoryInterface,
 } from '@domain/repositories/stock-movement.repository.interface'
 
 import { StockMovement } from '../entities/stock-movement.entity'
 
 @Injectable()
-export class StockMovementRepository implements IStockMovementRepositoryInterface {
+export class StockMovementRepository
+  implements IStockMovementRepositoryInterface
+{
   constructor(
     @InjectRepository(StockMovement)
     private readonly movementRepository: Repository<StockMovement>,
@@ -56,7 +58,9 @@ export class StockMovementRepository implements IStockMovementRepositoryInterfac
     }
 
     if (startDate) {
-      query.andWhere('sm.createdAt >= :startDate', { startDate: new Date(startDate) })
+      query.andWhere('sm.createdAt >= :startDate', {
+        startDate: new Date(startDate),
+      })
     }
 
     if (endDate) {
@@ -75,12 +79,17 @@ export class StockMovementRepository implements IStockMovementRepositoryInterfac
     }
   }
 
-  async createMovement(movement: Partial<StockMovementEntity>): Promise<StockMovementEntity> {
+  async createMovement(
+    movement: Partial<StockMovementEntity>,
+  ): Promise<StockMovementEntity> {
     const newMovement = this.movementRepository.create(movement)
     return await this.movementRepository.save(newMovement)
   }
 
-  async getMovementStats(params: { startDate?: Date; endDate?: Date }): Promise<{
+  async getMovementStats(params: {
+    startDate?: Date
+    endDate?: Date
+  }): Promise<{
     totalImportQty: number
     totalExportQty: number
     totalSaleQty: number
@@ -89,7 +98,9 @@ export class StockMovementRepository implements IStockMovementRepositoryInterfac
     const query = this.movementRepository.createQueryBuilder('sm')
 
     if (params.startDate) {
-      query.andWhere('sm.createdAt >= :startDate', { startDate: params.startDate })
+      query.andWhere('sm.createdAt >= :startDate', {
+        startDate: params.startDate,
+      })
     }
 
     if (params.endDate) {

@@ -1,11 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
+
 import { Type } from 'class-transformer'
 import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator'
 
 import { StockMovementType } from '@domain/entities/stock-movement.entity'
 
 export class GetStockMovementsDto {
-  @ApiPropertyOptional({ description: 'Từ khóa tìm kiếm (tên sách, mã tham chiếu, ghi chú)' })
+  @ApiPropertyOptional({
+    description: 'Từ khóa tìm kiếm (tên sách, mã tham chiếu, ghi chú)',
+  })
   @IsOptional()
   @IsString()
   search?: string

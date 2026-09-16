@@ -54,20 +54,25 @@ describe('BooksController', () => {
       ],
     }).compile()
 
-
     controller = module.get<BooksController>(BooksController)
     getListBooksUseCase = module.get<GetListBooksUseCase>(GetListBooksUseCase)
     createBookUseCase = module.get<CreateBookUseCase>(CreateBookUseCase)
-    getDetailBookUseCase = module.get<GetDetailBookUseCase>(GetDetailBookUseCase)
+    getDetailBookUseCase =
+      module.get<GetDetailBookUseCase>(GetDetailBookUseCase)
     updateBookUseCase = module.get<UpdateBookUseCase>(UpdateBookUseCase)
     deleteBookUseCase = module.get<DeleteBookUseCase>(DeleteBookUseCase)
   })
 
   it('should list books', async () => {
     const query: GetListBooksDto = { page: 1, size: 10, search: 'Clean' }
-    const response = { data: [{ id: 1, title: 'Clean Code' }], pagination: { total: 1, page: 1, size: 10 } }
+    const response = {
+      data: [{ id: 1, title: 'Clean Code' }],
+      pagination: { total: 1, page: 1, size: 10 },
+    }
 
-    jest.spyOn(getListBooksUseCase, 'execute').mockResolvedValue(response as any)
+    jest
+      .spyOn(getListBooksUseCase, 'execute')
+      .mockResolvedValue(response as any)
 
     await expect(controller.getBooks(query)).resolves.toEqual(response)
     expect(getListBooksUseCase.execute).toHaveBeenCalledWith(query)
@@ -85,7 +90,6 @@ describe('BooksController', () => {
     }
     const created = { id: 1, ...dto, status: 'ACTIVE' }
 
-
     jest.spyOn(createBookUseCase, 'execute').mockResolvedValue(created as any)
 
     await expect(controller.createBook(dto)).resolves.toEqual(created)
@@ -99,7 +103,6 @@ describe('BooksController', () => {
     await expect(controller.getBookById(1)).resolves.toEqual(book)
     expect(getDetailBookUseCase.execute).toHaveBeenCalledWith({ id: 1 })
   })
-
 
   it('should update a book', async () => {
     const dto: UpdateBookDto = { title: 'Updated title' }

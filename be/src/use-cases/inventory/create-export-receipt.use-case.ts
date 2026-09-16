@@ -1,7 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
-import { ExportReceiptEntity, ExportReceiptItem } from '@domain/entities/export-receipt.entity'
+import {
+  ExportReceiptEntity,
+  ExportReceiptItem,
+} from '@domain/entities/export-receipt.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -20,10 +24,10 @@ import {
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 
+import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { ExportReceipt } from '@infrastructure/databases/postgresql/entities/export-receipt.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
-import { ActivityLog } from '@infrastructure/databases/postgresql/entities/activity-log.entity'
 
 @Injectable()
 export class CreateExportReceiptUseCase {
@@ -84,7 +88,10 @@ export class CreateExportReceiptUseCase {
       const receiptCode = `EXP-${2000 + count + 1}`
 
       for (const line of dto.lines) {
-        const bookIdNum = typeof line.bookId === 'number' ? line.bookId : parseInt(String(line.bookId), 10)
+        const bookIdNum =
+          typeof line.bookId === 'number'
+            ? line.bookId
+            : parseInt(String(line.bookId), 10)
         if (isNaN(bookIdNum)) {
           throw this.exceptionsService.badRequestException({
             type: 'InventoryValidationException',
@@ -115,7 +122,12 @@ export class CreateExportReceiptUseCase {
         }
 
         const afterStock = beforeStock - qty
-        const newStatus = afterStock === 0 ? 'OUT_OF_STOCK' : afterStock <= book.minStock ? 'LOW_STOCK' : 'IN_STOCK'
+        const newStatus =
+          afterStock === 0
+            ? 'OUT_OF_STOCK'
+            : afterStock <= book.minStock
+              ? 'LOW_STOCK'
+              : 'IN_STOCK'
 
         // 1. Update book stock
         book.stock = afterStock
@@ -156,12 +168,21 @@ export class CreateExportReceiptUseCase {
         createdBy: dto.createdBy || 'Admin',
       })
 
-      const savedReceipt = await queryRunner.manager.save(ExportReceipt, receipt)
-      await queryRunner.manager.save(ActivityLog, queryRunner.manager.create(ActivityLog, {
-        actorName: dto.createdBy || 'Admin', action: 'CREATE', resourceType: 'ExportReceipt',
-        resourceId: String(savedReceipt.id), description: `Tạo phiếu xuất ${savedReceipt.receiptCode}`,
-        metadata: { totalItems, reason: dto.reason },
-      }))
+      const savedReceipt = await queryRunner.manager.save(
+        ExportReceipt,
+        receipt,
+      )
+      await queryRunner.manager.save(
+        ActivityLog,
+        queryRunner.manager.create(ActivityLog, {
+          actorName: dto.createdBy || 'Admin',
+          action: 'CREATE',
+          resourceType: 'ExportReceipt',
+          resourceId: String(savedReceipt.id),
+          description: `Tạo phiếu xuất ${savedReceipt.receiptCode}`,
+          metadata: { totalItems, reason: dto.reason },
+        }),
+      )
       await queryRunner.commitTransaction()
 
       await this.redisService.delPattern('books:*')

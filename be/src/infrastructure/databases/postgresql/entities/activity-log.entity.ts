@@ -1,10 +1,19 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm'
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm'
 
 @Entity('activity_logs')
 @Index('IDX_activity_logs_created_at', ['createdAt'])
 @Index('IDX_activity_logs_actor_id', ['actorId'])
 export class ActivityLog {
-  @PrimaryGeneratedColumn({ type: 'bigint', primaryKeyConstraintName: 'PK_activity_logs_id' })
+  @PrimaryGeneratedColumn({
+    type: 'bigint',
+    primaryKeyConstraintName: 'PK_activity_logs_id',
+  })
   public readonly id!: number
 
   @Column({ type: 'bigint', nullable: true, name: 'actor_id' })

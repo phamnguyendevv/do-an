@@ -4,7 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { ILike, Repository } from 'typeorm'
 
 import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
-import { OrderStatusEnum, PaymentStatusEnum } from '@domain/entities/order-enums.entity'
+import {
+  OrderStatusEnum,
+  PaymentStatusEnum,
+} from '@domain/entities/order-enums.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
 import {
   IBookstoreOrderRepositoryInterface,
@@ -14,7 +17,9 @@ import {
 import { BookstoreOrder } from '../entities/bookstore-order.entity'
 
 @Injectable()
-export class BookstoreOrderRepository implements IBookstoreOrderRepositoryInterface {
+export class BookstoreOrderRepository
+  implements IBookstoreOrderRepositoryInterface
+{
   constructor(
     @InjectRepository(BookstoreOrder)
     private readonly orderRepository: Repository<BookstoreOrder>,
@@ -70,7 +75,9 @@ export class BookstoreOrderRepository implements IBookstoreOrderRepositoryInterf
     }
 
     if (startDate) {
-      query.andWhere('order.createdAt >= :startDate', { startDate: new Date(startDate) })
+      query.andWhere('order.createdAt >= :startDate', {
+        startDate: new Date(startDate),
+      })
     }
 
     if (endDate) {
@@ -99,7 +106,9 @@ export class BookstoreOrderRepository implements IBookstoreOrderRepositoryInterf
     }
   }
 
-  async createOrder(order: Partial<BookstoreOrderEntity>): Promise<BookstoreOrderEntity> {
+  async createOrder(
+    order: Partial<BookstoreOrderEntity>,
+  ): Promise<BookstoreOrderEntity> {
     const newOrder = this.orderRepository.create(order)
     return await this.orderRepository.save(newOrder)
   }
@@ -119,15 +128,22 @@ export class BookstoreOrderRepository implements IBookstoreOrderRepositoryInterf
     return order ?? null
   }
 
-  async findOrderByCode(orderCode: string): Promise<BookstoreOrderEntity | null> {
+  async findOrderByCode(
+    orderCode: string,
+  ): Promise<BookstoreOrderEntity | null> {
     const order = await this.orderRepository.findOne({
       where: { orderCode },
     })
     return order ?? null
   }
 
-  async findOrderByCodeVariants(variants: string[], digits?: string): Promise<BookstoreOrderEntity | null> {
-    const whereConditions: any[] = variants.filter(Boolean).map((v) => ({ orderCode: v }))
+  async findOrderByCodeVariants(
+    variants: string[],
+    digits?: string,
+  ): Promise<BookstoreOrderEntity | null> {
+    const whereConditions: any[] = variants
+      .filter(Boolean)
+      .map((v) => ({ orderCode: v }))
     variants.filter(Boolean).forEach((v) => {
       whereConditions.push({ trackingCode: v })
     })
@@ -143,7 +159,9 @@ export class BookstoreOrderRepository implements IBookstoreOrderRepositoryInterf
     return order ?? null
   }
 
-  async findUnpaidOrderByAmount(amount: number): Promise<BookstoreOrderEntity | null> {
+  async findUnpaidOrderByAmount(
+    amount: number,
+  ): Promise<BookstoreOrderEntity | null> {
     const order = await this.orderRepository.findOne({
       where: [
         { payment: PaymentStatusEnum.Unpaid, total: amount },
@@ -158,4 +176,3 @@ export class BookstoreOrderRepository implements IBookstoreOrderRepositoryInterf
     return await this.orderRepository.count()
   }
 }
-

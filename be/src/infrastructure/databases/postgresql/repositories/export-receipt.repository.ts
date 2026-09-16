@@ -13,7 +13,9 @@ import {
 import { ExportReceipt } from '../entities/export-receipt.entity'
 
 @Injectable()
-export class ExportReceiptRepository implements IExportReceiptRepositoryInterface {
+export class ExportReceiptRepository
+  implements IExportReceiptRepositoryInterface
+{
   constructor(
     @InjectRepository(ExportReceipt)
     private readonly receiptRepository: Repository<ExportReceipt>,
@@ -56,7 +58,9 @@ export class ExportReceiptRepository implements IExportReceiptRepositoryInterfac
     }
 
     if (startDate) {
-      query.andWhere('r.exportDate >= :startDate', { startDate: new Date(startDate) })
+      query.andWhere('r.exportDate >= :startDate', {
+        startDate: new Date(startDate),
+      })
     }
 
     if (endDate) {
@@ -82,14 +86,18 @@ export class ExportReceiptRepository implements IExportReceiptRepositoryInterfac
     return receipt ?? null
   }
 
-  async findReceiptByCode(receiptCode: string): Promise<ExportReceiptEntity | null> {
+  async findReceiptByCode(
+    receiptCode: string,
+  ): Promise<ExportReceiptEntity | null> {
     const receipt = await this.receiptRepository.findOne({
       where: { receiptCode },
     })
     return receipt ?? null
   }
 
-  async createReceipt(receipt: Partial<ExportReceiptEntity>): Promise<ExportReceiptEntity> {
+  async createReceipt(
+    receipt: Partial<ExportReceiptEntity>,
+  ): Promise<ExportReceiptEntity> {
     const newReceipt = this.receiptRepository.create(receipt)
     return await this.receiptRepository.save(newReceipt)
   }

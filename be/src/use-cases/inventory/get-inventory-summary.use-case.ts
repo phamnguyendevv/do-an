@@ -1,11 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
-import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import {
   IStockMovementRepositoryInterface,
   STOCK_MOVEMENT_REPOSITORY,
 } from '@domain/repositories/stock-movement.repository.interface'
+
+import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 
 @Injectable()
 export class GetInventorySummaryUseCase {
@@ -23,8 +25,14 @@ export class GetInventorySummaryUseCase {
       .select('COUNT(b.id)', 'totalTitles')
       .addSelect('SUM(b.stock)', 'totalStock')
       .addSelect('SUM(b.stock * b.purchasePrice)', 'inventoryValue')
-      .addSelect(`COUNT(CASE WHEN b.status = 'LOW_STOCK' THEN 1 END)`, 'lowStockCount')
-      .addSelect(`COUNT(CASE WHEN b.status = 'OUT_OF_STOCK' THEN 1 END)`, 'outOfStockCount')
+      .addSelect(
+        `COUNT(CASE WHEN b.status = 'LOW_STOCK' THEN 1 END)`,
+        'lowStockCount',
+      )
+      .addSelect(
+        `COUNT(CASE WHEN b.status = 'OUT_OF_STOCK' THEN 1 END)`,
+        'outOfStockCount',
+      )
       .getRawOne()
 
     const movements = await this.stockMovementRepository.getMovementStats({})

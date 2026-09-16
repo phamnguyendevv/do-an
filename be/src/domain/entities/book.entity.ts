@@ -13,4 +13,3 @@ export class BookEntity {
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }
-

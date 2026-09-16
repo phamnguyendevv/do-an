@@ -28,41 +28,62 @@ export class GetListBooksDto {
   @IsString()
   category?: string
 
-  @ApiProperty({ required: false, description: 'Filter by status', enum: ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'] })
+  @ApiProperty({
+    required: false,
+    description: 'Filter by status',
+    enum: ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'],
+  })
   @IsOptional()
   @IsString()
   status?: string
 
   @ApiProperty({ required: false, description: 'Minimum selling price' })
   @IsOptional()
-  @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? Number(value) : undefined,
+  )
   @IsNumber()
   @Min(0)
   minPrice?: number
 
   @ApiProperty({ required: false, description: 'Maximum selling price' })
   @IsOptional()
-  @Transform(({ value }) => (value !== undefined && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? Number(value) : undefined,
+  )
   @IsNumber()
   @Min(0)
   maxPrice?: number
 
-  @ApiProperty({ required: false, description: 'Created at start date (ISO or YYYY-MM-DD)' })
+  @ApiProperty({
+    required: false,
+    description: 'Created at start date (ISO or YYYY-MM-DD)',
+  })
   @IsOptional()
   @IsString()
   startDate?: string
 
-  @ApiProperty({ required: false, description: 'Created at end date (ISO or YYYY-MM-DD)' })
+  @ApiProperty({
+    required: false,
+    description: 'Created at end date (ISO or YYYY-MM-DD)',
+  })
   @IsOptional()
   @IsString()
   endDate?: string
 
-  @ApiProperty({ required: false, description: 'Sort field (e.g. createdAt, sellingPrice, title, stock)' })
+  @ApiProperty({
+    required: false,
+    description: 'Sort field (e.g. createdAt, sellingPrice, title, stock)',
+  })
   @IsOptional()
   @IsString()
   sortBy?: string
 
-  @ApiProperty({ required: false, enum: ['ASC', 'DESC'], description: 'Sort direction' })
+  @ApiProperty({
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Sort direction',
+  })
   @IsOptional()
   @IsString()
   sortOrder?: 'ASC' | 'DESC'

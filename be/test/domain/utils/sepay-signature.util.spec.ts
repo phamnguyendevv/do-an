@@ -1,4 +1,5 @@
 import * as crypto from 'crypto'
+
 import {
   createSepayHmac,
   verifySepayWebhookSignature,
@@ -33,7 +34,10 @@ describe('SePay Webhook Signature Verification', () => {
   })
 
   it('should verify valid HMAC-SHA256 base64 signature in x-signature', () => {
-    const base64Sig = crypto.createHmac('sha256', secret).update(rawBody).digest('base64')
+    const base64Sig = crypto
+      .createHmac('sha256', secret)
+      .update(rawBody)
+      .digest('base64')
     const isValid = verifySepayWebhookSignature({
       secret,
       rawBody,
@@ -68,7 +72,8 @@ describe('SePay Webhook Signature Verification', () => {
       secret,
       rawBody,
       payload,
-      signature: 'invalid_fake_hmac_signature_value_1234567890abcdef1234567890abcdef',
+      signature:
+        'invalid_fake_hmac_signature_value_1234567890abcdef1234567890abcdef',
     })
     expect(isValid).toBe(false)
   })
@@ -78,6 +83,16 @@ describe('SePay Webhook Signature Verification', () => {
       secret,
       rawBody,
       payload,
+    })
+    expect(isValid).toBe(false)
+  })
+
+  it('should reject all requests when webhook secret is not configured', () => {
+    const isValid = verifySepayWebhookSignature({
+      secret: '',
+      rawBody,
+      payload,
+      authorization: 'Apikey ',
     })
     expect(isValid).toBe(false)
   })

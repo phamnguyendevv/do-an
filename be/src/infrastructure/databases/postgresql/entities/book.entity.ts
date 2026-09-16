@@ -53,7 +53,6 @@ export class Book {
   })
   public status!: BookStatusEnum | string
 
-
   @CreateDateColumn({ name: 'created_at' })
   public readonly createdAt!: Date
 

@@ -36,7 +36,12 @@ export class StockMovement {
   @Column({ type: 'int', name: 'after_stock', default: 0 })
   public afterStock!: number
 
-  @Column({ type: 'varchar', length: 100, name: 'reference_code', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    name: 'reference_code',
+    nullable: true,
+  })
   public referenceCode?: string
 
   @Column({ type: 'text', nullable: true })

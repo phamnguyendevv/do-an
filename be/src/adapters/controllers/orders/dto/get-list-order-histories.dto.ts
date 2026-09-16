@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
+
 import { Type } from 'class-transformer'
 import { IsDateString, IsNumber, IsOptional, IsString } from 'class-validator'
 
@@ -43,7 +44,9 @@ export class GetListOrderHistoriesDto {
   @IsString()
   action?: string
 
-  @ApiPropertyOptional({ description: 'Search term across code, title, note, actor' })
+  @ApiPropertyOptional({
+    description: 'Search term across code, title, note, actor',
+  })
   @IsOptional()
   @IsString()
   search?: string

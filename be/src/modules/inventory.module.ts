@@ -8,6 +8,16 @@ import { IMPORT_RECEIPT_REPOSITORY } from '@domain/repositories/import-receipt.r
 import { STOCK_AUDIT_REPOSITORY } from '@domain/repositories/stock-audit.repository.interface'
 import { STOCK_MOVEMENT_REPOSITORY } from '@domain/repositories/stock-movement.repository.interface'
 
+import { BalanceStockAuditUseCase } from '@use-cases/inventory/balance-stock-audit.use-case'
+import { CreateExportReceiptUseCase } from '@use-cases/inventory/create-export-receipt.use-case'
+import { CreateImportReceiptUseCase } from '@use-cases/inventory/create-import-receipt.use-case'
+import { CreateStockAuditUseCase } from '@use-cases/inventory/create-stock-audit.use-case'
+import { GetExportReceiptsUseCase } from '@use-cases/inventory/get-export-receipts.use-case'
+import { GetImportReceiptsUseCase } from '@use-cases/inventory/get-import-receipts.use-case'
+import { GetInventorySummaryUseCase } from '@use-cases/inventory/get-inventory-summary.use-case'
+import { GetStockAuditsUseCase } from '@use-cases/inventory/get-stock-audits.use-case'
+import { GetStockMovementsUseCase } from '@use-cases/inventory/get-stock-movements.use-case'
+
 import { InventoryController } from '@adapters/controllers/inventory/inventory.controller'
 
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
@@ -23,16 +33,6 @@ import { StockMovementRepository } from '@infrastructure/databases/postgresql/re
 import { ExceptionsModule } from '@infrastructure/exceptions/exceptions.module'
 import { ExceptionsService } from '@infrastructure/exceptions/exceptions.service'
 import { CaslModule } from '@infrastructure/services/casl/casl.module'
-
-import { BalanceStockAuditUseCase } from '@use-cases/inventory/balance-stock-audit.use-case'
-import { CreateExportReceiptUseCase } from '@use-cases/inventory/create-export-receipt.use-case'
-import { CreateImportReceiptUseCase } from '@use-cases/inventory/create-import-receipt.use-case'
-import { CreateStockAuditUseCase } from '@use-cases/inventory/create-stock-audit.use-case'
-import { GetExportReceiptsUseCase } from '@use-cases/inventory/get-export-receipts.use-case'
-import { GetImportReceiptsUseCase } from '@use-cases/inventory/get-import-receipts.use-case'
-import { GetInventorySummaryUseCase } from '@use-cases/inventory/get-inventory-summary.use-case'
-import { GetStockAuditsUseCase } from '@use-cases/inventory/get-stock-audits.use-case'
-import { GetStockMovementsUseCase } from '@use-cases/inventory/get-stock-movements.use-case'
 
 @Module({
   imports: [

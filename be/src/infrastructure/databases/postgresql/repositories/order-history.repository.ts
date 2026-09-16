@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
+
 import { Repository } from 'typeorm'
 
 import { OrderHistoryEntity } from '@domain/entities/order-history.entity'
@@ -12,7 +13,9 @@ import {
 import { OrderHistory } from '../entities/order-history.entity'
 
 @Injectable()
-export class OrderHistoryRepository implements IOrderHistoryRepositoryInterface {
+export class OrderHistoryRepository
+  implements IOrderHistoryRepositoryInterface
+{
   constructor(
     @InjectRepository(OrderHistory)
     private readonly historyRepository: Repository<OrderHistory>,

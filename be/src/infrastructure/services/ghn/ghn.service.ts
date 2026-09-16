@@ -83,7 +83,8 @@ export class GhnService {
     this.token =
       this.configService.get<string>('GHN_TOKEN') ||
       '7edb78b6-a174-11f1-a973-aee5264794df'
-    this.shopId = Number(this.configService.get<number>('GHN_SHOP_ID')) || 216414
+    this.shopId =
+      Number(this.configService.get<number>('GHN_SHOP_ID')) || 216414
     this.fromDistrictId =
       Number(this.configService.get<number>('GHN_FROM_DISTRICT_ID')) || 1442
     this.fromWardCode =
@@ -121,12 +122,16 @@ export class GhnService {
 
       if (!response.ok || json.code !== 200) {
         this.logger.error(`GHN API Error [${endpoint}]:`, json)
-        throw new Error(json.message || json.code_message || 'GHN API Request Failed')
+        throw new Error(
+          json.message || json.code_message || 'GHN API Request Failed',
+        )
       }
 
       return json.data as T
     } catch (err: any) {
-      this.logger.error(`GHN API Request Exception [${endpoint}]: ${err.message}`)
+      this.logger.error(
+        `GHN API Request Exception [${endpoint}]: ${err.message}`,
+      )
       throw err
     }
   }
@@ -152,10 +157,13 @@ export class GhnService {
    * 3. Get wards by district
    */
   async getWards(districtId: number): Promise<GhnWard[]> {
-    return this.request<GhnWard[]>(`/master-data/ward?district_id=${districtId}`, {
-      method: 'POST',
-      body: { district_id: Number(districtId) },
-    })
+    return this.request<GhnWard[]>(
+      `/master-data/ward?district_id=${districtId}`,
+      {
+        method: 'POST',
+        body: { district_id: Number(districtId) },
+      },
+    )
   }
 
   /**
@@ -231,7 +239,8 @@ export class GhnService {
       to_ward_code: String(input.toWardCode),
       to_district_id: Number(input.toDistrictId),
       cod_amount: Number(input.codAmount || 0),
-      content: input.content || `Đơn hàng sách BookStock ${input.clientOrderCode}`,
+      content:
+        input.content || `Đơn hàng sách BookStock ${input.clientOrderCode}`,
       weight: Number(input.weight || 500),
       length: Number(input.length || 20),
       width: Number(input.width || 15),
@@ -345,15 +354,19 @@ export class GhnService {
     if (input.to_phone) payload.to_phone = input.to_phone
     if (input.to_address) payload.to_address = input.to_address
     if (input.to_ward_code) payload.to_ward_code = String(input.to_ward_code)
-    if (input.to_district_id) payload.to_district_id = Number(input.to_district_id)
-    if (input.cod_amount !== undefined) payload.cod_amount = Number(input.cod_amount)
+    if (input.to_district_id)
+      payload.to_district_id = Number(input.to_district_id)
+    if (input.cod_amount !== undefined)
+      payload.cod_amount = Number(input.cod_amount)
     if (input.content) payload.content = input.content
     if (input.weight) payload.weight = Number(input.weight)
     if (input.length) payload.length = Number(input.length)
     if (input.width) payload.width = Number(input.width)
     if (input.height) payload.height = Number(input.height)
-    if (input.insurance_value !== undefined) payload.insurance_value = Number(input.insurance_value)
-    if (input.payment_type_id) payload.payment_type_id = Number(input.payment_type_id)
+    if (input.insurance_value !== undefined)
+      payload.insurance_value = Number(input.insurance_value)
+    if (input.payment_type_id)
+      payload.payment_type_id = Number(input.payment_type_id)
     if (input.note) payload.note = input.note
     if (input.required_note) payload.required_note = input.required_note
     if (input.items && Array.isArray(input.items)) {
@@ -372,11 +385,13 @@ export class GhnService {
       }))
     }
 
-    return this.request<{ code: number; message: string }>('/v2/shipping-order/update', {
-      method: 'POST',
-      body: payload,
-      withShopId: true,
-    })
+    return this.request<{ code: number; message: string }>(
+      '/v2/shipping-order/update',
+      {
+        method: 'POST',
+        body: payload,
+        withShopId: true,
+      },
+    )
   }
 }
-

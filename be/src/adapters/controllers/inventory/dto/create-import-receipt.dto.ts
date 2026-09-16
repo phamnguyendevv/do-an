@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+
 import { Type } from 'class-transformer'
 import {
   IsArray,
@@ -48,7 +49,10 @@ export class CreateImportReceiptDto {
   @IsString()
   note?: string
 
-  @ApiProperty({ type: [ImportReceiptLineDto], description: 'Danh sách sản phẩm nhập' })
+  @ApiProperty({
+    type: [ImportReceiptLineDto],
+    description: 'Danh sách sản phẩm nhập',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ImportReceiptLineDto)

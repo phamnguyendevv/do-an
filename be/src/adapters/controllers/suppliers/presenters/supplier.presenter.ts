@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+
 import { SupplierEntity } from '@domain/entities/supplier.entity'
 
 export class SupplierPresenter {
