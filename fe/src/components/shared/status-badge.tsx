@@ -1,14 +1,7 @@
 import { cn } from "@/lib/utils";
 
 export type StatusTone =
-  | "success"
-  | "warning"
-  | "error"
-  | "info"
-  | "neutral"
-  | "positive"
-  | "negative"
-  | "brand";
+  "success" | "warning" | "error" | "info" | "neutral" | "positive" | "negative" | "brand";
 
 const toneClasses: Record<StatusTone, string> = {
   success: "bg-success/10 text-success border-success/20",

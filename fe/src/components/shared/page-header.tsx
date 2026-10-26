@@ -19,7 +19,10 @@ export function PageHeader({ title, description, actions, children }: PageHeader
         ) : null}
       </div>
       {actions || children ? (
-        <div className="flex items-center gap-2">{actions}{children}</div>
+        <div className="flex items-center gap-2">
+          {actions}
+          {children}
+        </div>
       ) : null}
     </div>
   );

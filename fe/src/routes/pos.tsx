@@ -96,7 +96,7 @@ export function PosPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountAmount, setDiscountAmount] = useState(0);
-  
+
   // Customer lookup with suggestions
   const {
     customerName,
@@ -328,7 +328,9 @@ export function PosPage() {
       ]);
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể chốt đơn SePay trên máy chủ.");
+      toast.error(
+        error instanceof Error ? error.message : "Không thể chốt đơn SePay trên máy chủ.",
+      );
       return false;
     }
   };
@@ -485,22 +487,22 @@ export function PosPage() {
       if (!(await finalizeSepayOrder(sepayCreatedOrderId))) return;
     } else {
       const res = await orderService.createOrder({
-          orderCode: posOrderCode,
-          customerName: customerName || "Khách lẻ tại quầy",
-          customerPhone: normalizePhone(customerPhone) || "0900000000",
-          customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
-          shippingMethod: "Bán tại quầy (POS)",
-          shippingFee: 0,
-          discount: discountAmount,
-          note: `Bán lẻ POS • Xác nhận SePay QR thủ công`,
-          status: "DELIVERED",
-          payment: "PAID",
-          lines: cart.map((item) => ({
-            bookId: item.book.id,
-            quantity: item.quantity,
-            price: Number(item.price) || 0,
-          })),
-        });
+        orderCode: posOrderCode,
+        customerName: customerName || "Khách lẻ tại quầy",
+        customerPhone: normalizePhone(customerPhone) || "0900000000",
+        customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
+        shippingMethod: "Bán tại quầy (POS)",
+        shippingFee: 0,
+        discount: discountAmount,
+        note: `Bán lẻ POS • Xác nhận SePay QR thủ công`,
+        status: "DELIVERED",
+        payment: "PAID",
+        lines: cart.map((item) => ({
+          bookId: item.book.id,
+          quantity: item.quantity,
+          price: Number(item.price) || 0,
+        })),
+      });
       if (!res.ok) {
         toast.error(res.error || "Không thể lưu đơn bán SePay.");
         return;
@@ -568,7 +570,6 @@ export function PosPage() {
       return;
     }
 
-<<<<<<< HEAD
     if (!customerPhone.trim()) {
       toast.error("Vui lòng nhập số điện thoại khách hàng");
       return;
@@ -579,14 +580,11 @@ export function PosPage() {
       return;
     }
 
-    if (paymentMethod === "CASH" && total > 0 && (typeof receivedCash !== "number" || receivedCash < total)) {
-=======
     if (
       paymentMethod === "CASH" &&
       total > 0 &&
       (typeof receivedCash !== "number" || receivedCash < total)
     ) {
->>>>>>> main
       toast.error(
         typeof receivedCash !== "number"
           ? "Vui lòng nhập số tiền khách đưa!"
@@ -1315,7 +1313,9 @@ export function PosPage() {
                 isCashInsufficient ? "opacity-60 cursor-not-allowed" : ""
               }`}
               onClick={handleCheckout}
-              disabled={cart.length === 0 || isSubmitting || isCashInsufficient || !customerPhone.trim()}
+              disabled={
+                cart.length === 0 || isSubmitting || isCashInsufficient || !customerPhone.trim()
+              }
             >
               <Printer className="h-4 w-4" />
               {isSubmitting
@@ -1483,6 +1483,3 @@ export function PosPage() {
     </div>
   );
 }
-
-
-
