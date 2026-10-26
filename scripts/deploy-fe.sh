@@ -28,7 +28,18 @@ log "Bắt đầu deploy Frontend (Docker)..."
 if ! command -v docker >/dev/null 2>&1; then
     log "Docker chua co, dang cai dat..."
     if command -v apt-get >/dev/null 2>&1; then
-      apt-get update -y && apt-get install -y docker.io docker-compose-plugin || error "Khong cai dat duoc Docker"
+      apt-get update -y && apt-get install -y docker.io curl || error "Khong cai dat duoc Docker"
+      # docker-compose-plugin khong co trong kho apt mac dinh cua mot so
+      # ban Ubuntu/Debian, nen neu apt khong tim thay thi tai binary
+      # compose plugin chinh thuc thay vi lam hong ca buoc cai Docker.
+      if ! docker compose version >/dev/null 2>&1; then
+        apt-get install -y docker-compose-plugin 2>/dev/null || true
+      fi
+      if ! docker compose version >/dev/null 2>&1; then
+        mkdir -p /usr/local/lib/docker/cli-plugins
+        curl -SL https://github.com/docker/compose/releases/download/v2.29.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose || error "Khong tai duoc docker compose plugin"
+        chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+      fi
       systemctl enable docker 2>/dev/null || true
       systemctl start docker 2>/dev/null || true
     else
