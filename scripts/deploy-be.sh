@@ -112,7 +112,11 @@ done
 if [ "$HEALTH_OK" = true ]; then
     log "✅ Backend healthy và đang chạy!"
 else
-    error "❌ Backend không healthy sau $MAX_RETRIES lần thử. Kiểm tra logs: docker compose -f $COMPOSE_FILE logs backend"
+    echo "===== docker compose ps ====="
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps || true
+    echo "===== backend logs (100 dong cuoi) ====="
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" logs --tail 100 backend || true
+    error "❌ Backend không healthy sau $MAX_RETRIES lần thử."
 fi
 
 # ============================================================
