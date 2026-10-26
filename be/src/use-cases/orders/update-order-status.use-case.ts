@@ -83,7 +83,6 @@ export class UpdateBookstoreOrderStatusUseCase {
 
       let nextPayment = order.payment
       if (
-<<<<<<< HEAD
         (targetStatus === OrderStatusEnum.Delivered ||
           targetStatus === 'DELIVERED') &&
         (order.payment === PaymentStatusEnum.Unpaid ||
@@ -94,15 +93,6 @@ export class UpdateBookstoreOrderStatusUseCase {
         (targetStatus === OrderStatusEnum.Returned ||
           targetStatus === 'RETURNED') &&
         (order.payment === PaymentStatusEnum.Paid || order.payment === 'PAID')
-=======
-        targetStatus === OrderStatusEnum.Delivered &&
-        order.payment === PaymentStatusEnum.Unpaid
-      ) {
-        nextPayment = PaymentStatusEnum.Paid
-      } else if (
-        targetStatus === OrderStatusEnum.Returned &&
-        order.payment === PaymentStatusEnum.Paid
->>>>>>> main
       ) {
         nextPayment = PaymentStatusEnum.Refunded
       }
@@ -157,17 +147,10 @@ export class UpdateBookstoreOrderStatusUseCase {
       const updatedOrder = await queryRunner.manager.save(BookstoreOrder, order)
 
       // 3. Record Order History
-<<<<<<< HEAD
-      const isCancelled =
-        targetStatus === OrderStatusEnum.Cancelled ||
-        targetStatus === 'CANCELLED'
-      const action = isCancelled ? 'CANCELLED' : 'STATUS_CHANGE'
-=======
       const isCancelled = targetStatus === OrderStatusEnum.Cancelled
       const action = isCancelled
         ? OrderHistoryActionEnum.Cancelled
         : OrderHistoryActionEnum.StatusChange
->>>>>>> main
       const title = isCancelled
         ? `Hủy đơn hàng: ${previousStatus} → ${OrderStatusEnum.Cancelled}`
         : `Chuyển trạng thái: ${previousStatus} → ${targetStatus}`

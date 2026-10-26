@@ -13,12 +13,9 @@ import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
-<<<<<<< HEAD
-=======
 
 import { Customer } from './customer.entity'
 import { Promotion } from './promotion.entity'
->>>>>>> main
 
 export interface BookstoreOrderItem {
   bookId: number | string
@@ -80,13 +77,10 @@ export class BookstoreOrder {
   @Column({ type: 'bigint', nullable: true, name: 'promotion_id' })
   public promotionId?: number
 
-<<<<<<< HEAD
-=======
   @ManyToOne(() => Promotion, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'promotion_id' })
   public promotion?: Promotion
 
->>>>>>> main
   @Column({
     type: 'varchar',
     length: 50,

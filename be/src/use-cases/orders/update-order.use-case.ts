@@ -60,14 +60,10 @@ export class UpdateBookstoreOrderUseCase {
       })
     }
 
-<<<<<<< HEAD
     if (
       order.status !== OrderStatusEnum.Pending &&
       order.status !== 'PENDING'
     ) {
-=======
-    if (order.status !== OrderStatusEnum.Pending) {
->>>>>>> main
       throw this.exceptionsService.badRequestException({
         type: 'OrderUpdateForbiddenException',
         message:

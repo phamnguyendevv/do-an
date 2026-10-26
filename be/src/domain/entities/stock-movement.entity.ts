@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-export type StockMovementType =
-=======
 export enum StockMovementTypeEnum {
   Import = 'IMPORT',
   Export = 'EXPORT',
@@ -11,7 +8,6 @@ export enum StockMovementTypeEnum {
 
 export type StockMovementType =
   | StockMovementTypeEnum
->>>>>>> main
   | 'IMPORT'
   | 'EXPORT'
   | 'SALE'

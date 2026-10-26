@@ -28,8 +28,6 @@ export class GetListBooksDto {
   @IsString()
   category?: string
 
-<<<<<<< HEAD
-=======
   @ApiProperty({ required: false, description: 'Filter by category ID' })
   @IsOptional()
   @Transform(({ value }) =>
@@ -38,7 +36,6 @@ export class GetListBooksDto {
   @IsNumber()
   categoryId?: number
 
->>>>>>> main
   @ApiProperty({
     required: false,
     description: 'Filter by status',

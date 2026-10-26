@@ -45,7 +45,8 @@ export class AssistantService {
       apiKey,
       baseURL: 'https://api.groq.com/openai/v1',
     })
-    this.model = this.configService.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile'
+    this.model =
+      this.configService.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile'
   }
 
   async chat(
@@ -53,9 +54,13 @@ export class AssistantService {
     tools: ToolDefinition[],
   ): Promise<AssistantReply> {
     try {
-      const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
-      const systemMessage = messages.find((message) => message.role === 'system')?.content
-      if (systemMessage) openAiMessages.push({ role: 'system', content: systemMessage })
+      const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+        []
+      const systemMessage = messages.find(
+        (message) => message.role === 'system',
+      )?.content
+      if (systemMessage)
+        openAiMessages.push({ role: 'system', content: systemMessage })
 
       for (const message of messages) {
         if (message.role === 'system') continue
@@ -111,7 +116,13 @@ export class AssistantService {
 
       const toolCalls = (reply.tool_calls ?? []).flatMap((call) =>
         call.type === 'function'
-          ? [{ id: call.id, name: call.function.name, args: call.function.arguments }]
+          ? [
+              {
+                id: call.id,
+                name: call.function.name,
+                args: call.function.arguments,
+              },
+            ]
           : [],
       )
 

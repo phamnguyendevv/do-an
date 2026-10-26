@@ -2,18 +2,12 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 
 import { DataSource, ILike } from 'typeorm'
 
-<<<<<<< HEAD
-=======
 import { ISePayWebhookInput } from '@domain/entities/bookstore-order.entity'
->>>>>>> main
 import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
-<<<<<<< HEAD
-=======
 import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
->>>>>>> main
 import {
   BOOKSTORE_ORDER_REPOSITORY,
   IBookstoreOrderRepositoryInterface,
@@ -27,11 +21,6 @@ import {
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 
-<<<<<<< HEAD
-import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
-
-=======
->>>>>>> main
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'

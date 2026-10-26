@@ -38,11 +38,12 @@ export class CustomersController {
   async list(@Query() query: ListCustomersDto) {
     const page = query.page || 1
     const size = query.size || 50
-<<<<<<< HEAD
     let where = {}
 
     if (query.search) {
-      const normalizedSearch = query.search.replace(/\D/g, '').replace(/^84/, '0')
+      const normalizedSearch = query.search
+        .replace(/\D/g, '')
+        .replace(/^84/, '0')
       where = [
         { name: ILike(`%${query.search}%`) },
         { phone: ILike(`%${query.search}%`) },
@@ -53,15 +54,6 @@ export class CustomersController {
       ]
     }
 
-=======
-    const where = query.search
-      ? [
-          { name: ILike(`%${query.search}%`) },
-          { phone: ILike(`%${query.search}%`) },
-          { email: ILike(`%${query.search}%`) },
-        ]
-      : {}
->>>>>>> main
     const [data, total] = await this.repository.findAndCount({
       where,
       order: { createdAt: 'DESC' },
@@ -98,7 +90,6 @@ export class CustomersController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     return (await this.repository.delete({ id })).affected !== 0
   }
-<<<<<<< HEAD
 
   @Get('lookup')
   @CheckPolicies({ action: 'read', subject: 'Customer' })
@@ -128,6 +119,4 @@ export class CustomersController {
       order: { createdAt: 'DESC' },
     })
   }
-=======
->>>>>>> main
 }

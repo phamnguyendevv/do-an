@@ -22,19 +22,11 @@ export class VerifyEmailUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-<<<<<<< HEAD
-  async execute(verifyOtpDto: VerifyOtpDto): Promise<boolean> {
-    const trimmedEmail = verifyOtpDto.email.trim()
-    await this.checkOtp({
-      email: trimmedEmail,
-      inputOtp: verifyOtpDto.inputOtp.trim(),
-=======
   async execute(input: IVerifyOtpInput): Promise<boolean> {
     const trimmedEmail = input.email.trim()
     await this.checkOtp({
       email: trimmedEmail,
       inputOtp: input.inputOtp.trim(),
->>>>>>> main
     })
 
     const pendingKey = `pending_registration:${trimmedEmail}`

@@ -7,11 +7,8 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { MailerModule } from '@infrastructure/services/mailer/mailer.module'
 import { RedisModule } from '@infrastructure/services/redis/redis.module'
 
-<<<<<<< HEAD
-import { AssistantModule } from '@modules/assistant.module'
-=======
 import { ActivityLogsModule } from '@modules/activity-logs.module'
->>>>>>> main
+import { AssistantModule } from '@modules/assistant.module'
 import { BooksModule } from '@modules/books.module'
 import { CategoriesModule } from '@modules/category.module'
 import { CustomersModule } from '@modules/customers.module'
@@ -72,14 +69,9 @@ import { HealthModule } from './modules/health.module'
     GhnModule,
     SePayModule,
     RevenueModule,
-<<<<<<< HEAD
-    NotificationModule,
     AssistantModule,
-=======
-    CustomersModule,
     PromotionsModule,
     ActivityLogsModule,
->>>>>>> main
   ],
   providers: [
     UserRepository,

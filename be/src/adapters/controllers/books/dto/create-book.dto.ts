@@ -29,7 +29,6 @@ export class CreateBookDto {
   @IsNotEmpty()
   category!: string
 
-<<<<<<< HEAD
   @ApiProperty({ example: 'NXB Trẻ', required: false })
   @IsOptional()
   @IsString()
@@ -39,7 +38,7 @@ export class CreateBookDto {
   @IsOptional()
   @IsString()
   isbn?: string
-=======
+
   @ApiProperty({
     example: 1,
     required: false,
@@ -50,7 +49,6 @@ export class CreateBookDto {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   categoryId?: number
->>>>>>> main
 
   @ApiProperty({ example: 210000, required: true })
   @IsNumber()

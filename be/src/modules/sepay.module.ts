@@ -2,11 +2,8 @@ import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import { BOOKSTORE_ORDER_REPOSITORY } from '@domain/repositories/bookstore-order.repository.interface'
-<<<<<<< HEAD
-=======
 import { PAYMENT_TRANSACTION_REPOSITORY } from '@domain/repositories/payment-transaction.repository.interface'
 import { PAYMENT_GATEWAY } from '@domain/services/payment-gateway.interface'
->>>>>>> main
 
 import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-status.use-case'
 import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
@@ -15,13 +12,9 @@ import { SePayController } from '@adapters/controllers/payment/sepay.controller'
 import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
 
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
-<<<<<<< HEAD
-import { BookstoreOrderRepository } from '@infrastructure/databases/postgresql/repositories/bookstore-order.repository'
-=======
 import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
 import { BookstoreOrderRepository } from '@infrastructure/databases/postgresql/repositories/bookstore-order.repository'
 import { PaymentTransactionRepository } from '@infrastructure/databases/postgresql/repositories/payment-transaction.repository'
->>>>>>> main
 
 @Module({
   imports: [TypeOrmModule.forFeature([BookstoreOrder, PaymentTransaction])],

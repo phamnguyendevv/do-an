@@ -29,8 +29,6 @@ export class BookstoreOrderEntity {
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }
-<<<<<<< HEAD
-=======
 
 export interface CreateOrderItemInput {
   bookId: number | string
@@ -89,4 +87,3 @@ export interface ISePayWebhookInput {
   referenceCode?: string
   description?: string
 }
->>>>>>> main

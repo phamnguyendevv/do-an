@@ -16,8 +16,6 @@ export class BookEntity {
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }
-<<<<<<< HEAD
-=======
 
 export interface ICreateBookInput {
   title: string
@@ -62,4 +60,3 @@ export interface ISearchBooksInput {
 export interface IBookIdInput {
   id: number
 }
->>>>>>> main

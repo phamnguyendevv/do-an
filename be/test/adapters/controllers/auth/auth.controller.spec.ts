@@ -29,20 +29,6 @@ describe('AuthController', () => {
           : jest.fn().mockResolvedValue(loginResult),
     }
 
-<<<<<<< HEAD
-    return new AuthController(
-      { getNodeEnv: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      loginUseCase as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-      { execute: jest.fn() } as any,
-=======
     const envConfigService = {
       getNodeEnv: jest.fn().mockReturnValue('development'),
     }
@@ -60,7 +46,6 @@ describe('AuthController', () => {
       mockUseCase as any,
       mockUseCase as any,
       mockUseCase as any,
->>>>>>> main
     )
   }
 

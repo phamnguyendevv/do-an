@@ -35,11 +35,8 @@ import { Customer } from '@infrastructure/databases/postgresql/entities/customer
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
-<<<<<<< HEAD
-=======
 
 export { CreateOrderInput }
->>>>>>> main
 
 @Injectable()
 export class CreateBookstoreOrderUseCase {
@@ -55,36 +52,7 @@ export class CreateBookstoreOrderUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-<<<<<<< HEAD
-  async execute(dto: {
-    orderCode?: string
-    customerName: string
-    customerPhone: string
-    customerId?: number
-    customerAddress: string
-    provinceId?: number
-    districtId?: number
-    wardCode?: string
-    items: Array<{
-      bookId: number | string
-      title: string
-      quantity: number
-      price: number
-    }>
-    shippingFee?: number
-    discount?: number
-    promotionCode?: string
-    shippingMethod?: string
-    trackingCode?: string
-    note?: string
-    status?: OrderStatusEnum | string
-    payment?: PaymentStatusEnum | string
-    actor?: string
-    actorRole?: string
-  }): Promise<BookstoreOrderEntity> {
-=======
   async execute(dto: CreateOrderInput): Promise<BookstoreOrderEntity> {
->>>>>>> main
     if (!dto.customerName || !dto.customerPhone) {
       throw this.exceptionsService.badRequestException({
         type: 'OrderValidationException',
@@ -239,11 +207,7 @@ export class CreateBookstoreOrderUseCase {
       let discount = dto.discount || 0
       if (promotion && subtotal >= Number(promotion.minOrderValue)) {
         const promotionDiscount =
-<<<<<<< HEAD
-          promotion.discountType === 'PERCENTAGE'
-=======
           promotion.discountType === PromotionDiscountTypeEnum.Percentage
->>>>>>> main
             ? (subtotal * Number(promotion.discountValue)) / 100
             : Number(promotion.discountValue)
         discount +=

@@ -1,6 +1,7 @@
 import Redis from 'ioredis'
 
 import { IException } from '@domain/exceptions/exceptions.interface'
+
 import { RedisService } from '@infrastructure/services/redis/redis.service'
 
 describe('RedisService', () => {
