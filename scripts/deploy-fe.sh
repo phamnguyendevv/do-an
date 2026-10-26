@@ -87,20 +87,11 @@ elif [ -f "$APP_DIR/ensure-env-production.sh" ]; then
 fi
 
 # ============================================================
-# 2. Login GitHub Container Registry
-# ============================================================
-if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_ACTOR" ]; then
-    log "Đăng nhập GitHub Container Registry..."
-    echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin 2>/dev/null || \
-        warn "Không thể login ghcr.io, thử pull image công khai..."
-fi
-
-# ============================================================
-# 3. Pull image mới nhất và khởi chạy container frontend
+# 3. Build image và khởi chạy container frontend
 # ============================================================
 cd "$APP_DIR"
-log "Pull Docker image Frontend..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull frontend || error "Không thể pull image frontend"
+log "Build Docker image Frontend tren VPS ..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build frontend || error "Không thể build image frontend"
 
 log "Khởi chạy Frontend container..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d frontend

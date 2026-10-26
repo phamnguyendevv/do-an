@@ -19,7 +19,6 @@ error() { echo -e "${RED}[$(date '+%H:%M:%S')] ✗ $1${NC}"; exit 1; }
 APP_DIR="/opt/app"
 COMPOSE_FILE="$APP_DIR/docker-compose.prod.yml"
 ENV_FILE="$APP_DIR/.env.production"
-IMAGE="ghcr.io/${GITHUB_ACTOR}/do-an-backend:latest"
 
 # ============================================================
 # Kiểm tra file cần thiết
@@ -61,23 +60,13 @@ fi
 command -v docker >/dev/null 2>&1 || error "Khong tim thay docker sau khi cai dat"
 docker compose version >/dev/null 2>&1 || warn "docker compose plugin chua san sang, thu tiep voi docker compose..."
 
-log "Image: $IMAGE"
+log "Image: do-an-backend:latest (build local)"
 
 # ============================================================
-# 1. Login GitHub Container Registry
-# ============================================================
-if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_ACTOR" ]; then
-    log "Đăng nhập GitHub Container Registry..."
-    echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin 2>/dev/null || \
-        warn "GITHUB_TOKEN không hợp lệ, thử kéo image không xác thực..."
-fi
-
-# ============================================================
-# 2. Pull image Backend mới nhất
+# 2. Build image Backend
 # ============================================================
 cd "$APP_DIR"
-log "Pull Docker image mới nhất..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend || docker pull "$IMAGE" || error "Không thể pull image $IMAGE"
+log "Build Docker image Backend tren VPS ..."
 
 # ============================================================
 # 3. Khởi động/cập nhật container Backend

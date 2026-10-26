@@ -3,7 +3,16 @@ services:
   # Frontend Application
   # ======================================================
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/do-an-frontend:latest
+    image: do-an-frontend:latest
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-}
+        VITE_API_PREFIX: ${VITE_API_PREFIX:-/api/v1}
+        VITE_SEPAY_BANK: ${VITE_SEPAY_BANK:-}
+        VITE_SEPAY_ACCOUNT: ${VITE_SEPAY_ACCOUNT:-}
+        VITE_SEPAY_ACCOUNT_NAME: ${VITE_SEPAY_ACCOUNT_NAME:-}
     container_name: app-frontend
     restart: unless-stopped
     ports:
@@ -21,7 +30,10 @@ services:
   # Backend NestJS Application
   # ======================================================
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/do-an-backend:latest
+    image: do-an-backend:latest
+    build:
+      context: ./be
+      dockerfile: Dockerfile
     container_name: app-backend
     restart: unless-stopped
     ports:
