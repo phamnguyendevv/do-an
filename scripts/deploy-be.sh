@@ -35,6 +35,21 @@ fi
 [ -f "$ENV_FILE" ] || error "Không tìm thấy $ENV_FILE — hay them secret vao GitHub environment cicd roi chay lai deploy!"
 
 log "Bắt đầu deploy Backend..."
+
+# Bo sung Docker neu thieu (deploy truoc do loi: docker: command not found).
+if ! command -v docker >/dev/null 2>&1; then
+    log "Docker chua co, dang cai dat..."
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get update -y && apt-get install -y docker.io docker-compose-plugin || error "Khong cai dat duoc Docker"
+      systemctl enable docker 2>/dev/null || true
+      systemctl start docker 2>/dev/null || true
+    else
+      error "Khong tim thay docker va khong co apt-get de cai dat"
+    fi
+fi
+command -v docker >/dev/null 2>&1 || error "Khong tim thay docker sau khi cai dat"
+docker compose version >/dev/null 2>&1 || warn "docker compose plugin chua san sang, thu tiep voi docker compose..."
+
 log "Image: $IMAGE"
 
 # ============================================================
