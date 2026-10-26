@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-<<<<<<< HEAD
-import { Plus, Search, Trash2, X, Calendar, Phone, Mail, MapPin, ShoppingBag, DollarSign } from "lucide-react";
-=======
-import { Plus, Search, Trash2 } from "lucide-react";
->>>>>>> main
+import {
+  Plus,
+  Search,
+  Trash2,
+  X,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  ShoppingBag,
+  DollarSign,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
@@ -14,15 +21,11 @@ import { DataTable, type DataTableColumn } from "@/components/data-table/data-ta
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { customerApi, type CustomerApiItem } from "@/lib/customer-api";
-<<<<<<< HEAD
 import { orderApi } from "@/lib/order-api";
-=======
->>>>>>> main
 
 export const Route = createFileRoute("/customers")({ component: CustomersPage });
 
 function CustomersPage() {
-<<<<<<< HEAD
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [quickAddName, setQuickAddName] = useState("");
@@ -34,7 +37,7 @@ function CustomersPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", note: "" });
   const client = useQueryClient();
-  
+
   const query = useQuery({
     queryKey: ["customers", search],
     queryFn: () => customerApi.list({ search, size: 100 }),
@@ -47,7 +50,8 @@ function CustomersPage() {
   // Query orders by customer phone
   const ordersQuery = useQuery({
     queryKey: ["customer-orders", viewing?.phone],
-    queryFn: () => orderApi.list({ ...(viewing?.phone ? { search: viewing.phone } : {}), size: 100 }),
+    queryFn: () =>
+      orderApi.list({ ...(viewing?.phone ? { search: viewing.phone } : {}), size: 100 }),
     enabled: !!viewing?.phone,
     staleTime: 0, // Always treat as stale to force fresh data
   });
@@ -70,7 +74,7 @@ function CustomersPage() {
     setIsQuickAdding(true);
     try {
       // Normalize phone before saving
-      const normalizedPhone = quickAddPhone.replace(/\D/g, '').replace(/^84/, '0');
+      const normalizedPhone = quickAddPhone.replace(/\D/g, "").replace(/^84/, "0");
       await customerApi.create({
         name: quickAddName,
         phone: normalizedPhone,
@@ -85,17 +89,6 @@ function CustomersPage() {
       setIsQuickAdding(false);
     }
   };
-=======
-  const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<CustomerApiItem | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", note: "" });
-  const client = useQueryClient();
-  const query = useQuery({
-    queryKey: ["customers", search],
-    queryFn: () => customerApi.list({ search, size: 100 }),
-  });
->>>>>>> main
   const open = (customer?: CustomerApiItem) => {
     setEditing(customer || null);
     setDialogOpen(true);
@@ -111,16 +104,10 @@ function CustomersPage() {
         : { name: "", phone: "", email: "", address: "", note: "" },
     );
   };
-<<<<<<< HEAD
-
   const viewDetails = (customer: CustomerApiItem) => {
     setViewing(customer);
     setDetailOpen(true);
   };
-  const save = async () => {
-    try {
-      editing ? await customerApi.update(editing.id, form) : await customerApi.create(form);
-=======
   const save = async () => {
     try {
       if (editing) {
@@ -128,7 +115,6 @@ function CustomersPage() {
       } else {
         await customerApi.create(form);
       }
->>>>>>> main
       await client.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Đã lưu khách hàng");
       setEditing(null);
@@ -152,11 +138,10 @@ function CustomersPage() {
       key: "name",
       header: "Khách hàng",
       cell: (row) => (
-<<<<<<< HEAD
-        <button className="text-left font-medium hover:underline text-blue-600" onClick={() => viewDetails(row)}>
-=======
-        <button className="text-left font-medium hover:underline" onClick={() => open(row)}>
->>>>>>> main
+        <button
+          className="text-left font-medium hover:underline text-blue-600"
+          onClick={() => viewDetails(row)}
+        >
           {row.name}
         </button>
       ),
@@ -170,15 +155,12 @@ function CustomersPage() {
       cell: (row) => `${Number(row.totalSpent).toLocaleString("vi-VN")} đ`,
     },
     {
-<<<<<<< HEAD
       key: "lastOrderAt",
       header: "Mua lần cuối",
       cell: (row) =>
         row.lastOrderAt ? new Date(row.lastOrderAt).toLocaleDateString("vi-VN") : "-",
     },
     {
-=======
->>>>>>> main
       key: "actions",
       header: "",
       cell: (row) => (
@@ -191,7 +173,6 @@ function CustomersPage() {
   return (
     <AppShell>
       <PageContainer>
-<<<<<<< HEAD
         <PageHeader title="Khách hàng" description="Quản lý thông tin và lịch sử mua hàng">
           <Button onClick={() => open()}>
             <Plus className="mr-2 h-4 w-4" />
@@ -262,7 +243,7 @@ function CustomersPage() {
             </Button>
           )}
         </div>
-        
+
         {search === "" ? (
           <div className="flex items-center justify-center h-64 text-muted-foreground">
             <p>💡 Nhập tên hoặc SĐT khách hàng rồi nhấn "Tra cứu"</p>
@@ -276,9 +257,7 @@ function CustomersPage() {
             <div className="text-center space-y-2">
               <p className="font-semibold">Lỗi tải dữ liệu</p>
               <p>{query.error?.message || "Không thể tải danh sách khách hàng"}</p>
-              <p className="text-xs text-muted-foreground">
-                {JSON.stringify(query.error)}
-              </p>
+              <p className="text-xs text-muted-foreground">{JSON.stringify(query.error)}</p>
             </div>
           </div>
         ) : query.isSuccess ? (
@@ -286,7 +265,7 @@ function CustomersPage() {
             <div className="mb-3 text-sm text-muted-foreground">
               Tìm thấy: {query.data?.data?.length || 0} khách hàng
             </div>
-            {(!query.data?.data || query.data.data.length === 0) ? (
+            {!query.data?.data || query.data.data.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-muted-foreground">
                 <p>Không tìm thấy khách hàng nào</p>
               </div>
@@ -300,33 +279,7 @@ function CustomersPage() {
             )}
           </>
         ) : null}
-        
-=======
-        <PageHeader
-          title="Khách hàng"
-          description="Quản lý thông tin và lịch sử mua hàng"
-          actions={
-            <Button onClick={() => open()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Thêm khách hàng
-            </Button>
-          }
-        />
-        <div className="mb-4 flex gap-2">
-          <Search className="mt-2 h-4 w-4" />
-          <Input
-            placeholder="Tìm tên, số điện thoại..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <DataTable
-          columns={columns}
-          data={query.data?.data || []}
-          rowKey={(row) => String(row.id)}
-          loading={query.isLoading}
-        />
->>>>>>> main
+
         <>
           {dialogOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -351,7 +304,6 @@ function CustomersPage() {
               </div>
             </div>
           )}
-<<<<<<< HEAD
 
           {detailOpen && viewing && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -373,7 +325,9 @@ function CustomersPage() {
                 {/* Customer Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase">Số điện thoại</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">
+                      Số điện thoại
+                    </p>
                     <p className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
                       {viewing.phone}
@@ -487,8 +441,6 @@ function CustomersPage() {
               </div>
             </div>
           )}
-=======
->>>>>>> main
         </>
       </PageContainer>
     </AppShell>

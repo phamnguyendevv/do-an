@@ -87,7 +87,7 @@ export function PosPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountAmount, setDiscountAmount] = useState(0);
-  
+
   // Use customer lookup hook
   const {
     customerName,
@@ -414,7 +414,9 @@ export function PosPage() {
                       {book.author}
                     </div>
                     <div className="flex items-center justify-between pt-1 mt-auto">
-                      <span className="font-bold text-primary">{formatCurrency(getBookSellingPrice(book))}</span>
+                      <span className="font-bold text-primary">
+                        {formatCurrency(getBookSellingPrice(book))}
+                      </span>
                       <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">
                         {book.stock}
                       </span>
@@ -631,9 +633,7 @@ export function PosPage() {
                 {paymentMethod === "CASH" && (
                   <div className="space-y-1.5 text-xs">
                     <div>
-                      <label className="block text-muted-foreground mb-1">
-                        Khách thanh toán
-                      </label>
+                      <label className="block text-muted-foreground mb-1">Khách thanh toán</label>
                       <Input
                         type="number"
                         value={receivedCash === "" ? "" : receivedCash}
@@ -661,10 +661,7 @@ export function PosPage() {
                 <Button
                   onClick={submitOrder}
                   disabled={
-                    isSubmitting ||
-                    cart.length === 0 ||
-                    !customerName.trim() ||
-                    isCashInsufficient
+                    isSubmitting || cart.length === 0 || !customerName.trim() || isCashInsufficient
                   }
                   className="w-full h-9 text-sm font-semibold"
                 >
@@ -676,8 +673,7 @@ export function PosPage() {
                   ) : (
                     <>
                       <Check className="mr-2 h-4 w-4" />
-                      Tạo đơn (
-                      {formatCurrency(total)})
+                      Tạo đơn ({formatCurrency(total)})
                     </>
                   )}
                 </Button>

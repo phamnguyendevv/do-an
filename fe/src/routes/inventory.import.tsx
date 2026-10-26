@@ -104,11 +104,7 @@ function ImportPage() {
           newLines.push({
             bookId: matched.id,
             quantity: row.quantity,
-<<<<<<< HEAD
             price: row.price > 0 ? row.price : matched.purchasePrice || (matched.price ?? 0) * 0.7,
-=======
-            price: row.price > 0 ? row.price : matched.purchasePrice || matched.price * 0.7,
->>>>>>> main
           });
         }
       }
@@ -152,14 +148,11 @@ function ImportPage() {
     toast.success(
       `Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`,
     );
-<<<<<<< HEAD
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
     ]);
-=======
->>>>>>> main
     navigate({ to: "/inventory" });
   };
 

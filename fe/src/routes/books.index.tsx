@@ -131,16 +131,9 @@ function BooksPage() {
     }
     if (dateRange?.from) {
       const d = dateRange;
-<<<<<<< HEAD
-      const from = d.from!;
-      const label = d.to
-        ? `${from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
-        : from.toLocaleDateString("vi");
-=======
       const label = d.to
         ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
         : d.from.toLocaleDateString("vi");
->>>>>>> main
       chips.push({
         key: "date",
         label: `Ngày tạo: ${label}`,
