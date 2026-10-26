@@ -15,6 +15,7 @@ on:
       - main
     paths:
       - 'fe/**'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -50,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: cicd
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
       packages: write
@@ -106,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: cicd
     needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     steps:
       - name: Checkout code
@@ -117,7 +118,6 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "nginx/frontend.conf,scripts/deploy-fe.sh,docker-compose.prod.yml"
@@ -128,10 +128,17 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
+            if [ ! -f /opt/app/scripts/deploy-fe.sh ] && [ -f /opt/app/deploy-fe.sh ]; then
+              mkdir -p /opt/app/scripts
+              mv /opt/app/deploy-fe.sh /opt/app/scripts/deploy-fe.sh
+            fi
+            if [ ! -f /opt/app/nginx/frontend.conf ] && [ -f /opt/app/frontend.conf ]; then
+              mkdir -p /opt/app/nginx
+              mv /opt/app/frontend.conf /opt/app/nginx/frontend.conf
+            fi
             chmod +x /opt/app/scripts/deploy-fe.sh
             GITHUB_ACTOR=${{ github.actor }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /opt/app/scripts/deploy-fe.sh
 
