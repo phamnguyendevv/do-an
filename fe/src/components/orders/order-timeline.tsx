@@ -379,7 +379,8 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                             Cổng SePay: {item.metadata["gateway"] || "Ngân hàng"}
                           </span>
                           <span className="font-bold tabular-nums">
-                            +{formatCurrency(Number(item.metadata["transferAmount"] || order.total))}
+                            +
+                            {formatCurrency(Number(item.metadata["transferAmount"] || order.total))}
                           </span>
                         </div>
                         {item.metadata["referenceCode"] && (

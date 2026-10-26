@@ -88,10 +88,7 @@ export function ExcelBookImportDialog({
           sellingPrice: item.price,
           stock: item.stock,
           minStock: item.minStock,
-<<<<<<< HEAD
-=======
           ...(item.description !== undefined && { description: item.description }),
->>>>>>> main
         });
         successCount++;
       } catch (e) {

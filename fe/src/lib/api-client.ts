@@ -93,7 +93,8 @@ apiClient.interceptors.response.use(
     return body?.data !== undefined ? body.data : body;
   },
   async (error: AxiosError<unknown>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean } | undefined;
+    const originalRequest = error.config as
+      (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
     if (!originalRequest) {
       return Promise.reject(error);
@@ -125,8 +126,7 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         isRefreshing = false;
         const responseBody = error.response?.data as
-          | { error?: { message?: string }; message?: string }
-          | undefined;
+          { error?: { message?: string }; message?: string } | undefined;
         const msg = responseBody?.error?.message || responseBody?.message || "";
         const isDeactivated = msg.includes("vô hiệu hóa") || msg.includes("not active");
         authStore.handleUnauthorized(isDeactivated);
@@ -172,8 +172,7 @@ apiClient.interceptors.response.use(
     }
 
     const errorBody = error.response?.data as
-      | { error?: { message?: string }; message?: string }
-      | undefined;
+      { error?: { message?: string }; message?: string } | undefined;
     const errorMsg =
       errorBody?.error?.message || errorBody?.message || error.message || "Yêu cầu thất bại";
 
@@ -186,11 +185,7 @@ apiClient.interceptors.response.use(
  */
 export async function apiRequest<T>(
   path: string,
-<<<<<<< HEAD
   options: (AxiosRequestConfig & { method?: string; body?: unknown }) | RequestInit = {},
-=======
-  options: (AxiosRequestConfig & { method?: string; body?: any }) | RequestInit = {},
->>>>>>> main
 ): Promise<T> {
   const method = (options.method || "GET").toLowerCase();
 
@@ -206,7 +201,7 @@ export async function apiRequest<T>(
     url: path,
     method,
     data: data as any,
-    headers: (options as any).headers as Record<string, string> | undefined || {},
+    headers: ((options as any).headers as Record<string, string> | undefined) || {},
   };
 
   if ("params" in options && (options as any).params) {

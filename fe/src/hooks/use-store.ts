@@ -99,7 +99,11 @@ function useAppState(): AppState {
 export function useBooks(): Book[] {
   const stateBooks = useAppState().books;
 
-  const { data: apiBooks, isError, isSuccess } = useQuery({
+  const {
+    data: apiBooks,
+    isError,
+    isSuccess,
+  } = useQuery({
     queryKey: ["books", "live-list"],
     queryFn: async () => {
       const res = await bookApi.list({ size: 500 });
@@ -173,7 +177,11 @@ export function useCategories(): Array<{ id: string; name: string }> {
 export function useOrders(): Order[] {
   const stateOrders = useAppState().orders;
 
-  const { data: apiOrders, isError, isSuccess } = useQuery({
+  const {
+    data: apiOrders,
+    isError,
+    isSuccess,
+  } = useQuery({
     queryKey: ["orders", "live-list"],
     queryFn: async () => {
       const res = await orderApi.list({ size: 500 });
@@ -198,7 +206,11 @@ export function useOrders(): Order[] {
 export function useImportReceipts(): ImportReceipt[] {
   const stateImports = useAppState().imports;
 
-  const { data: apiImports, isError, isSuccess } = useQuery({
+  const {
+    data: apiImports,
+    isError,
+    isSuccess,
+  } = useQuery({
     queryKey: ["inventory", "imports-list"],
     queryFn: async () => {
       const res = await inventoryApi.listImports({ size: 200 });
@@ -223,7 +235,11 @@ export function useImportReceipts(): ImportReceipt[] {
 export function useExportReceipts(): ExportReceipt[] {
   const stateExports = useAppState().exports;
 
-  const { data: apiExports, isError, isSuccess } = useQuery({
+  const {
+    data: apiExports,
+    isError,
+    isSuccess,
+  } = useQuery({
     queryKey: ["inventory", "exports-list"],
     queryFn: async () => {
       const res = await inventoryApi.listExports({ size: 200 });
