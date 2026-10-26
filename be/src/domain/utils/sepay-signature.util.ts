@@ -28,8 +28,9 @@ export function verifySepayWebhookSignature({
   authorization,
 }: VerifySepaySignatureParams): boolean {
   if (!secret) {
-    // If no secret configured, allow (e.g. initial development)
-    return true
+    // Standard rule: a webhook secret is required. Without it, every
+    // webhook must be rejected instead of being accepted by default.
+    return false
   }
 
   const sig = (signature || xSignature || '').trim()

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -123,6 +124,11 @@ export class SePayController {
   @Post('simulate')
   @ApiOperation({ summary: 'Giả lập test Webhook SePay gạch nợ đơn hàng' })
   async simulateWebhook(@Body() body: SimulateSepayDto) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException(
+        'Simulate SePay webhook is disabled in production',
+      )
+    }
     return await this.processSepayPaymentUseCase.execute({
       gateway: 'MBBank',
       accountNumber: process.env.SEPAY_ACCOUNT || '00977512982',
