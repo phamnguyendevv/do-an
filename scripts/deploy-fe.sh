@@ -27,11 +27,37 @@ log "Bắt đầu deploy Frontend (Docker)..."
 # ============================================================
 # 1. Cập nhật Nginx host config (nếu có thay đổi)
 # ============================================================
+# Giu nginx: bo sung thu muc sites neu thieu, cai nginx neu chua co.
+mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+if ! command -v nginx >/dev/null 2>&1; then
+    log "Nginx chua co, dang cai dat..."
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get update -y && apt-get install -y nginx || error "Khong cai dat duoc nginx"
+      systemctl enable nginx 2>/dev/null || true
+      systemctl start nginx 2>/dev/null || true
+    else
+      error "Khong tim thay nginx va khong co apt-get de cai dat"
+    fi
+fi
+command -v nginx >/dev/null 2>&1 || error "Khong tim thay nginx sau khi cai dat"
+
 if [ -f "$NGINX_CONF_SRC" ]; then
     log "Cập nhật Nginx config cho zymail.site..."
     cp "$NGINX_CONF_SRC" "$NGINX_CONF_DEST"
     ln -sf "$NGINX_CONF_DEST" "$NGINX_ENABLED" 2>/dev/null || true
-    nginx -t && systemctl reload nginx || warn "Nginx reload cảnh báo, tiếp tục deploy container..."
+fi
+if [ -f "$APP_DIR/nginx/api.conf" ]; then
+    log "Cập nhật Nginx config cho api.zymail.site..."
+    cp "$APP_DIR/nginx/api.conf" /etc/nginx/sites-available/api.zymail.site
+    ln -sf /etc/nginx/sites-available/api.zymail.site /etc/nginx/sites-enabled/api.zymail.site 2>/dev/null || true
+fi
+nginx -t && systemctl reload nginx || warn "Nginx reload cảnh báo, tiếp tục deploy container..."
+
+# Bo sung file env.production neu thieu (can cho docker compose, giong backend).
+if [ -f "$APP_DIR/scripts/ensure-env-production.sh" ]; then
+  bash "$APP_DIR/scripts/ensure-env-production.sh"
+elif [ -f "$APP_DIR/ensure-env-production.sh" ]; then
+  bash "$APP_DIR/ensure-env-production.sh"
 fi
 
 # ============================================================

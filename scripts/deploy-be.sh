@@ -25,7 +25,14 @@ IMAGE="ghcr.io/${GITHUB_ACTOR}/do-an-backend:latest"
 # Kiểm tra file cần thiết
 # ============================================================
 [ -f "$COMPOSE_FILE" ] || error "Không tìm thấy $COMPOSE_FILE"
-[ -f "$ENV_FILE" ] || error "Không tìm thấy $ENV_FILE — hãy tạo file này trước!"
+
+# Bo sung file env.production neu thieu (tu secrets GitHub, khong ghi de file da co).
+if [ -f "$APP_DIR/scripts/ensure-env-production.sh" ]; then
+  bash "$APP_DIR/scripts/ensure-env-production.sh"
+elif [ -f "$APP_DIR/ensure-env-production.sh" ]; then
+  bash "$APP_DIR/ensure-env-production.sh"
+fi
+[ -f "$ENV_FILE" ] || error "Không tìm thấy $ENV_FILE — hay them secret vao GitHub environment cicd roi chay lai deploy!"
 
 log "Bắt đầu deploy Backend..."
 log "Image: $IMAGE"
