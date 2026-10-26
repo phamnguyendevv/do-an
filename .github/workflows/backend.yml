@@ -16,10 +16,6 @@ on:
       - 'be/**'
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/do-an-backend
-
 jobs:
   test:
     name:  Lint & Test
@@ -50,65 +46,20 @@ jobs:
         env:
           NODE_ENV: test
 
-  build-and-push:
-    name:  Build & Push Docker Image
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    permissions:
-      contents: read
-      packages: write
-
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
-
-    steps:
-      - name:  Checkout code
-        uses: actions/checkout@v4
-
-      - name:  Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name:  Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name:  Extract Docker metadata (tags & labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=sha-
-            type=raw,value=latest
-
-      - name:  Build & Push Docker image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: ./be
-          file: ./be/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   deploy:
     name:  Deploy to VPS
     runs-on: ubuntu-latest
     environment: cicd
-    needs: build-and-push
+    needs: test
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     steps:
       - name:  Checkout code (lấy script deploy)
         uses: actions/checkout@v4
+
+      - name: 📦 Tao source archive
+        run: tar -czf be.tar.gz --exclude=node_modules --exclude=dist be
 
       - name: 📁 Copy deploy script lên VPS
         uses: appleboy/scp-action@v0.1.7
@@ -117,7 +68,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "scripts/deploy-be.sh,scripts/ensure-env-production.sh,docker-compose.prod.yml"
+          source: "be.tar.gz,scripts/deploy-be.sh,scripts/ensure-env-production.sh,docker-compose.prod.yml"
           target: "/opt/app"
 
       - name: 🚀 SSH vào VPS và chạy deploy
@@ -147,6 +98,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
+            if [ -f /opt/app/be.tar.gz ]; then
+              tar -xzf /opt/app/be.tar.gz -C /opt/app
+            fi
             if [ ! -f /opt/app/scripts/deploy-be.sh ] && [ -f /opt/app/deploy-be.sh ]; then
               mkdir -p /opt/app/scripts
               mv /opt/app/deploy-be.sh /opt/app/scripts/deploy-be.sh
@@ -156,7 +110,7 @@ jobs:
               mv /opt/app/ensure-env-production.sh /opt/app/scripts/ensure-env-production.sh
             fi
             chmod +x /opt/app/scripts/deploy-be.sh /opt/app/scripts/ensure-env-production.sh 2>/dev/null || chmod +x /opt/app/scripts/deploy-be.sh
-            GITHUB_ACTOR=${{ github.actor }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /opt/app/scripts/deploy-be.sh
+            bash /opt/app/scripts/deploy-be.sh
 
       - name:  Deploy Backend hoàn tất
         run: echo "Backend deployed successfully at $(date)"
