@@ -60,13 +60,24 @@ fi
 command -v docker >/dev/null 2>&1 || error "Khong tim thay docker sau khi cai dat"
 docker compose version >/dev/null 2>&1 || warn "docker compose plugin chua san sang, thu tiep voi docker compose..."
 
-log "Image: do-an-backend:latest (build local)"
+IMAGE="enestars/do-an-backend:latest"
+log "Image: $IMAGE"
 
 # ============================================================
-# 2. Build image Backend
+# 1. Login DockerHub (neu co secret, de pull image private)
+# ============================================================
+if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
+    log "Dang nhap DockerHub..."
+    echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin 2>/dev/null || \
+        warn "DockerHub login khong thanh cong, thu pull image cong khai..."
+fi
+
+# ============================================================
+# 2. Pull image Backend moi nhat
 # ============================================================
 cd "$APP_DIR"
-log "Build Docker image Backend tren VPS ..."
+log "Pull Docker image moi nhat..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend || docker pull "$IMAGE" || error "Khong the pull image $IMAGE"
 
 # ============================================================
 # 3. Khởi động/cập nhật container Backend

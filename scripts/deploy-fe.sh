@@ -87,11 +87,20 @@ elif [ -f "$APP_DIR/ensure-env-production.sh" ]; then
 fi
 
 # ============================================================
-# 3. Build image và khởi chạy container frontend
+# 2. Login DockerHub (neu co secret, de pull image private)
+# ============================================================
+if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
+    log "Dang nhap DockerHub..."
+    echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin 2>/dev/null || \
+        warn "DockerHub login khong thanh cong, thu pull image cong khai..."
+fi
+
+# ============================================================
+# 3. Pull image và khởi chạy container frontend
 # ============================================================
 cd "$APP_DIR"
-log "Build Docker image Frontend tren VPS ..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build frontend || error "Không thể build image frontend"
+log "Pull Docker image Frontend moi nhat..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull frontend || error "Không thể pull image frontend"
 
 log "Khởi chạy Frontend container..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d frontend
