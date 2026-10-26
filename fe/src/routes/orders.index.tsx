@@ -116,11 +116,7 @@ function OrdersPage() {
     if (status !== "all")
       chips.push({
         key: "status",
-<<<<<<< HEAD
         label: `Trạng thái: ${orderStatusLabel[status as keyof typeof orderStatusLabel] ?? status}`,
-=======
-        label: `Trạng thái: ${orderStatusLabel[status] ?? status}`,
->>>>>>> main
         onRemove: () => {
           setStatus("all");
           resetPage();
@@ -129,11 +125,7 @@ function OrdersPage() {
     if (payment !== "all")
       chips.push({
         key: "payment",
-<<<<<<< HEAD
         label: `Thanh toán: ${paymentLabel[payment as keyof typeof paymentLabel] ?? payment}`,
-=======
-        label: `Thanh toán: ${paymentLabel[payment] ?? payment}`,
->>>>>>> main
         onRemove: () => {
           setPayment("all");
           resetPage();
@@ -141,16 +133,9 @@ function OrdersPage() {
       });
     if (dateRange?.from) {
       const d = dateRange;
-<<<<<<< HEAD
-      const from = d.from!;
-      const label = d.to
-        ? `${from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
-        : from.toLocaleDateString("vi");
-=======
       const label = d.to
         ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
         : d.from.toLocaleDateString("vi");
->>>>>>> main
       chips.push({
         key: "date",
         label: `Ngày tạo: ${label}`,
@@ -230,9 +215,7 @@ function OrdersPage() {
           size: historyPageSize,
           ...(debouncedHistorySearch ? { search: debouncedHistorySearch } : {}),
           ...(historyAction !== "all" ? { action: historyAction } : {}),
-          ...(historyDateRange?.from
-            ? { startDate: historyDateRange.from.toISOString() }
-            : {}),
+          ...(historyDateRange?.from ? { startDate: historyDateRange.from.toISOString() } : {}),
           ...(historyDateRange?.to ? { endDate: historyDateRange.to.toISOString() } : {}),
         });
         return res || { data: [], pagination: { total: 0, page: 1, size: historyPageSize } };
