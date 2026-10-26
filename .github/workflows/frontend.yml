@@ -120,12 +120,31 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "nginx/frontend.conf,scripts/deploy-fe.sh,docker-compose.prod.yml"
+          source: "nginx/frontend.conf,nginx/api.conf,scripts/deploy-fe.sh,scripts/ensure-env-production.sh,docker-compose.prod.yml"
           target: "/opt/app"
 
       - name: 🚀 SSH vào VPS và chạy deploy Frontend
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          SEPAY_BANK: ${{ secrets.SEPAY_BANK }}
+          SEPAY_ACCOUNT: ${{ secrets.SEPAY_ACCOUNT }}
+          SEPAY_ACCOUNT_NAME: ${{ secrets.SEPAY_ACCOUNT_NAME }}
+          SEPAY_WEBHOOK_SECRET: ${{ secrets.SEPAY_WEBHOOK_SECRET }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          GHN_TOKEN: ${{ secrets.GHN_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         with:
+          envs: DATABASE_NAME,DATABASE_USER,DATABASE_PASSWORD,JWT_SECRET,JWT_REFRESH_SECRET,SEPAY_BANK,SEPAY_ACCOUNT,SEPAY_ACCOUNT_NAME,SEPAY_WEBHOOK_SECRET,REDIS_PASSWORD,GHN_TOKEN,GROQ_API_KEY,EMAIL_USERNAME,EMAIL_PASSWORD,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,STRIPE_SECRET_KEY
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
@@ -139,7 +158,15 @@ jobs:
               mkdir -p /opt/app/nginx
               mv /opt/app/frontend.conf /opt/app/nginx/frontend.conf
             fi
-            chmod +x /opt/app/scripts/deploy-fe.sh
+            if [ ! -f /opt/app/scripts/ensure-env-production.sh ] && [ -f /opt/app/ensure-env-production.sh ]; then
+              mkdir -p /opt/app/scripts
+              mv /opt/app/ensure-env-production.sh /opt/app/scripts/ensure-env-production.sh
+            fi
+            if [ ! -f /opt/app/nginx/api.conf ] && [ -f /opt/app/api.conf ]; then
+              mkdir -p /opt/app/nginx
+              mv /opt/app/api.conf /opt/app/nginx/api.conf
+            fi
+            chmod +x /opt/app/scripts/deploy-fe.sh /opt/app/scripts/ensure-env-production.sh 2>/dev/null || chmod +x /opt/app/scripts/deploy-fe.sh
             GITHUB_ACTOR=${{ github.actor }} GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} bash /opt/app/scripts/deploy-fe.sh
 
       - name: Deploy Frontend hoàn tất
