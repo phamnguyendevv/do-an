@@ -86,10 +86,16 @@ function CategoryFormDialog({
     setSubmitting(true);
     try {
       if (category) {
-        await categoryApi.update(category.id, values);
+        await categoryApi.update(category.id, {
+          name: values.name,
+          ...(values.description !== undefined ? { description: values.description } : {}),
+        });
         toast.success("Cập nhật danh mục thành công");
       } else {
-        await categoryApi.create(values);
+        await categoryApi.create({
+          name: values.name,
+          ...(values.description !== undefined ? { description: values.description } : {}),
+        });
         toast.success("Thêm danh mục mới thành công");
       }
       await queryClient.invalidateQueries({ queryKey: ["admin-categories"] });

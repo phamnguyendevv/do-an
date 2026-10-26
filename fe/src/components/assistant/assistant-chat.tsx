@@ -21,6 +21,7 @@ interface Bubble {
 }
 
 const SUGGESTIONS = [
+  "Tư vấn sách cần nhập thêm và sách tồn lâu",
   "Phân tích tình trạng kho hiện tại",
   "Tìm sách công nghệ dưới 200 nghìn còn dưới 30 cuốn",
   "Cho tôi xem các đơn hàng đang giao",
@@ -41,6 +42,8 @@ function systemPrompt() {
 Nguyên tắc:
 - Luôn dùng tool để lấy dữ liệu thật, không được bịa số liệu.
 - Ưu tiên insight hành động được, kèm đề xuất cụ thể.
+- Khi được hỏi nên nhập thêm sách nào hoặc cân bằng tồn kho, hãy gọi inventory_recommendations. Nêu số bán 30 ngày, số ngày tồn ước tính, số lượng đề xuất và giả định thời gian giao hàng; không đề xuất nhập sách không có doanh số gần đây.
+- Phân biệt sách cần nhập với sách tồn lâu cần xử lý. Số ngày tồn lâu chỉ là ước tính theo ngày tạo sách nếu chưa có lịch sử bán.
 - Với yêu cầu thay đổi dữ liệu (tạo đơn, nhập kho, xuất kho) chỉ được gọi tool prepare_* để tạo bản xem trước; người dùng sẽ tự bấm xác nhận. Không bao giờ khẳng định là đã thực hiện xong.
 - Nếu yêu cầu mơ hồ, nêu rõ cách bạn đã hiểu (bộ lọc áp dụng) trước khi đưa kết quả.
 - Giữ ngữ cảnh hội thoại: đại từ hoặc câu hỏi tiếp theo tham chiếu tới đối tượng vừa nhắc.

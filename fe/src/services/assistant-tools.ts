@@ -4,6 +4,7 @@ import {
   analyzeWarehouse,
   buildWarehouseReport,
   matches,
+  recommendReorders,
   soldUnits,
   type IntelSnapshot,
 } from "./warehouse-intel";
@@ -129,6 +130,44 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
           slowMovers: a.slowMovers.map((x) => ({ ...bookBrief(x.book), sold30d: 0 })),
           aging90: a.aging.slice(0, 15).map((x) => ({ ...bookBrief(x.book), daysIdle: x.days })),
           insights: a.insights,
+        },
+      };
+    }
+
+    case "inventory_recommendations": {
+      const limit = Math.max(1, Math.min(Number(args["limit"]) || 10, 30));
+      const leadTimeDays = Number(args["leadTimeDays"]) || 7;
+      const targetCoverageDays = Number(args["targetCoverageDays"]) || 30;
+      const recommendations = recommendReorders(snap, { leadTimeDays, targetCoverageDays });
+      const sold30 = soldUnits(snap.orders, 30);
+      const slowStock = analyzeWarehouse(snap)
+        .aging.filter((item) => (sold30.get(item.book.id) ?? 0) === 0)
+        .slice(0, limit)
+        .map(({ book, days }) => ({
+          ...bookBrief(book),
+          daysWithoutSales: days,
+          inventoryValue: book.stock * book.purchasePrice,
+          recommendation: "Tạm dừng nhập; cân nhắc khuyến mãi, combo hoặc chuyển kho.",
+        }));
+
+      return {
+        result: {
+          assumptions: {
+            salesWindowDays: 30,
+            leadTimeDays,
+            targetCoverageDays,
+            note: "Chưa tính đơn nhập đang chờ về vì hệ thống chưa có dữ liệu đó.",
+          },
+          replenish: recommendations.slice(0, limit).map((item) => ({
+            ...bookBrief(item.book),
+            soldLast30Days: item.soldLast30Days,
+            averageDailySales: Number(item.averageDailySales.toFixed(2)),
+            daysOfStock: Number(item.daysOfStock.toFixed(1)),
+            targetStock: item.targetStock,
+            proposedQuantity: item.proposedQuantity,
+            reason: `Tồn hiện tại đủ khoảng ${item.daysOfStock.toFixed(1)} ngày; bán ${item.soldLast30Days} cuốn trong 30 ngày.`,
+          })),
+          slowStock,
         },
       };
     }

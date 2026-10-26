@@ -1,6 +1,6 @@
 import { inventoryApi } from "@/lib/inventory-api";
 import type { ExportReceipt, ImportReceipt } from "@/types";
-import { applyStockDeltas, nextId, store } from "./store";
+import { applyStockDeltas, store } from "./store";
 
 export interface StockLine {
   bookId: string;
@@ -61,9 +61,9 @@ export const inventoryService = {
       // Call backend API
       const res = await inventoryApi.createImport({
         supplierName: input.supplier,
-        supplierId: input.supplierId,
+        ...(input.supplierId !== undefined ? { supplierId: input.supplierId } : {}),
         importDate: input.date,
-        note: input.note,
+        ...(input.note !== undefined ? { note: input.note } : {}),
         lines: input.lines.map((l) => ({
           bookId: parseInt(l.bookId, 10) || l.bookId,
           quantity: l.quantity,
@@ -86,21 +86,14 @@ export const inventoryService = {
       applyStockDeltas(mergeLines(input.lines, 1));
 
       return { ok: true, data: receipt };
-    } catch (apiError: any) {
-      console.warn("Backend API unavailable, falling back to local store for import:", apiError);
-      // Offline / fallback mode
-      const { imports } = store.getSnapshot();
-      const receipt: ImportReceipt = {
-        id: nextId("IMP", imports, 1000),
-        supplier: input.supplier,
-        date: new Date(input.date).toISOString(),
-        totalItems: input.lines.reduce((s, l) => s + l.quantity, 0),
-        totalValue: input.lines.reduce((s, l) => s + l.quantity * l.price, 0),
-        note: input.note ?? "",
+    } catch (apiError) {
+      return {
+        ok: false,
+        error:
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể lưu phiếu nhập vào máy chủ. Tồn kho chưa được thay đổi.",
       };
-      store.setState({ imports: [receipt, ...imports] });
-      applyStockDeltas(mergeLines(input.lines, 1));
-      return { ok: true, data: receipt };
     }
   },
 
@@ -118,9 +111,9 @@ export const inventoryService = {
     try {
       // Call backend API
       const res = await inventoryApi.createExport({
-        orderId: input.orderId,
+        ...(input.orderId !== undefined ? { orderId: input.orderId } : {}),
         reason: input.reason,
-        note: input.note,
+        ...(input.note !== undefined ? { note: input.note } : {}),
         lines: input.lines.map((l) => ({
           bookId: parseInt(l.bookId, 10) || l.bookId,
           quantity: l.quantity,
@@ -143,21 +136,14 @@ export const inventoryService = {
       applyStockDeltas(mergeLines(input.lines, -1));
 
       return { ok: true, data: receipt };
-    } catch (apiError: any) {
-      console.warn("Backend API unavailable, falling back to local store for export:", apiError);
-      // Offline / fallback mode
-      const { exports } = store.getSnapshot();
-      const receipt: ExportReceipt = {
-        id: nextId("EXP", exports, 2000),
-        orderId: input.orderId ?? "",
-        date: new Date().toISOString(),
-        totalItems: input.lines.reduce((s, l) => s + l.quantity, 0),
-        reason: input.reason,
-        note: input.note ?? "",
+    } catch (apiError) {
+      return {
+        ok: false,
+        error:
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể lưu phiếu xuất vào máy chủ. Tồn kho chưa được thay đổi.",
       };
-      store.setState({ exports: [receipt, ...exports] });
-      applyStockDeltas(mergeLines(input.lines, -1));
-      return { ok: true, data: receipt };
     }
   },
 };

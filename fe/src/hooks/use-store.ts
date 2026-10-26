@@ -99,29 +99,24 @@ function useAppState(): AppState {
 export function useBooks(): Book[] {
   const stateBooks = useAppState().books;
 
-  const { data: apiBooks } = useQuery({
+  const { data: apiBooks, isError, isSuccess } = useQuery({
     queryKey: ["books", "live-list"],
     queryFn: async () => {
-      try {
-        const res = await bookApi.list({ size: 500 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return (items as BookApiItem[]).map(mapApiBook);
-      } catch {
-        return [];
-      }
+      const res = await bookApi.list({ size: 500 });
+      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      return (items as BookApiItem[]).map(mapApiBook);
     },
     staleTime: 15_000,
   });
 
   useEffect(() => {
-    if (apiBooks && apiBooks.length > 0) {
+    if (isSuccess && apiBooks) {
       store.setState({ books: apiBooks });
     }
-  }, [apiBooks]);
+  }, [apiBooks, isSuccess]);
 
-  if (apiBooks && apiBooks.length > 0) {
-    return apiBooks;
-  }
+  if (isSuccess) return apiBooks ?? [];
+  if (isError) return [];
 
   return stateBooks;
 }
@@ -177,29 +172,24 @@ export function useCategories(): Array<{ id: string; name: string }> {
 export function useOrders(): Order[] {
   const stateOrders = useAppState().orders;
 
-  const { data: apiOrders } = useQuery({
+  const { data: apiOrders, isError, isSuccess } = useQuery({
     queryKey: ["orders", "live-list"],
     queryFn: async () => {
-      try {
-        const res = await orderApi.list({ size: 500 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return (items as OrderApiItem[]).map(mapApiOrder);
-      } catch {
-        return [];
-      }
+      const res = await orderApi.list({ size: 500 });
+      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      return (items as OrderApiItem[]).map(mapApiOrder);
     },
     staleTime: 10_000,
   });
 
   useEffect(() => {
-    if (apiOrders && apiOrders.length > 0) {
+    if (isSuccess && apiOrders) {
       store.setState({ orders: apiOrders });
     }
-  }, [apiOrders]);
+  }, [apiOrders, isSuccess]);
 
-  if (apiOrders && apiOrders.length > 0) {
-    return apiOrders;
-  }
+  if (isSuccess) return apiOrders ?? [];
+  if (isError) return [];
 
   return stateOrders;
 }
@@ -207,29 +197,24 @@ export function useOrders(): Order[] {
 export function useImportReceipts(): ImportReceipt[] {
   const stateImports = useAppState().imports;
 
-  const { data: apiImports } = useQuery({
+  const { data: apiImports, isError, isSuccess } = useQuery({
     queryKey: ["inventory", "imports-list"],
     queryFn: async () => {
-      try {
-        const res = await inventoryApi.listImports({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : [];
-        return items.map(mapApiImport);
-      } catch {
-        return [];
-      }
+      const res = await inventoryApi.listImports({ size: 200 });
+      const items = Array.isArray(res?.data) ? res.data : [];
+      return items.map(mapApiImport);
     },
     staleTime: 15_000,
   });
 
   useEffect(() => {
-    if (apiImports && apiImports.length > 0) {
+    if (isSuccess && apiImports) {
       store.setState({ imports: apiImports });
     }
-  }, [apiImports]);
+  }, [apiImports, isSuccess]);
 
-  if (apiImports && apiImports.length > 0) {
-    return apiImports;
-  }
+  if (isSuccess) return apiImports ?? [];
+  if (isError) return [];
 
   return stateImports;
 }
@@ -237,29 +222,24 @@ export function useImportReceipts(): ImportReceipt[] {
 export function useExportReceipts(): ExportReceipt[] {
   const stateExports = useAppState().exports;
 
-  const { data: apiExports } = useQuery({
+  const { data: apiExports, isError, isSuccess } = useQuery({
     queryKey: ["inventory", "exports-list"],
     queryFn: async () => {
-      try {
-        const res = await inventoryApi.listExports({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : [];
-        return items.map(mapApiExport);
-      } catch {
-        return [];
-      }
+      const res = await inventoryApi.listExports({ size: 200 });
+      const items = Array.isArray(res?.data) ? res.data : [];
+      return items.map(mapApiExport);
     },
     staleTime: 15_000,
   });
 
   useEffect(() => {
-    if (apiExports && apiExports.length > 0) {
+    if (isSuccess && apiExports) {
       store.setState({ exports: apiExports });
     }
-  }, [apiExports]);
+  }, [apiExports, isSuccess]);
 
-  if (apiExports && apiExports.length > 0) {
-    return apiExports;
-  }
+  if (isSuccess) return apiExports ?? [];
+  if (isError) return [];
 
   return stateExports;
 }

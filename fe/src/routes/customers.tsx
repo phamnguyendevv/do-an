@@ -39,7 +39,7 @@ function CustomersPage() {
   // Query orders by customer phone
   const ordersQuery = useQuery({
     queryKey: ["customer-orders", viewing?.phone],
-    queryFn: () => orderApi.list({ search: viewing?.phone, size: 100 }),
+    queryFn: () => orderApi.list({ ...(viewing?.phone ? { search: viewing.phone } : {}), size: 100 }),
     enabled: !!viewing?.phone,
     staleTime: 0, // Always treat as stale to force fresh data
   });

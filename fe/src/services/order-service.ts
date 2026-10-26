@@ -3,8 +3,6 @@ import { applyStockDeltas, store } from "./store";
 import { checkAvailability, validateLines, type Result, type StockLine } from "./inventory-service";
 import { orderApi, type OrderApiItem } from "@/lib/order-api";
 
-const delay = (ms = 600) => new Promise((r) => setTimeout(r, ms));
-
 /** Map API response to local Order type */
 function mapApiOrder(o: OrderApiItem): Order {
   return {
@@ -99,21 +97,21 @@ export const orderService = {
     // Try to save to backend DB first
     try {
       const created = await orderApi.create({
-        orderCode: input.orderCode,
         customerName: input.customerName,
         customerPhone: input.customerPhone,
-        customerId: input.customerId,
         customerAddress: input.customerAddress,
-        provinceId: input.provinceId,
-        districtId: input.districtId,
-        wardCode: input.wardCode,
+        ...(input.orderCode !== undefined ? { orderCode: input.orderCode } : {}),
+        ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
+        ...(input.provinceId !== undefined ? { provinceId: input.provinceId } : {}),
+        ...(input.districtId !== undefined ? { districtId: input.districtId } : {}),
+        ...(input.wardCode !== undefined ? { wardCode: input.wardCode } : {}),
         items,
         shippingFee: input.shippingFee,
         discount: input.discount,
-        promotionCode: input.promotionCode,
+        ...(input.promotionCode !== undefined ? { promotionCode: input.promotionCode } : {}),
         shippingMethod: input.shippingMethod,
-        trackingCode: input.trackingCode,
-        note: input.note,
+        ...(input.trackingCode !== undefined ? { trackingCode: input.trackingCode } : {}),
+        ...(input.note !== undefined ? { note: input.note } : {}),
         status: defaultStatus,
         payment: defaultPayment,
       });
@@ -141,52 +139,14 @@ export const orderService = {
         }, {}),
       );
       return { ok: true, data: order };
-    } catch (apiError: any) {
-      console.warn("Backend API unavailable, falling back to local store:", apiError);
-      // Fallback: save to local store only (offline mode)
-      await delay();
-      const { orders, shipments } = store.getSnapshot();
-      const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
-      const orderId = input.orderCode || `ORD-${2025000 + orders.length + 1}`;
-      const order: Order = {
-        id: orderId,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-        customerAddress: input.customerAddress,
-        items,
-        subtotal,
-        discount: input.discount,
-        shippingFee: input.shippingFee,
-        total: Math.max(0, subtotal - input.discount + input.shippingFee),
-        payment: defaultPayment,
-        shippingMethod: input.shippingMethod,
-        trackingCode: input.trackingCode,
-        note: input.note,
-        status: defaultStatus,
-        createdAt: new Date().toISOString(),
+    } catch (apiError) {
+      return {
+        ok: false,
+        error:
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể lưu đơn hàng vào máy chủ. Tồn kho chưa được thay đổi.",
       };
-
-      const newShipments = [...shipments];
-      newShipments.unshift({
-        id: `SHP-${3000 + shipments.length + 1}`,
-        orderId,
-        customerName: input.customerName || "Khách lẻ",
-        carrier: input.shippingMethod || "Giao Hàng Nhanh (GHN)",
-        trackingNumber: input.trackingCode || `GHN-${Date.now().toString().slice(-6)}`,
-        shippingFee: input.shippingFee || 0,
-        expectedDelivery: input.expectedDelivery || new Date().toISOString().slice(0, 10),
-        status: order.status === "DELIVERED" ? "DELIVERED" : "WAITING_PICKUP",
-        address: input.customerAddress || "",
-      });
-
-      store.setState({ orders: [order, ...orders], shipments: newShipments });
-      applyStockDeltas(
-        input.lines.reduce<Record<string, number>>((acc, l) => {
-          acc[l.bookId] = (acc[l.bookId] ?? 0) - l.quantity;
-          return acc;
-        }, {}),
-      );
-      return { ok: true, data: order };
     }
   },
 
@@ -198,54 +158,36 @@ export const orderService = {
     if (!orderTransitions[order.status].includes(next))
       return { ok: false, error: "Không thể chuyển sang trạng thái này." };
 
-    // Try backend API first
+    // Persist the status transition before changing local state.
     try {
       const idNum = parseInt(orderId, 10);
-      if (!isNaN(idNum)) {
-        const updated = await orderApi.updateStatus(idNum, next);
-        const localOrder = mapApiOrder(updated);
-        store.setState({ orders: orders.map((o) => (o.id === orderId ? localOrder : o)) });
-
-        const shouldRestock =
-          RESTOCK_STATUSES.includes(next) && !RESTOCK_STATUSES.includes(order.status);
-        if (shouldRestock) {
-          applyStockDeltas(
-            order.items.reduce<Record<string, number>>((acc, it) => {
-              acc[it.bookId] = (acc[it.bookId] ?? 0) + it.quantity;
-              return acc;
-            }, {}),
-          );
-        }
-        return { ok: true, data: localOrder };
+      if (isNaN(idNum)) {
+        return { ok: false, error: "Mã đơn hàng không hợp lệ để cập nhật trên máy chủ." };
       }
+      const updated = await orderApi.updateStatus(idNum, next);
+      const localOrder = mapApiOrder(updated);
+      store.setState({ orders: orders.map((o) => (o.id === orderId ? localOrder : o)) });
+
+      const shouldRestock =
+        RESTOCK_STATUSES.includes(next) && !RESTOCK_STATUSES.includes(order.status);
+      if (shouldRestock) {
+        applyStockDeltas(
+          order.items.reduce<Record<string, number>>((acc, it) => {
+            acc[it.bookId] = (acc[it.bookId] ?? 0) + it.quantity;
+            return acc;
+          }, {}),
+        );
+      }
+      return { ok: true, data: localOrder };
     } catch (apiError) {
-      console.warn("Backend API unavailable for status update, using local store:", apiError);
+      return {
+        ok: false,
+        error:
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể lưu trạng thái đơn hàng vào máy chủ.",
+      };
     }
-
-    // Fallback: local only
-    await delay(300);
-    const shouldRestock =
-      RESTOCK_STATUSES.includes(next) && !RESTOCK_STATUSES.includes(order.status);
-
-    const payment: PaymentStatus =
-      next === "DELIVERED" && order.payment === "UNPAID"
-        ? "PAID"
-        : next === "RETURNED" && order.payment === "PAID"
-          ? "REFUNDED"
-          : order.payment;
-
-    const updated: Order = { ...order, status: next, payment };
-    store.setState({ orders: orders.map((o) => (o.id === orderId ? updated : o)) });
-
-    if (shouldRestock) {
-      applyStockDeltas(
-        order.items.reduce<Record<string, number>>((acc, it) => {
-          acc[it.bookId] = (acc[it.bookId] ?? 0) + it.quantity;
-          return acc;
-        }, {}),
-      );
-    }
-    return { ok: true, data: updated };
   },
 
   /** Update payment state manually (e.g. cash collected at the counter). */
@@ -254,23 +196,24 @@ export const orderService = {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return { ok: false, error: "Không tìm thấy đơn hàng." };
 
-    // Try backend API first
     try {
       const idNum = parseInt(orderId, 10);
-      if (!isNaN(idNum)) {
-        const updated = await orderApi.updatePayment(idNum, payment);
-        const localOrder = mapApiOrder(updated);
-        store.setState({ orders: orders.map((o) => (o.id === orderId ? localOrder : o)) });
-        return { ok: true, data: localOrder };
+      if (isNaN(idNum)) {
+        return { ok: false, error: "Mã đơn hàng không hợp lệ để cập nhật trên máy chủ." };
       }
+      const updated = await orderApi.updatePayment(idNum, payment);
+      const localOrder = mapApiOrder(updated);
+      store.setState({ orders: orders.map((o) => (o.id === orderId ? localOrder : o)) });
+      return { ok: true, data: localOrder };
     } catch (apiError) {
-      console.warn("Backend API unavailable for payment update, using local store:", apiError);
+      return {
+        ok: false,
+        error:
+          apiError instanceof Error
+            ? apiError.message
+            : "Không thể lưu trạng thái thanh toán vào máy chủ.",
+      };
     }
-
-    // Fallback: local only
-    const updated: Order = { ...order, payment };
-    store.setState({ orders: orders.map((o) => (o.id === orderId ? updated : o)) });
-    return { ok: true, data: updated };
   },
 
   /** Fetch fresh order list from backend and sync to store. */
@@ -279,9 +222,7 @@ export const orderService = {
       const res = await orderApi.list({ size: 200 });
       const items = Array.isArray(res?.data) ? res.data : [];
       const orders = items.map(mapApiOrder);
-      if (orders.length > 0) {
-        store.setState({ orders });
-      }
+      store.setState({ orders });
     } catch (e) {
       console.warn("Cannot fetch orders from backend API:", e);
     }
@@ -357,12 +298,14 @@ export const orderService = {
 
     // 2. Cập nhật DB nội bộ qua API
     const dbPayload = {
-      customerName: payload.customerName,
-      customerPhone: payload.customerPhone,
-      customerAddress: payload.customerAddress,
-      districtId: payload.toDistrictId,
-      wardCode: payload.toWardCode,
-      note: payload.note,
+      ...(payload.customerName !== undefined ? { customerName: payload.customerName } : {}),
+      ...(payload.customerPhone !== undefined ? { customerPhone: payload.customerPhone } : {}),
+      ...(payload.customerAddress !== undefined
+        ? { customerAddress: payload.customerAddress }
+        : {}),
+      ...(payload.toDistrictId !== undefined ? { districtId: payload.toDistrictId } : {}),
+      ...(payload.toWardCode !== undefined ? { wardCode: payload.toWardCode } : {}),
+      ...(payload.note !== undefined ? { note: payload.note } : {}),
     };
 
     try {
@@ -374,25 +317,14 @@ export const orderService = {
       );
       store.setState({ orders: newOrders });
       return { ok: true, data: localOrder };
-    } catch (apiErr: any) {
-      console.warn(
-        "Backend API unavailable for order update, updating local store fallback:",
-        apiErr,
-      );
-      const updated: Order = {
-        ...order,
-        customerName: payload.customerName ?? order.customerName,
-        customerPhone: payload.customerPhone ?? order.customerPhone,
-        customerAddress: payload.customerAddress ?? order.customerAddress,
-        note: payload.note ?? order.note,
-        districtId: payload.toDistrictId ?? order.districtId,
-        wardCode: payload.toWardCode ?? order.wardCode,
+    } catch (apiErr) {
+      return {
+        ok: false,
+        error:
+          apiErr instanceof Error
+            ? apiErr.message
+            : "Không thể lưu thông tin đơn hàng vào máy chủ.",
       };
-      const newOrders = orders.map((o) =>
-        o.id === order.id || o.orderCode === order.orderCode ? updated : o,
-      );
-      store.setState({ orders: newOrders });
-      return { ok: true, data: updated };
     }
   },
 };

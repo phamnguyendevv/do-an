@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ export const Route = createFileRoute("/inventory/import")({
 
 function ImportPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const books = useBooks();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -103,7 +104,7 @@ function ImportPage() {
           newLines.push({
             bookId: matched.id,
             quantity: row.quantity,
-            price: row.price > 0 ? row.price : matched.purchasePrice || matched.price * 0.7,
+            price: row.price > 0 ? row.price : matched.purchasePrice || (matched.price ?? 0) * 0.7,
           });
         }
       }
@@ -147,6 +148,11 @@ function ImportPage() {
     toast.success(
       `Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`,
     );
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
+      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
+    ]);
     navigate({ to: "/inventory" });
   };
 

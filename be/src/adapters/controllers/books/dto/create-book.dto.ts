@@ -25,6 +25,16 @@ export class CreateBookDto {
   @IsNotEmpty()
   category!: string
 
+  @ApiProperty({ example: 'NXB Trẻ', required: false })
+  @IsOptional()
+  @IsString()
+  publisher?: string
+
+  @ApiProperty({ example: '978-604-1-18923-4', required: false })
+  @IsOptional()
+  @IsString()
+  isbn?: string
+
   @ApiProperty({ example: 210000, required: true })
   @IsNumber()
   @Transform(({ value }) => Number(value))

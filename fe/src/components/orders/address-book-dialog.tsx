@@ -151,7 +151,6 @@ export function AddressBookDialog({ open, onOpenChange, onSelectContact }: Addre
           name: s.name,
           phone: s.phone,
           address: s.address || "",
-          orderCount: undefined,
         });
       });
     }

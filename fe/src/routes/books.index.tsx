@@ -131,9 +131,10 @@ function BooksPage() {
     }
     if (dateRange?.from) {
       const d = dateRange;
+      const from = d.from!;
       const label = d.to
-        ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
-        : d.from.toLocaleDateString("vi");
+        ? `${from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
+        : from.toLocaleDateString("vi");
       chips.push({
         key: "date",
         label: `Ngày tạo: ${label}`,
@@ -189,10 +190,10 @@ function BooksPage() {
     search: debouncedSearch,
     category,
     status,
-    minPrice: priceRange.min,
-    maxPrice: priceRange.max,
-    startDate: dateRange?.from?.toISOString(),
-    endDate: dateRange?.to?.toISOString(),
+    ...(priceRange.min !== undefined ? { minPrice: priceRange.min } : {}),
+    ...(priceRange.max !== undefined ? { maxPrice: priceRange.max } : {}),
+    ...(dateRange?.from ? { startDate: dateRange.from.toISOString() } : {}),
+    ...(dateRange?.to ? { endDate: dateRange.to.toISOString() } : {}),
   });
 
   const columns: DataTableColumn<Book>[] = [

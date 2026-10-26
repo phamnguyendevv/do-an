@@ -1,6 +1,14 @@
 import { cn } from "@/lib/utils";
 
-export type StatusTone = "success" | "warning" | "error" | "info" | "neutral";
+export type StatusTone =
+  | "success"
+  | "warning"
+  | "error"
+  | "info"
+  | "neutral"
+  | "positive"
+  | "negative"
+  | "brand";
 
 const toneClasses: Record<StatusTone, string> = {
   success: "bg-success/10 text-success border-success/20",
@@ -8,6 +16,9 @@ const toneClasses: Record<StatusTone, string> = {
   error: "bg-destructive/10 text-destructive border-destructive/20",
   info: "bg-info/10 text-info border-info/20",
   neutral: "bg-muted text-muted-foreground border-border",
+  positive: "bg-success/10 text-success border-success/20",
+  negative: "bg-destructive/10 text-destructive border-destructive/20",
+  brand: "bg-primary/10 text-primary border-primary/20",
 };
 
 interface StatusBadgeProps {

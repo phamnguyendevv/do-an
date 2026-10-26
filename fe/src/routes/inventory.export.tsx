@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/inventory/export")({
 
 function ExportPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const orders = useOrders();
   const [orderId, setOrderId] = useState("");
   const [reason, setReason] = useState(reasons[0]!);
@@ -61,6 +63,11 @@ function ExportPage() {
       return;
     }
     toast.success(`Đã xuất kho ${res.data!.totalItems} sản phẩm — tồn kho đã cập nhật`);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
+      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
+    ]);
     navigate({ to: "/inventory" });
   };
 

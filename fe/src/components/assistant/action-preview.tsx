@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 
@@ -22,6 +23,7 @@ const titleOf = (a: PendingAction) =>
 
 export function ActionPreview({ action }: { action: PendingAction }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
@@ -98,6 +100,11 @@ export function ActionPreview({ action }: { action: PendingAction }) {
         toast.success(`Đã tạo phiếu xuất ${res.data?.id}`);
         setDone(`Đã tạo phiếu xuất ${res.data?.id}.`);
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["orders"] }),
+      ]);
     } finally {
       setBusy(false);
     }

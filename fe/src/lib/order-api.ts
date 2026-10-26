@@ -187,4 +187,14 @@ export const sepayApi = {
       total?: number;
     }>(`/payment/sepay/status/${encodeURIComponent(orderCode)}`);
   },
+
+  async simulateWebhook(orderCode: string, amount: number) {
+    return apiRequest<{ success: boolean; message?: string; error?: string }>(
+      "/payment/sepay/simulate",
+      {
+        method: "POST",
+        body: JSON.stringify({ orderCode, amount }),
+      },
+    );
+  },
 };

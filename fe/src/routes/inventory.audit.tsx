@@ -105,14 +105,11 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
     mutationFn: async () => {
       return await inventoryApi.createAudit({
         title,
-        note,
-        auditDate: new Date().toISOString(),
+        ...(note ? { note } : {}),
         items: draftLines.map((l) => ({
           bookId: l.bookId,
-          title: l.title,
-          systemStock: l.systemStock,
           actualStock: l.actualStock,
-          reason: l.reason || undefined,
+          ...(l.reason ? { reason: l.reason } : {}),
         })),
       });
     },

@@ -103,11 +103,19 @@ function SupplierFormDialog({
   const onSubmit = async (values: SupplierFormValues) => {
     setSubmitting(true);
     try {
+      const payload = {
+        name: values.name,
+        ...(values.contactName !== undefined ? { contactName: values.contactName } : {}),
+        ...(values.phone !== undefined ? { phone: values.phone } : {}),
+        ...(values.email !== undefined ? { email: values.email } : {}),
+        ...(values.address !== undefined ? { address: values.address } : {}),
+        ...(values.note !== undefined ? { note: values.note } : {}),
+      };
       if (supplier) {
-        await supplierApi.update(supplier.id, values);
+        await supplierApi.update(supplier.id, payload);
         toast.success("Cập nhật nhà cung cấp thành công");
       } else {
-        await supplierApi.create(values);
+        await supplierApi.create(payload);
         toast.success("Thêm nhà cung cấp mới thành công");
       }
       await queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });

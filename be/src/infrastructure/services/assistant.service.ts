@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
-import { Content, GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -33,16 +33,19 @@ export interface AssistantReply {
 @Injectable()
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name)
-  private readonly genAI: GoogleGenerativeAI
-  private readonly model: any
+  private readonly client: OpenAI
+  private readonly model: string
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('GEMINI_API_KEY')
+    const apiKey = this.configService.get<string>('GROQ_API_KEY')
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not configured')
+      throw new Error('GROQ_API_KEY is not configured')
     }
-    this.genAI = new GoogleGenerativeAI(apiKey)
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+    })
+    this.model = this.configService.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile'
   }
 
   async chat(
@@ -50,53 +53,71 @@ export class AssistantService {
     tools: ToolDefinition[],
   ): Promise<AssistantReply> {
     try {
-      // Convert messages to Gemini format
-      const systemMessage =
-        messages.find((m) => m.role === 'system')?.content || ''
-      const conversationHistory = messages
-        .filter((m) => m.role !== 'system')
-        .map((m) => ({
-          role: m.role === 'assistant' ? 'model' : m.role,
-          parts: [{ text: m.content }],
-        })) as Content[]
+      const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
+      const systemMessage = messages.find((message) => message.role === 'system')?.content
+      if (systemMessage) openAiMessages.push({ role: 'system', content: systemMessage })
 
-      // Build tool list for Gemini
-      const toolList = tools.map((tool) => ({
-        name: tool.function.name,
-        description: tool.function.description,
-        inputSchema: {
-          type: 'OBJECT',
-          properties: tool.function.parameters.properties || {},
-          required: tool.function.parameters.required || [],
-        },
-      }))
+      for (const message of messages) {
+        if (message.role === 'system') continue
+        if (message.role === 'assistant') {
+          openAiMessages.push({
+            role: 'assistant',
+            content: message.content || null,
+            ...(message.tool_calls?.length
+              ? {
+                  tool_calls: message.tool_calls.map((call) => ({
+                    id: call.id,
+                    type: 'function' as const,
+                    function: {
+                      name: call.function.name,
+                      arguments: call.function.arguments,
+                    },
+                  })),
+                }
+              : {}),
+          })
+        } else if (message.role === 'tool') {
+          if (!message.tool_call_id) continue
+          openAiMessages.push({
+            role: 'tool',
+            tool_call_id: message.tool_call_id,
+            content: message.content,
+          })
+        } else {
+          openAiMessages.push({ role: 'user', content: message.content })
+        }
+      }
 
-      // Start chat session
-      const chat = this.model.startChat({
-        history: conversationHistory.slice(0, -1), // All but last user message
-        tools:
-          toolList.length > 0
-            ? [{ functionDeclarations: toolList }]
-            : undefined,
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: openAiMessages,
+        ...(tools.length
+          ? {
+              tools: tools.map((tool) => ({
+                type: 'function' as const,
+                function: {
+                  name: tool.function.name,
+                  description: tool.function.description,
+                  parameters: tool.function.parameters,
+                },
+              })),
+              tool_choice: 'auto' as const,
+            }
+          : {}),
       })
 
-      // Send last user message
-      const lastMessage = conversationHistory[conversationHistory.length - 1]
-      const response = await chat.sendMessage(lastMessage.parts[0].text)
+      const reply = response.choices[0]?.message
+      if (!reply) throw new Error('Groq không trả về nội dung phản hồi')
 
-      const responseText = response.text()
-
-      // Check if there are tool calls
-      const toolCalls =
-        response.response.functionCalls?.map((call: any, index: number) => ({
-          id: `call_${index}_${Date.now()}`,
-          name: call.name,
-          args: JSON.stringify(call.args || {}),
-        })) || []
+      const toolCalls = (reply.tool_calls ?? []).flatMap((call) =>
+        call.type === 'function'
+          ? [{ id: call.id, name: call.function.name, args: call.function.arguments }]
+          : [],
+      )
 
       return {
         ok: true,
-        content: responseText,
+        content: reply.content ?? '',
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       }
     } catch (error) {
@@ -106,7 +127,7 @@ export class AssistantService {
 
       return {
         ok: false,
-        error: `Lỗi khi gọi Gemini: ${errorMessage}`,
+        error: `Lỗi khi gọi Groq: ${errorMessage}`,
       }
     }
   }

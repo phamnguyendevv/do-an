@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import type { Book, Order, StockMovement } from "@/types";
+import type { Book, Order } from "@/types";
+import type { StockMovementApiItem } from "@/lib/inventory-api";
 
 export interface ParsedBookRow {
   title: string;
@@ -137,6 +138,7 @@ export async function parseBookExcelFile(file: File): Promise<{
   }
 
   const ws = wb.Sheets[firstSheetName];
+  if (!ws) return { data: [], errors: ["Không tìm thấy sheet dữ liệu trong file Excel."] };
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
   if (rows.length < 2) {
@@ -178,15 +180,15 @@ export async function parseBookExcelFile(file: File): Promise<{
     data.push({
       title,
       author,
-      publisher,
-      isbn,
+      ...(publisher ? { publisher } : {}),
+      ...(isbn ? { isbn } : {}),
       category,
       importPrice,
       price,
       stock,
       minStock,
-      publishedYear,
-      description,
+      ...(publishedYear !== undefined ? { publishedYear } : {}),
+      ...(description ? { description } : {}),
     });
   }
 
@@ -208,6 +210,7 @@ export async function parseInventoryImportFile(file: File): Promise<{
   }
 
   const ws = wb.Sheets[firstSheetName];
+  if (!ws) return { data: [], errors: ["Không tìm thấy sheet dữ liệu trong file Excel."] };
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
   const data: ParsedImportRow[] = [];
@@ -360,7 +363,10 @@ export function exportOrdersToExcel(orders: Order[], filename = "danh_sach_don_h
 /**
  * Xuất Sổ kho / Biến động tồn kho ra file Excel
  */
-export function exportMovementsToExcel(movements: StockMovement[], filename = "so_kho_bien_dong") {
+export function exportMovementsToExcel(
+  movements: StockMovementApiItem[],
+  filename = "so_kho_bien_dong",
+) {
   const headers = [
     "Mã biến động",
     "Tên sách",

@@ -27,6 +27,29 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "inventory_recommendations",
+      description:
+        "Đề xuất số lượng nhập dựa trên doanh số 30 ngày, tồn kho, tồn tối thiểu và thời gian giao hàng; đồng thời liệt kê sách tồn ít nhất 90 ngày không bán gần đây để cân nhắc xử lý, không tự nhập thêm sách bán chậm.",
+      parameters: {
+        type: "object",
+        properties: {
+          leadTimeDays: {
+            type: "number",
+            description: "Số ngày nhà cung cấp giao hàng, mặc định 7",
+          },
+          targetCoverageDays: {
+            type: "number",
+            description: "Số ngày tồn mục tiêu sau khi hàng về, mặc định 30",
+          },
+          limit: { type: "number", description: "Số kết quả tối đa mỗi nhóm" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "search_books",
       description: "Tìm/lọc sách theo từ khóa, thể loại, giá bán, tồn kho, trạng thái.",
       parameters: {
@@ -199,7 +222,7 @@ export const askAssistant = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AssistantReply> => {
     // Gemini backend configuration
     const backendUrl = process.env["BACKEND_URL"] ?? "http://localhost:3000";
-    const assistantEndpoint = `${backendUrl}/api/assistant/chat`;
+    const assistantEndpoint = `${backendUrl}/api/v1/api/assistant/chat`;
 
     const res = await fetch(assistantEndpoint, {
       method: "POST",
@@ -218,12 +241,19 @@ export const askAssistant = createServerFn({ method: "POST" })
       return { ok: false, error: `Lỗi AI (${res.status}): ${errorData}` };
     }
 
-    const json = (await res.json()) as {
+    const responseBody = (await res.json()) as {
       ok: boolean;
       error?: string;
       content?: string;
       toolCalls?: { id: string; name: string; args: string }[];
+      data?: {
+        ok: boolean;
+        error?: string;
+        content?: string;
+        toolCalls?: { id: string; name: string; args: string }[];
+      };
     };
+    const json = responseBody.data ?? responseBody;
 
     if (!json.ok) {
       return { ok: false, error: json.error ?? "Lỗi từ AI service." };

@@ -451,16 +451,16 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
           customerPhone: form.customerPhone,
           customerAddress: fullAddress,
           note: form.note,
-          toWardCode: form.wardCode || undefined,
-          toDistrictId: form.districtId ? Number(form.districtId) : undefined,
-          weight: form.weight ? Number(form.weight) : undefined,
-          length: form.length ? Number(form.length) : undefined,
-          width: form.width ? Number(form.width) : undefined,
-          height: form.height ? Number(form.height) : undefined,
-          insuranceValue: form.insuranceValue ? Number(form.insuranceValue) : undefined,
+          ...(form.wardCode ? { toWardCode: form.wardCode } : {}),
+          ...(form.districtId ? { toDistrictId: Number(form.districtId) } : {}),
+          ...(form.weight ? { weight: Number(form.weight) } : {}),
+          ...(form.length ? { length: Number(form.length) } : {}),
+          ...(form.width ? { width: Number(form.width) } : {}),
+          ...(form.height ? { height: Number(form.height) } : {}),
+          ...(form.insuranceValue ? { insuranceValue: Number(form.insuranceValue) } : {}),
           paymentTypeId: (Number(form.paymentTypeId) || 2) as 1 | 2,
           requiredNote: form.requiredNote,
-          content: form.content.trim() || undefined,
+          ...(form.content.trim() ? { content: form.content.trim() } : {}),
         },
         order.trackingCode,
       );
@@ -901,6 +901,7 @@ function OrderWorkflow({ order }: { order: Order }) {
       toast.error(res.error ?? "Không thể cập nhật trạng thái");
     } else {
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
       toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[next]}`, {
         description:
           next === "CANCELLED" || next === "RETURNED"

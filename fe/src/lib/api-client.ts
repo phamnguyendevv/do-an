@@ -1,8 +1,8 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { authStore } from "@/services/auth-service";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
-const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api/v1";
+const API_BASE = import.meta.env["VITE_API_BASE"] || "http://localhost:3000";
+const API_PREFIX = import.meta.env["VITE_API_PREFIX"] || "/api/v1";
 
 export const ACCESS_TOKEN_KEY = "bookstock.token";
 export const REFRESH_TOKEN_KEY = "bookstock.refresh_token";
@@ -124,7 +124,10 @@ apiClient.interceptors.response.use(
       const refreshToken = getRefreshToken();
       if (!refreshToken) {
         isRefreshing = false;
-        const msg = error.response?.data?.error?.message || error.response?.data?.message || "";
+        const responseBody = error.response?.data as
+          | { error?: { message?: string }; message?: string }
+          | undefined;
+        const msg = responseBody?.error?.message || responseBody?.message || "";
         const isDeactivated = msg.includes("vô hiệu hóa") || msg.includes("not active");
         authStore.handleUnauthorized(isDeactivated);
         return Promise.reject(error);
@@ -168,9 +171,11 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const errorBody = (error.response?.data as any) || {};
+    const errorBody = error.response?.data as
+      | { error?: { message?: string }; message?: string }
+      | undefined;
     const errorMsg =
-      errorBody?.error?.message || errorBody?.message || (error.message as string) || "Yêu cầu thất bại";
+      errorBody?.error?.message || errorBody?.message || error.message || "Yêu cầu thất bại";
 
     return Promise.reject(new Error(errorMsg));
   },
@@ -204,5 +209,5 @@ export async function apiRequest<T>(
     config.params = (options as any).params;
   }
 
-  return apiClient.request<unknown, T>(config as AxiosRequestConfig);
+  return (await apiClient.request(config)) as unknown as T;
 }

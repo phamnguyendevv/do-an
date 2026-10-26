@@ -309,6 +309,26 @@ export function PosPage() {
   const sepayAccountName = sepayConfig.accountName;
   const sepayQrUrl = storeSettingsService.getSepayQrUrl(total, posOrderCode);
 
+  const finalizeSepayOrder = async (orderId: number | string): Promise<boolean> => {
+    try {
+      const current = await orderApi.get(orderId);
+      if (current.status !== "DELIVERED") {
+        await orderApi.updateStatus(orderId, "DELIVERED");
+      }
+      if (current.payment !== "PAID") {
+        await orderApi.updatePayment(orderId, "PAID");
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
+        queryClient.invalidateQueries({ queryKey: ["orders"] }),
+      ]);
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể chốt đơn SePay trên máy chủ.");
+      return false;
+    }
+  };
+
   // Tạo đơn hàng ngay khi chọn SEPAY để SePay webhook có thể tìm thấy
   useEffect(() => {
     if (paymentMethod !== "SEPAY" || total <= 0 || cart.length === 0 || sepayOrderCreated || isCreatingSepayOrder) {
@@ -338,6 +358,10 @@ export function PosPage() {
         if (res.ok && res.data) {
           setSepayOrderCreated(true);
           setSepayCreatedOrderId(res.data.id ?? null);
+          void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+        } else {
+          toast.error(res.error || "Không thể lưu đơn chờ thanh toán lên máy chủ.");
+          setPaymentMethod("CASH");
         }
       } catch (err: any) {
         console.error("Lỗi tạo đơn SePay:", err);
@@ -353,12 +377,41 @@ export function PosPage() {
   usePaymentSocket({
     orderCode: posOrderCode,
     enabled: paymentMethod === "SEPAY" && total > 0 && cart.length > 0 && !sepayConfirmed,
-    onPaymentSuccess: (event) => {
+    onPaymentSuccess: async (event) => {
+      let completedOrderId = sepayCreatedOrderId;
+      if (completedOrderId) {
+        if (!(await finalizeSepayOrder(completedOrderId))) return;
+      } else {
+        const result = await orderService.createOrder({
+          orderCode: posOrderCode,
+          customerName: customerName || "Khách lẻ tại quầy",
+          customerPhone: normalizePhone(customerPhone) || "0900000000",
+          customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
+          shippingMethod: "Bán tại quầy (POS)",
+          shippingFee: 0,
+          discount: discountAmount,
+          note: "Bán lẻ POS • Chuyển khoản SePay QR (Real-time WebSocket)",
+          status: "DELIVERED",
+          payment: "PAID",
+          lines: cart.map((item) => ({
+            bookId: item.book.id,
+            quantity: item.quantity,
+            price: Number(item.price) || 0,
+          })),
+        });
+        if (!result.ok || !result.data) {
+          toast.error(result.error || "Không thể lưu đơn bán SePay.");
+          return;
+        }
+        completedOrderId = result.data.id;
+        void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+      }
+
       setSepayConfirmed(true);
       const confirmedTotal = event.amount || total;
 
       const orderData = {
-        id: sepayCreatedOrderId || posOrderCode,
+        id: completedOrderId || posOrderCode,
         orderCode: posOrderCode,
         customerName: customerName || "Khách lẻ tại quầy",
         customerPhone: customerPhone || "0900000000",
@@ -391,31 +444,6 @@ export function PosPage() {
       // Refresh customer stats & orders query
       queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
-
-      if (sepayCreatedOrderId) {
-        orderApi.updateStatus(sepayCreatedOrderId, "DELIVERED").catch(() => {});
-        orderApi.updatePayment(sepayCreatedOrderId, "PAID").catch(() => {});
-      } else {
-        orderService
-          .createOrder({
-            orderCode: posOrderCode,
-            customerName: customerName || "Khách lẻ tại quầy",
-            customerPhone: normalizePhone(customerPhone) || "0900000000",
-            customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
-            shippingMethod: "Bán tại quầy (POS)",
-            shippingFee: 0,
-            discount: discountAmount,
-            note: `Bán lẻ POS • Chuyển khoản SePay QR (Real-time WebSocket)`,
-            status: "DELIVERED",
-            payment: "PAID",
-            lines: cart.map((item) => ({
-              bookId: item.book.id,
-              quantity: item.quantity,
-              price: Number(item.price) || 0,
-            })),
-          })
-          .catch(() => {});
-      }
     },
   });
 
@@ -445,11 +473,9 @@ export function PosPage() {
     if (cart.length === 0 || total <= 0) return;
 
     if (sepayCreatedOrderId) {
-      await orderApi.updateStatus(sepayCreatedOrderId, "DELIVERED").catch(() => {});
-      await orderApi.updatePayment(sepayCreatedOrderId, "PAID").catch(() => {});
+      if (!(await finalizeSepayOrder(sepayCreatedOrderId))) return;
     } else {
-      await orderService
-        .createOrder({
+      const res = await orderService.createOrder({
           orderCode: posOrderCode,
           customerName: customerName || "Khách lẻ tại quầy",
           customerPhone: normalizePhone(customerPhone) || "0900000000",
@@ -465,8 +491,11 @@ export function PosPage() {
             quantity: item.quantity,
             price: Number(item.price) || 0,
           })),
-        })
-        .catch(() => {});
+        });
+      if (!res.ok) {
+        toast.error(res.error || "Không thể lưu đơn bán SePay.");
+        return;
+      }
     }
 
     const orderData = {
@@ -557,9 +586,7 @@ export function PosPage() {
       // Nếu là SEPAY và đơn đã được tạo trước → chỉ cập nhật trạng thái
       if (paymentMethod === "SEPAY" && sepayOrderCreated && sepayCreatedOrderId) {
         orderId = sepayCreatedOrderId;
-        // Gọi thẳng orderApi để cập nhật trạng thái (bypass local transition validation)
-        await orderApi.updateStatus(orderId, "DELIVERED").catch(() => {});
-        await orderApi.updatePayment(orderId, "PAID").catch(() => {});
+        if (!(await finalizeSepayOrder(orderId))) return;
 
         const orderData = {
           id: orderId,
@@ -635,13 +662,10 @@ export function PosPage() {
           createdAt: new Date().toISOString(),
         };
 
-        if (res.data.id) {
-          orderService.updatePayment(res.data.id, "PAID").catch(() => {});
-        }
-
         // Refresh customer stats & orders query
         queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
         queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
+        void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
 
         setSuccessOrder(orderData);
         setPrintDialogOpen(true);

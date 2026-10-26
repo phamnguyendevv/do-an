@@ -672,8 +672,8 @@ function CreateOrderPage() {
       customerName: customer.name,
       customerPhone: customer.phone,
       customerAddress: fullAddress || customer.detailAddress,
-      provinceId,
-      districtId,
+      ...(provinceId !== undefined ? { provinceId } : {}),
+      ...(districtId !== undefined ? { districtId } : {}),
       wardCode,
       shippingMethod:
         carrierType === "GHN"
@@ -683,9 +683,9 @@ function CreateOrderPage() {
             : "Vận chuyển khác",
       shippingFee,
       discount,
-      trackingCode: ghnTrackingCode,
-      note: customer.note,
-      expectedDelivery: ghnLeadTime || undefined,
+      ...(ghnTrackingCode ? { trackingCode: ghnTrackingCode } : {}),
+      ...(customer.note ? { note: customer.note } : {}),
+      ...(ghnLeadTime ? { expectedDelivery: ghnLeadTime } : {}),
       lines,
     });
 
@@ -698,6 +698,7 @@ function CreateOrderPage() {
     // Invalidate react-query cache for orders and audit logs
     queryClient.invalidateQueries({ queryKey: ["orders"] });
     queryClient.invalidateQueries({ queryKey: ["order-audit-logs"] });
+    queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
 
     toast.success(
       `Tạo đơn hàng ${res.data?.orderCode || res.data?.id} thành công — tồn kho đã được trừ`,
@@ -982,9 +983,8 @@ function CreateOrderPage() {
                             // Tự động gán mã phường mặc định của quận/huyện để tính cước GHN
                             try {
                               const ws = await ghnApi.getWards(id);
-                              if (ws && ws.length > 0) {
-                                setWardCode(ws[0].WardCode);
-                              }
+                              const firstWard = ws[0];
+                              if (firstWard) setWardCode(firstWard.WardCode);
                             } catch {
                               // fallback
                             }

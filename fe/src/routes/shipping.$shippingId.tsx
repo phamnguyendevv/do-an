@@ -225,6 +225,7 @@ function ShippingDetailPage() {
               : undefined,
         });
         queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
+        queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
         setNextStatus("");
       }
     } finally {

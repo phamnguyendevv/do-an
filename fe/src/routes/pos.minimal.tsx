@@ -118,7 +118,6 @@ export function PosPage() {
   const [sepayOrderCreated, setSepayOrderCreated] = useState(false);
   const [isCreatingSepayOrder, setIsCreatingSepayOrder] = useState(false);
   const [sepayCreatedOrderId, setSepayCreatedOrderId] = useState<number | string | null>(null);
-
   // Success / Print dialog
   const [successOrder, setSuccessOrder] = useState<any | null>(null);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
@@ -297,7 +296,7 @@ export function PosPage() {
       }
 
       const res = await orderApi.create(payload);
-      const createdOrder = res?.data || res;
+      const createdOrder = res;
 
       setSuccessOrder({
         ...createdOrder,
@@ -379,13 +378,13 @@ export function PosPage() {
                 </Button>
                 {categories.map((cat) => (
                   <Button
-                    key={cat}
-                    variant={selectedCategory === cat ? "default" : "outline"}
+                    key={cat.id}
+                    variant={selectedCategory === cat.name ? "default" : "outline"}
                     size="sm"
                     className="h-7 text-xs shrink-0 rounded-full"
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => setSelectedCategory(cat.name)}
                   >
-                    {cat}
+                    {cat.name}
                   </Button>
                 ))}
               </div>
@@ -702,8 +701,9 @@ export function PosPage() {
                 customerPhone={successOrder.customerPhone}
                 items={successOrder.items || []}
                 subtotal={successOrder.subtotal || 0}
-                discountAmount={successOrder.discountAmount || 0}
+                discount={successOrder.discount || 0}
                 total={successOrder.total || 0}
+                paymentMethod={paymentMethod}
               />
             </div>
             <div className="flex gap-2">
