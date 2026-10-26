@@ -89,7 +89,8 @@ describe("order workflow", () => {
       total: order.total,
       payment: status === "DELIVERED" ? "PAID" : "UNPAID",
       shippingMethod: order.shippingMethod,
-      status: status as "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPING" | "DELIVERED" | "CANCELLED" | "RETURNED",
+      status: status as
+        "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPING" | "DELIVERED" | "CANCELLED" | "RETURNED",
       createdAt: order.createdAt,
     }));
 

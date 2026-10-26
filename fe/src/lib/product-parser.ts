@@ -35,11 +35,7 @@ export function extractQuantityAndKeyword(token: string): { quantity: number; ke
 
   // Case 1: Prefix quantity with explicit multiplier or unit: "2 bản xanh lá", "3x zhenti", "2 * xanh lá", "2-xanh lá"
   const prefixExplicitMatch = trimmed.match(
-<<<<<<< HEAD
     /^(\d{1,4})\s*(?:x|\*|bản|ban|cuốn|cuon|quyển|quyen|c|q|k|-|:)\s+(.+)$/i,
-=======
-    /^(\d{1,4})\s*(?:x|\*|bản|ban|cuốn|cuon|quyển|quyen|c|q|k|-|\:)\s+(.+)$/i,
->>>>>>> main
   );
   if (prefixExplicitMatch) {
     const num = parseInt(prefixExplicitMatch[1] ?? "", 10);
