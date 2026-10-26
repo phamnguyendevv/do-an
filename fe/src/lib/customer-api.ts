@@ -7,6 +7,7 @@ export type CustomerApiItem = {
   email?: string;
   address?: string;
   note?: string;
+<<<<<<< HEAD
   totalOrders?: number;
   totalSpent?: number;
   lastOrderAt?: string;
@@ -37,6 +38,14 @@ export const customerApi = {
       `/admin/customers/lookup?phone=${encodeURIComponent(normalized)}`,
     );
   },
+=======
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt?: string;
+};
+
+export const customerApi = {
+>>>>>>> main
   list(params?: { search?: string; page?: number; size?: number }) {
     const query = new URLSearchParams();
     if (params?.search) query.set("search", params.search);

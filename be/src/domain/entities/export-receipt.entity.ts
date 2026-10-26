@@ -8,7 +8,8 @@ export interface ExportReceiptItem {
 export class ExportReceiptEntity {
   public readonly id!: number
   public receiptCode!: string
-  public orderId?: string
+  /** ID đơn hàng liên kết (bigint, FK tới bookstore_orders.id) */
+  public orderId?: number
   public reason!: string
   public exportDate!: Date
   public totalItems!: number
@@ -17,4 +18,20 @@ export class ExportReceiptEntity {
   public createdBy?: string
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
+}
+
+export interface ExportReceiptLineInput {
+  bookId: number | string
+  quantity: number
+  price?: number
+}
+
+export interface CreateExportReceiptInput {
+  /** ID đơn hàng liên kết (bigint). Trước đây là string, giờ là number. */
+  orderId?: number
+  reason: string
+  exportDate?: string
+  note?: string
+  lines: ExportReceiptLineInput[]
+  createdBy?: string
 }

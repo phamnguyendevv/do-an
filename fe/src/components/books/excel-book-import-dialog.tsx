@@ -58,8 +58,9 @@ export function ExcelBookImportDialog({
       } else {
         toast.success(`Đã nhận diện ${result.data.length} đầu sách từ file Excel.`);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Lỗi khi đọc file Excel");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi khi đọc file Excel";
+      toast.error(message);
     } finally {
       setIsParsing(false);
     }
@@ -87,6 +88,10 @@ export function ExcelBookImportDialog({
           sellingPrice: item.price,
           stock: item.stock,
           minStock: item.minStock,
+<<<<<<< HEAD
+=======
+          ...(item.description !== undefined && { description: item.description }),
+>>>>>>> main
         });
         successCount++;
       } catch (e) {

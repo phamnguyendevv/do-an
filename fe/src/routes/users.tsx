@@ -499,8 +499,14 @@ function UsersPage() {
   } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: async () => {
+<<<<<<< HEAD
       const res = await userApi.list({ size: 200 });
       return res.data.map(mapApiUser);
+=======
+      const res: any = await userApi.list({ size: 200 });
+      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      return items.map(mapApiUser);
+>>>>>>> main
     },
     staleTime: 10_000,
   });

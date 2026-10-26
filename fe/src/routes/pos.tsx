@@ -53,7 +53,10 @@ export const Route = createFileRoute("/pos")({
   head: () => ({
     meta: [
       { title: "Bán tại quầy (POS) — BookStock" },
-      { name: "description", content: "Màn hình bán lẻ tại quầy POS, thanh toán SePay QR và in hóa đơn K80." },
+      {
+        name: "description",
+        content: "Màn hình bán lẻ tại quầy POS, thanh toán SePay QR và in hóa đơn K80.",
+      },
     ],
   }),
   component: PosPage,
@@ -141,7 +144,9 @@ export function PosPage() {
   const printRef = useRef<HTMLDivElement>(null);
 
   // Order code for current transaction & SePay VietQR (use DH- prefix to match SePay webhook filter)
-  const [posOrderCode, setPosOrderCode] = useState<string>(() => `DH-${Date.now().toString().slice(-6)}`);
+  const [posOrderCode, setPosOrderCode] = useState<string>(
+    () => `DH-${Date.now().toString().slice(-6)}`,
+  );
   const [isPollingSepay, setIsPollingSepay] = useState(false);
   const currentOrderCode = posOrderCode;
 
@@ -158,7 +163,9 @@ export function PosPage() {
         (b.isbn && b.isbn.toLowerCase().includes(q)) ||
         String(b.id).includes(q);
 
-      const bookCat = String(b.category || "").trim().toLowerCase();
+      const bookCat = String(b.category || "")
+        .trim()
+        .toLowerCase();
       const matchCategory =
         targetCategory === "all" ||
         bookCat === targetCategory ||
@@ -179,14 +186,12 @@ export function PosPage() {
   );
 
   const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0),
+    () =>
+      cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0),
     [cart],
   );
 
-  const total = useMemo(
-    () => Math.max(0, subtotal - discountAmount),
-    [subtotal, discountAmount],
-  );
+  const total = useMemo(() => Math.max(0, subtotal - discountAmount), [subtotal, discountAmount]);
 
   const changeCash = useMemo(() => {
     if (typeof receivedCash !== "number") return 0;
@@ -227,21 +232,22 @@ export function PosPage() {
 
   // Update item quantity
   const updateQuantity = (bookId: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          if (String(item.book.id) === String(bookId)) {
-            const nextQty = item.quantity + delta;
-            if (nextQty <= 0) return null;
-            if (nextQty > item.book.stock) {
-              toast.warning(`Kho chỉ còn ${item.book.stock} cuốn.`);
-              return item;
+    setCart(
+      (prev) =>
+        prev
+          .map((item) => {
+            if (String(item.book.id) === String(bookId)) {
+              const nextQty = item.quantity + delta;
+              if (nextQty <= 0) return null;
+              if (nextQty > item.book.stock) {
+                toast.warning(`Kho chỉ còn ${item.book.stock} cuốn.`);
+                return item;
+              }
+              return { ...item, quantity: nextQty };
             }
-            return { ...item, quantity: nextQty };
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[],
+            return item;
+          })
+          .filter(Boolean) as CartItem[],
     );
   };
 
@@ -249,9 +255,7 @@ export function PosPage() {
   const updateItemPrice = (bookId: string, newPrice: number) => {
     setCart((prev) =>
       prev.map((item) =>
-        String(item.book.id) === String(bookId)
-          ? { ...item, price: Math.max(0, newPrice) }
-          : item,
+        String(item.book.id) === String(bookId) ? { ...item, price: Math.max(0, newPrice) } : item,
       ),
     );
   };
@@ -331,7 +335,13 @@ export function PosPage() {
 
   // Tạo đơn hàng ngay khi chọn SEPAY để SePay webhook có thể tìm thấy
   useEffect(() => {
-    if (paymentMethod !== "SEPAY" || total <= 0 || cart.length === 0 || sepayOrderCreated || isCreatingSepayOrder) {
+    if (
+      paymentMethod !== "SEPAY" ||
+      total <= 0 ||
+      cart.length === 0 ||
+      sepayOrderCreated ||
+      isCreatingSepayOrder
+    ) {
       return;
     }
 
@@ -447,7 +457,6 @@ export function PosPage() {
     },
   });
 
-
   // Đóng Popup thành công & hoàn tất in bill (dùng cho cả click tay và tự đóng sau 2s)
   const handleDismissSuccessPopup = () => {
     if (autoCloseTimerRef.current) {
@@ -559,6 +568,7 @@ export function PosPage() {
       return;
     }
 
+<<<<<<< HEAD
     if (!customerPhone.trim()) {
       toast.error("Vui lòng nhập số điện thoại khách hàng");
       return;
@@ -570,6 +580,13 @@ export function PosPage() {
     }
 
     if (paymentMethod === "CASH" && total > 0 && (typeof receivedCash !== "number" || receivedCash < total)) {
+=======
+    if (
+      paymentMethod === "CASH" &&
+      total > 0 &&
+      (typeof receivedCash !== "number" || receivedCash < total)
+    ) {
+>>>>>>> main
       toast.error(
         typeof receivedCash !== "number"
           ? "Vui lòng nhập số tiền khách đưa!"
@@ -581,7 +598,7 @@ export function PosPage() {
     setIsSubmitting(true);
     try {
       let orderId: number | string | null = null;
-      let orderCode = currentOrderCode;
+      const orderCode = currentOrderCode;
 
       // Nếu là SEPAY và đơn đã được tạo trước → chỉ cập nhật trạng thái
       if (paymentMethod === "SEPAY" && sepayOrderCreated && sepayCreatedOrderId) {
@@ -628,9 +645,7 @@ export function PosPage() {
         shippingMethod: "Bán tại quầy (POS)",
         shippingFee: 0,
         discount: discountAmount,
-        note: `Bán lẻ POS • Phương thức: ${
-          paymentMethod === "CASH" ? "Tiền mặt" : "Thẻ POS"
-        }`,
+        note: `Bán lẻ POS • Phương thức: ${paymentMethod === "CASH" ? "Tiền mặt" : "Thẻ POS"}`,
         status: "DELIVERED",
         payment: "PAID",
         lines: cart.map((item) => ({
@@ -739,10 +754,16 @@ export function PosPage() {
         {/* Cashier, Theme toggle & Order link */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <span className="text-xs text-muted-foreground mr-1 hidden lg:inline">
-            Thu ngân: <strong className="text-foreground">{user?.name || user?.email || "Admin"}</strong>
+            Thu ngân:{" "}
+            <strong className="text-foreground">{user?.name || user?.email || "Admin"}</strong>
           </span>
           <ThemeToggle />
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex h-8 sm:h-9 text-xs" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex h-8 sm:h-9 text-xs"
+            asChild
+          >
             <Link to="/orders">Lịch sử đơn</Link>
           </Button>
         </div>
@@ -845,7 +866,10 @@ export function PosPage() {
 
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1">
-                          <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-normal truncate max-w-[75px] sm:max-w-[100px]">
+                          <Badge
+                            variant="secondary"
+                            className="px-1.5 py-0 text-[10px] font-normal truncate max-w-[75px] sm:max-w-[100px]"
+                          >
                             {b.category}
                           </Badge>
                           <span
@@ -861,10 +885,15 @@ export function PosPage() {
                           </span>
                         </div>
 
-                        <h3 className="font-semibold text-xs leading-snug line-clamp-2 pt-0.5" title={b.title}>
+                        <h3
+                          className="font-semibold text-xs leading-snug line-clamp-2 pt-0.5"
+                          title={b.title}
+                        >
                           {b.title}
                         </h3>
-                        <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{b.author}</p>
+                        <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">
+                          {b.author}
+                        </p>
                       </div>
 
                       <div className="mt-2 pt-2 border-t flex items-center justify-between">
@@ -958,9 +987,7 @@ export function PosPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <ShoppingCart className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-sm">
-                Giỏ hàng ({totalCartItems} cuốn)
-              </span>
+              <span className="font-semibold text-sm">Giỏ hàng ({totalCartItems} cuốn)</span>
             </div>
             {cart.length > 0 && (
               <Button
@@ -1184,8 +1211,8 @@ export function PosPage() {
               </div>
             )}
 
-            {paymentMethod === "SEPAY" && (
-              cart.length === 0 || total <= 0 ? (
+            {paymentMethod === "SEPAY" &&
+              (cart.length === 0 || total <= 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground border rounded-lg bg-background space-y-1">
                   <QrCode className="h-7 w-7 mx-auto mb-1 opacity-40 text-primary" />
                   <p className="font-semibold text-foreground">Chưa có sản phẩm trong giỏ</p>
@@ -1228,7 +1255,10 @@ export function PosPage() {
                       Chủ TK: <strong className="text-foreground">{sepayAccountName}</strong>
                     </p>
                     <p>
-                      Cú pháp CK: <strong className="text-primary font-mono font-bold text-xs">{posOrderCode}</strong>
+                      Cú pháp CK:{" "}
+                      <strong className="text-primary font-mono font-bold text-xs">
+                        {posOrderCode}
+                      </strong>
                     </p>
                     <div className="pt-0.5">
                       {sepayConfirmed ? (
@@ -1258,14 +1288,18 @@ export function PosPage() {
                       {sepayConfirmed ? "Đã nhận tiền" : "Xác nhận thủ công"}
                     </Button>
                     <Link to="/settings" target="_blank">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground" title="Đổi tài khoản ngân hàng">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-muted-foreground"
+                        title="Đổi tài khoản ngân hàng"
+                      >
                         <Settings className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
                   </div>
                 </div>
-              )
-            )}
+              ))}
 
             {paymentMethod === "CARD" && (
               <div className="p-2.5 rounded-lg border bg-background text-center text-xs text-muted-foreground space-y-1">
@@ -1328,9 +1362,7 @@ export function PosPage() {
               </span>
             )}
           </div>
-          <span>
-            Giỏ hàng {totalCartItems > 0 ? `(${formatNumber(total)})` : ""}
-          </span>
+          <span>Giỏ hàng {totalCartItems > 0 ? `(${formatNumber(total)})` : ""}</span>
         </button>
       </div>
 
@@ -1367,13 +1399,18 @@ export function PosPage() {
                 ĐÃ NHẬN TIỀN THÀNH CÔNG!
               </h2>
               <p className="text-xs text-muted-foreground">
-                Mã đơn: <strong className="text-foreground font-mono">{paymentSuccessPopup.orderCode}</strong>
+                Mã đơn:{" "}
+                <strong className="text-foreground font-mono">
+                  {paymentSuccessPopup.orderCode}
+                </strong>
               </p>
             </div>
 
             {/* Big Amount Box */}
             <div className="py-2.5 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50">
-              <span className="text-xs text-muted-foreground font-medium block">Số tiền nhận được:</span>
+              <span className="text-xs text-muted-foreground font-medium block">
+                Số tiền nhận được:
+              </span>
               <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
                 +{formatCurrency(paymentSuccessPopup.amount)}
               </span>

@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
@@ -11,6 +13,12 @@ import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
+<<<<<<< HEAD
+=======
+
+import { Customer } from './customer.entity'
+import { Promotion } from './promotion.entity'
+>>>>>>> main
 
 export interface BookstoreOrderItem {
   bookId: number | string
@@ -44,6 +52,10 @@ export class BookstoreOrder {
   @Column({ type: 'bigint', nullable: true, name: 'customer_id' })
   public customerId?: number
 
+  @ManyToOne(() => Customer, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'customer_id' })
+  public customer?: Customer
+
   @Column({ type: 'text', name: 'customer_address' })
   public customerAddress!: string
 
@@ -68,6 +80,13 @@ export class BookstoreOrder {
   @Column({ type: 'bigint', nullable: true, name: 'promotion_id' })
   public promotionId?: number
 
+<<<<<<< HEAD
+=======
+  @ManyToOne(() => Promotion, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'promotion_id' })
+  public promotion?: Promotion
+
+>>>>>>> main
   @Column({
     type: 'varchar',
     length: 50,

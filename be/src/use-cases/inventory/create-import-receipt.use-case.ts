@@ -3,9 +3,18 @@ import { Inject, Injectable } from '@nestjs/common'
 import { DataSource } from 'typeorm'
 
 import {
+<<<<<<< HEAD
   ImportReceiptEntity,
   ImportReceiptItem,
 } from '@domain/entities/import-receipt.entity'
+=======
+  CreateImportReceiptInput,
+  ImportReceiptEntity,
+  ImportReceiptItem,
+} from '@domain/entities/import-receipt.entity'
+import { BookStatusEnum } from '@domain/entities/order-enums.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
+>>>>>>> main
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -45,14 +54,7 @@ export class CreateImportReceiptUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-  async execute(dto: {
-    supplierId?: number
-    supplierName: string
-    importDate?: string | Date
-    note?: string
-    lines: Array<{ bookId: number | string; quantity: number; price: number }>
-    createdBy?: string
-  }): Promise<ImportReceiptEntity> {
+  async execute(dto: CreateImportReceiptInput): Promise<ImportReceiptEntity> {
     if (!dto.supplierName || dto.supplierName.trim().length === 0) {
       throw this.exceptionsService.badRequestException({
         type: 'InventoryValidationException',
@@ -125,10 +127,17 @@ export class CreateImportReceiptUseCase {
         const afterStock = beforeStock + qty
         const newStatus =
           afterStock === 0
+<<<<<<< HEAD
             ? 'OUT_OF_STOCK'
             : afterStock <= book.minStock
               ? 'LOW_STOCK'
               : 'IN_STOCK'
+=======
+            ? BookStatusEnum.OutOfStock
+            : afterStock <= book.minStock
+              ? BookStatusEnum.LowStock
+              : BookStatusEnum.InStock
+>>>>>>> main
 
         // 1. Update book stock & purchasePrice if provided
         book.stock = afterStock
@@ -142,7 +151,7 @@ export class CreateImportReceiptUseCase {
         const movement = queryRunner.manager.create(StockMovement, {
           bookId: book.id,
           bookTitle: book.title,
-          type: 'IMPORT',
+          type: StockMovementTypeEnum.Import,
           quantity: qty,
           beforeStock,
           afterStock,

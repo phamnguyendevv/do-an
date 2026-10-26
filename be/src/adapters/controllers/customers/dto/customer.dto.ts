@@ -8,7 +8,10 @@ import {
   Max,
   Min,
 } from 'class-validator'
+<<<<<<< HEAD
 import { Transform } from 'class-transformer'
+=======
+>>>>>>> main
 
 export class CreateCustomerDto {
   @IsString()
@@ -62,13 +65,19 @@ export class ListCustomersDto {
   search?: string
 
   @IsOptional()
+<<<<<<< HEAD
   @Transform(({ value }) => Number(value))
+=======
+>>>>>>> main
   @IsInt()
   @Min(1)
   page?: number
 
   @IsOptional()
+<<<<<<< HEAD
   @Transform(({ value }) => Number(value))
+=======
+>>>>>>> main
   @IsInt()
   @Min(1)
   @Max(500)

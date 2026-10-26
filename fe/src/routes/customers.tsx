@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+<<<<<<< HEAD
 import { Plus, Search, Trash2, X, Calendar, Phone, Mail, MapPin, ShoppingBag, DollarSign } from "lucide-react";
+=======
+import { Plus, Search, Trash2 } from "lucide-react";
+>>>>>>> main
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
@@ -10,11 +14,15 @@ import { DataTable, type DataTableColumn } from "@/components/data-table/data-ta
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { customerApi, type CustomerApiItem } from "@/lib/customer-api";
+<<<<<<< HEAD
 import { orderApi } from "@/lib/order-api";
+=======
+>>>>>>> main
 
 export const Route = createFileRoute("/customers")({ component: CustomersPage });
 
 function CustomersPage() {
+<<<<<<< HEAD
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [quickAddName, setQuickAddName] = useState("");
@@ -77,6 +85,17 @@ function CustomersPage() {
       setIsQuickAdding(false);
     }
   };
+=======
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<CustomerApiItem | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", note: "" });
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: ["customers", search],
+    queryFn: () => customerApi.list({ search, size: 100 }),
+  });
+>>>>>>> main
   const open = (customer?: CustomerApiItem) => {
     setEditing(customer || null);
     setDialogOpen(true);
@@ -92,6 +111,7 @@ function CustomersPage() {
         : { name: "", phone: "", email: "", address: "", note: "" },
     );
   };
+<<<<<<< HEAD
 
   const viewDetails = (customer: CustomerApiItem) => {
     setViewing(customer);
@@ -100,6 +120,15 @@ function CustomersPage() {
   const save = async () => {
     try {
       editing ? await customerApi.update(editing.id, form) : await customerApi.create(form);
+=======
+  const save = async () => {
+    try {
+      if (editing) {
+        await customerApi.update(editing.id, form);
+      } else {
+        await customerApi.create(form);
+      }
+>>>>>>> main
       await client.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Đã lưu khách hàng");
       setEditing(null);
@@ -123,7 +152,11 @@ function CustomersPage() {
       key: "name",
       header: "Khách hàng",
       cell: (row) => (
+<<<<<<< HEAD
         <button className="text-left font-medium hover:underline text-blue-600" onClick={() => viewDetails(row)}>
+=======
+        <button className="text-left font-medium hover:underline" onClick={() => open(row)}>
+>>>>>>> main
           {row.name}
         </button>
       ),
@@ -137,12 +170,15 @@ function CustomersPage() {
       cell: (row) => `${Number(row.totalSpent).toLocaleString("vi-VN")} đ`,
     },
     {
+<<<<<<< HEAD
       key: "lastOrderAt",
       header: "Mua lần cuối",
       cell: (row) =>
         row.lastOrderAt ? new Date(row.lastOrderAt).toLocaleDateString("vi-VN") : "-",
     },
     {
+=======
+>>>>>>> main
       key: "actions",
       header: "",
       cell: (row) => (
@@ -155,6 +191,7 @@ function CustomersPage() {
   return (
     <AppShell>
       <PageContainer>
+<<<<<<< HEAD
         <PageHeader title="Khách hàng" description="Quản lý thông tin và lịch sử mua hàng">
           <Button onClick={() => open()}>
             <Plus className="mr-2 h-4 w-4" />
@@ -264,6 +301,32 @@ function CustomersPage() {
           </>
         ) : null}
         
+=======
+        <PageHeader
+          title="Khách hàng"
+          description="Quản lý thông tin và lịch sử mua hàng"
+          actions={
+            <Button onClick={() => open()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm khách hàng
+            </Button>
+          }
+        />
+        <div className="mb-4 flex gap-2">
+          <Search className="mt-2 h-4 w-4" />
+          <Input
+            placeholder="Tìm tên, số điện thoại..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <DataTable
+          columns={columns}
+          data={query.data?.data || []}
+          rowKey={(row) => String(row.id)}
+          loading={query.isLoading}
+        />
+>>>>>>> main
         <>
           {dialogOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -288,6 +351,7 @@ function CustomersPage() {
               </div>
             </div>
           )}
+<<<<<<< HEAD
 
           {detailOpen && viewing && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -423,6 +487,8 @@ function CustomersPage() {
               </div>
             </div>
           )}
+=======
+>>>>>>> main
         </>
       </PageContainer>
     </AppShell>

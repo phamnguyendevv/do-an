@@ -317,6 +317,7 @@ export const orderService = {
       );
       store.setState({ orders: newOrders });
       return { ok: true, data: localOrder };
+<<<<<<< HEAD
     } catch (apiErr) {
       return {
         ok: false,
@@ -325,6 +326,27 @@ export const orderService = {
             ? apiErr.message
             : "Không thể lưu thông tin đơn hàng vào máy chủ.",
       };
+=======
+    } catch (apiErr: any) {
+      console.warn(
+        "Backend API unavailable for order update, updating local store fallback:",
+        apiErr,
+      );
+      const updated: Order = {
+        ...order,
+        customerName: payload.customerName ?? order.customerName,
+        customerPhone: payload.customerPhone ?? order.customerPhone,
+        customerAddress: payload.customerAddress ?? order.customerAddress,
+        note: payload.note ?? order.note,
+        districtId: payload.toDistrictId ?? order.districtId,
+        wardCode: payload.toWardCode ?? order.wardCode,
+      };
+      const newOrders = orders.map((o) =>
+        o.id === order.id || o.orderCode === order.orderCode ? updated : o,
+      );
+      store.setState({ orders: newOrders });
+      return { ok: true, data: updated };
+>>>>>>> main
     }
   },
 };

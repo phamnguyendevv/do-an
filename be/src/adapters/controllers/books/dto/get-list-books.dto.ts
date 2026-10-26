@@ -28,6 +28,17 @@ export class GetListBooksDto {
   @IsString()
   category?: string
 
+<<<<<<< HEAD
+=======
+  @ApiProperty({ required: false, description: 'Filter by category ID' })
+  @IsOptional()
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? Number(value) : undefined,
+  )
+  @IsNumber()
+  categoryId?: number
+
+>>>>>>> main
   @ApiProperty({
     required: false,
     description: 'Filter by status',

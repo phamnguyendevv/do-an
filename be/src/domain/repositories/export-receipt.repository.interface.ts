@@ -6,7 +6,7 @@ export interface ISearchExportReceiptParams {
   page?: number
   search?: string
   reason?: string
-  orderId?: string
+  orderId?: number
   startDate?: Date
   endDate?: Date
 }

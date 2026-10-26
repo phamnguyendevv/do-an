@@ -22,7 +22,7 @@ const mapApiBook = (book: BookApiItem): Book => {
   const stock = Number(book?.stock ?? 0);
   const minStock = Number(book?.minStock ?? 0);
   const rawStatus =
-    (book?.status as any) ||
+    (book?.status as string | undefined) ||
     (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
 
   return {
@@ -127,18 +127,19 @@ export function useCategories(): Array<{ id: string; name: string }> {
     queryKey: ["category-names"],
     queryFn: async () => {
       try {
-        const res: any = await categoryApi.list({ size: 100 });
-        let items: any[] = [];
+        const res: unknown = await categoryApi.list({ size: 100 });
+        const resAsRecord = res as Record<string, unknown>;
+        let items: Record<string, unknown>[] = [];
         if (Array.isArray(res)) {
-          items = res;
-        } else if (Array.isArray(res?.data)) {
-          items = res.data;
-        } else if (Array.isArray(res?.data?.data)) {
-          items = res.data.data;
+          items = res as Record<string, unknown>[];
+        } else if (Array.isArray(resAsRecord?.data)) {
+          items = resAsRecord.data as Record<string, unknown>[];
+        } else if (Array.isArray((resAsRecord?.data as Record<string, unknown>)?.data)) {
+          items = (resAsRecord.data as Record<string, unknown>).data as Record<string, unknown>[];
         }
 
         const mapped = items
-          .map((c: any) => {
+          .map((c: Record<string, unknown>) => {
             if (typeof c === "string") return { id: c, name: c.trim() };
             const name = String(c?.name || c?.title || c?.categoryName || c?.category || "").trim();
             const id = String(c?.id || name || "");

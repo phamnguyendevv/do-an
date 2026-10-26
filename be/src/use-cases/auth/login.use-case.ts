@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { ILoginInput } from '@domain/entities/auth.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
@@ -25,7 +26,7 @@ export class LoginUseCase {
     private readonly exceptionsService: IException,
   ) {}
 
-  async execute(payload: { email: string; password: string }) {
+  async execute(payload: ILoginInput) {
     const user = await this.userRepository.getUserByEmail(payload.email)
     if (!user)
       throw this.exceptionsService.badRequestException({

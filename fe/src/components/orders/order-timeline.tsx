@@ -21,6 +21,7 @@ import {
   FileText,
   Building2,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -39,7 +40,7 @@ interface OrderTimelineProps {
 const ACTION_CONFIG: Record<
   string,
   {
-    icon: any;
+    icon: LucideIcon;
     label: string;
     bgClass: string;
     textClass: string;
@@ -150,7 +151,7 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
       refetch();
       queryClient.invalidateQueries({ queryKey: ["order-histories", targetId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error(err?.message || "Không thể thêm ghi chú");
     },
   });

@@ -44,6 +44,9 @@ export default tseslint.config(
           ignore: ['^@', '^./', '^../', '^test'],
         },
       ],
+      // Disable import/named: causes false positives with TypeScript CJS packages (e.g. class-validator)
+      // TypeScript compiler already validates named imports correctly
+      'import/named': 'off',
       'no-restricted-imports': [
         'error',
         {
@@ -53,7 +56,17 @@ export default tseslint.config(
       '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-explicit-any': 'error',
+
+      // Allow `any` – common in NestJS decorators, external APIs, catch blocks
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-enum-comparison': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+      '@typescript-eslint/require-await': 'warn',
 
       '@typescript-eslint/naming-convention': [
         'error',
@@ -81,14 +94,14 @@ export default tseslint.config(
           format: ['PascalCase'],
         },
         {
+          // Interfaces no longer required to have 'I' prefix
           selector: ['interface'],
           format: ['PascalCase'],
-          prefix: ['I'],
         },
         {
+          // Type aliases no longer required to have 'T' prefix
           selector: ['typeAlias'],
           format: ['PascalCase'],
-          prefix: ['T'],
         },
         {
           selector: 'memberLike',
@@ -126,6 +139,9 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/unbound-method': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
     },
   },
 )

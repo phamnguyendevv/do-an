@@ -18,6 +18,10 @@ export class ActivityLogService implements IActivityLogService {
   }
 }
 
+<<<<<<< HEAD
+=======
+// eslint-disable-next-line @typescript-eslint/naming-convention
+>>>>>>> main
 export const ActivityLogServiceProvider = {
   provide: ACTIVITY_LOG_SERVICE,
   useClass: ActivityLogService,

@@ -29,11 +29,15 @@ export class ExportReceiptLineDto {
 
 export class CreateExportReceiptDto {
   @ApiPropertyOptional({
+<<<<<<< HEAD
     description: 'Mã đơn hàng liên kết (nếu xuất theo đơn)',
+=======
+    description: 'ID đơn hàng liên kết (nếu xuất theo đơn)',
+>>>>>>> main
   })
   @IsOptional()
-  @IsString()
-  orderId?: string
+  @IsNumber()
+  orderId?: number
 
   @ApiProperty({
     description: 'Lý do xuất kho (Xuất bán, Xuất hủy/hỏng, Xuất mẫu,...)',

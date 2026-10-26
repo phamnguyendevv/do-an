@@ -217,6 +217,32 @@ const TOOLS = [
   },
 ];
 
+<<<<<<< HEAD
+=======
+function normalizeGeminiToolCalls(
+  parts: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }>,
+) {
+  const toolCalls: { id: string; name: string; args: string }[] = [];
+  let text = "";
+
+  for (const part of parts ?? []) {
+    if (typeof part.text === "string" && part.text.trim()) {
+      text += `${part.text}\n`;
+    }
+
+    if (part.functionCall?.name) {
+      toolCalls.push({
+        id: `gemini_call_${toolCalls.length + 1}`,
+        name: part.functionCall.name,
+        args: JSON.stringify(part.functionCall.args ?? {}),
+      });
+    }
+  }
+
+  return { text: text.trim(), toolCalls };
+}
+
+>>>>>>> main
 export const askAssistant = createServerFn({ method: "POST" })
   .validator((input: { messages: ChatMessage[] }) => input)
   .handler(async ({ data }): Promise<AssistantReply> => {
@@ -224,7 +250,115 @@ export const askAssistant = createServerFn({ method: "POST" })
     const backendUrl = process.env["BACKEND_URL"] ?? "http://localhost:3000";
     const assistantEndpoint = `${backendUrl}/api/v1/api/assistant/chat`;
 
+<<<<<<< HEAD
     const res = await fetch(assistantEndpoint, {
+=======
+    const key =
+      provider === "gemini"
+        ? (process.env["GEMINI_API_KEY"] ??
+          process.env["GOOGLE_API_KEY"] ??
+          process.env["AI_API_KEY"])
+        : provider === "openrouter"
+          ? (process.env["OPENROUTER_API_KEY"] ?? process.env["AI_API_KEY"])
+          : (process.env["OPENAI_API_KEY"] ?? process.env["AI_API_KEY"]);
+
+    if (!key) {
+      return {
+        ok: false,
+        error:
+          provider === "gemini"
+            ? "Chưa cấu hình Gemini. Vui lòng thiết lập biến GEMINI_API_KEY hoặc AI_API_KEY."
+            : provider === "openrouter"
+              ? "Chưa cấu hình OpenRouter. Vui lòng thiết lập biến OPENROUTER_API_KEY hoặc AI_API_KEY."
+              : "Chưa cấu hình AI. Vui lòng thiết lập biến OPENAI_API_KEY hoặc AI_API_KEY.",
+      };
+    }
+
+    if (provider === "gemini") {
+      const apiBaseUrl =
+        process.env["AI_API_BASE_URL"] ?? "https://generativelanguage.googleapis.com/v1beta";
+      const model = process.env["AI_MODEL"] ?? "gemini-2.0-flash";
+      const systemMessages = data.messages.filter((message) => message.role === "system");
+      const contents = data.messages
+        .filter((message) => message.role !== "system")
+        .map((message) => {
+          const content =
+            message.role === "tool"
+              ? `Tool result (${message.tool_call_id ?? "unknown"}): ${message.content}`
+              : message.content;
+          return {
+            role: message.role === "assistant" ? "model" : "user",
+            parts: [{ text: content || " " }],
+          };
+        });
+
+      const res = await fetch(
+        `${apiBaseUrl.replace(/\/$/, "")}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: systemMessages.length
+              ? { parts: systemMessages.map((message) => ({ text: message.content })) }
+              : undefined,
+            contents,
+            tools: [
+              {
+                functionDeclarations: TOOLS.map((tool) => ({
+                  name: tool.function.name,
+                  description: tool.function.description,
+                  parameters: tool.function.parameters,
+                })),
+              },
+            ],
+          }),
+        },
+      );
+
+      if (res.status === 429)
+        return { ok: false, error: "Đã vượt giới hạn yêu cầu AI, vui lòng thử lại sau." };
+      if (res.status === 402) return { ok: false, error: "Đã hết credit AI của workspace." };
+      if (!res.ok) return { ok: false, error: `Lỗi AI Gemini (${res.status}).` };
+
+      const json = (await res.json()) as {
+        candidates?: {
+          content?: {
+            parts?: Array<{
+              text?: string;
+              functionCall?: { name?: string; args?: Record<string, unknown> };
+            }>;
+          };
+        }[];
+      };
+
+      const candidate = json.candidates?.[0];
+      const normalized = normalizeGeminiToolCalls(candidate?.content?.parts ?? []);
+      return {
+        ok: true,
+        content: normalized.text,
+        toolCalls: normalized.toolCalls,
+      };
+    }
+
+    const apiBaseUrl =
+      process.env["AI_API_BASE_URL"] ??
+      (provider === "openrouter" ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1");
+    const model =
+      process.env["AI_MODEL"] ?? (provider === "openrouter" ? "openai/gpt-4o-mini" : "gpt-4o-mini");
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${key}`,
+      "content-type": "application/json",
+    };
+
+    if (provider === "openrouter") {
+      const siteUrl = process.env["OPENROUTER_SITE_URL"] ?? "http://localhost:5173";
+      const appName = process.env["OPENROUTER_APP_NAME"] ?? "BookStock AI";
+      headers["HTTP-Referer"] = siteUrl;
+      headers["X-Title"] = appName;
+    }
+
+    const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+>>>>>>> main
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -236,6 +370,7 @@ export const askAssistant = createServerFn({ method: "POST" })
     if (res.status === 429)
       return { ok: false, error: "Đã vượt giới hạn yêu cầu AI, vui lòng thử lại sau." };
     if (res.status === 402) return { ok: false, error: "Đã hết credit AI của workspace." };
+<<<<<<< HEAD
     if (!res.ok) {
       const errorData = await res.text();
       return { ok: false, error: `Lỗi AI (${res.status}): ${errorData}` };
@@ -252,6 +387,21 @@ export const askAssistant = createServerFn({ method: "POST" })
         content?: string;
         toolCalls?: { id: string; name: string; args: string }[];
       };
+=======
+    if (!res.ok)
+      return {
+        ok: false,
+        error: `Lỗi AI ${provider === "openrouter" ? "OpenRouter" : "OpenAI"} (${res.status}).`,
+      };
+
+    const json = (await res.json()) as {
+      choices?: {
+        message?: {
+          content?: string;
+          tool_calls?: { id: string; function: { name: string; arguments: string } }[];
+        };
+      }[];
+>>>>>>> main
     };
     const json = responseBody.data ?? responseBody;
 
@@ -261,7 +411,16 @@ export const askAssistant = createServerFn({ method: "POST" })
 
     return {
       ok: true,
+<<<<<<< HEAD
       content: json.content ?? "",
       toolCalls: json.toolCalls ?? [],
+=======
+      content: msg?.content ?? "",
+      toolCalls: (msg?.tool_calls ?? []).map((t) => ({
+        id: t.id,
+        name: t.function.name,
+        args: t.function.arguments,
+      })),
+>>>>>>> main
     };
   });

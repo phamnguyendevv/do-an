@@ -14,10 +14,19 @@ export class UpdateBookDto {
   @IsString()
   author?: string
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, description: 'Tên thể loại (string)' })
   @IsOptional()
   @IsString()
   category?: string
+
+  @ApiProperty({
+    required: false,
+    description: 'ID thể loại (FK tới bảng categories)',
+  })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  categoryId?: number
 
   @ApiProperty({ required: false })
   @IsOptional()

@@ -19,10 +19,14 @@ export interface UsePaginatedBooksParams {
 export const mapApiBook = (book: BookApiItem): Book => {
   const stock = Number(book?.stock ?? 0);
   const minStock = Number(book?.minStock ?? 0);
-  const purchasePrice = Number(book?.purchasePrice ?? (book as any)?.importPrice ?? 0);
-  const sellingPrice = Number(book?.sellingPrice ?? (book as any)?.price ?? 0);
+  const purchasePrice = Number(
+    book?.purchasePrice ?? (book as BookApiItem & { importPrice?: number })?.importPrice ?? 0,
+  );
+  const sellingPrice = Number(
+    book?.sellingPrice ?? (book as BookApiItem & { price?: number })?.price ?? 0,
+  );
   const rawStatus =
-    (book?.status as any) ||
+    (book?.status as string | undefined) ||
     (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
 
   return {
@@ -79,7 +83,7 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
     ],
     queryFn: async () => {
       // Build params without undefined values to satisfy exactOptionalPropertyTypes
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const p: any = { page, size };
       if (search?.trim()) p["search"] = search.trim();
       if (category && category !== "all") p["category"] = category;
@@ -91,7 +95,6 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
       if (sortBy) p["sortBy"] = sortBy;
       if (sortOrder) p["sortOrder"] = sortOrder;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res: any = await bookApi.list(p);
 
       let items: BookApiItem[] = [];

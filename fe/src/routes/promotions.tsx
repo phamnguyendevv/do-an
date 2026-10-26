@@ -39,7 +39,15 @@ function PromotionsPage() {
         startsAt: new Date(form.startsAt).toISOString(),
         endsAt: new Date(form.endsAt).toISOString(),
       } as any;
+<<<<<<< HEAD
       editing ? await promotionApi.update(editing.id, payload) : await promotionApi.create(payload);
+=======
+      if (editing) {
+        await promotionApi.update(editing.id, payload);
+      } else {
+        await promotionApi.create(payload);
+      }
+>>>>>>> main
       await client.invalidateQueries({ queryKey: ["promotions"] });
       toast.success("Đã lưu khuyến mãi");
       setOpen(false);
@@ -84,6 +92,7 @@ function PromotionsPage() {
   return (
     <AppShell>
       <PageContainer>
+<<<<<<< HEAD
         <PageHeader title="Khuyến mãi" description="Quản lý mã giảm giá và thời hạn áp dụng">
           <Button
             onClick={() => {
@@ -95,6 +104,23 @@ function PromotionsPage() {
             Thêm khuyến mãi
           </Button>
         </PageHeader>
+=======
+        <PageHeader
+          title="Khuyến mãi"
+          description="Quản lý mã giảm giá và thời hạn áp dụng"
+          actions={
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm khuyến mãi
+            </Button>
+          }
+        />
+>>>>>>> main
         <Input
           className="mb-4"
           placeholder="Tìm mã hoặc tên chương trình"

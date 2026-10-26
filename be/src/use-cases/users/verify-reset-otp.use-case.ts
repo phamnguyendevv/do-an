@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { IVerifyOtpInput } from '@domain/entities/auth.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   IRedisCacheService,
@@ -15,7 +16,7 @@ export class VerifyResetOtpUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(params: { email: string; inputOtp: string }): Promise<boolean> {
+  async execute(params: IVerifyOtpInput): Promise<boolean> {
     const key = `otp:${params.email}`
     const storedOtp = await this.redisService.getValue<string>(key)
 

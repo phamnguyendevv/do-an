@@ -115,7 +115,9 @@ export function verifySepayWebhookSignature({
         ) {
           return true
         }
-      } catch {}
+      } catch {
+        /* ignore crypto comparison errors */
+      }
     }
   }
 

@@ -139,6 +139,7 @@ export function AddressBookDialog({ open, onOpenChange, onSelectContact }: Addre
 
   const filteredContacts = useMemo(() => {
     const q = searchTerm.toLowerCase().trim();
+<<<<<<< HEAD
     if (!q) return contacts;
 
     // If server results exist, merge them with local contacts (dedup by phone)
@@ -170,6 +171,13 @@ export function AddressBookDialog({ open, onOpenChange, onSelectContact }: Addre
     const all = Array.from(map.values());
     return all.filter(
       (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.address.toLowerCase().includes(q),
+=======
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        c.address.toLowerCase().includes(q),
+>>>>>>> main
     );
   }, [contacts, serverContacts, searchTerm]);
 

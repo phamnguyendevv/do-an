@@ -908,9 +908,14 @@ export async function parseCustomerAndAddress(
       const beforePhoneMatch = rawInput.match(
         new RegExp(`^\\s*([A-ZÀ-Ỹa-zà-ỹ\\s]{2,35})[\\s,;:\\-]+${escapeRegex(rawPhone)}`, "i"),
       );
+<<<<<<< HEAD
       const beforePhoneName = beforePhoneMatch?.[1];
       if (beforePhoneName && isPotentialPersonName(beforePhoneName)) {
         customerName = beforePhoneName.trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
+=======
+      if (beforePhoneMatch && isPotentialPersonName(beforePhoneMatch[1])) {
+        customerName = beforePhoneMatch[1].trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
+>>>>>>> main
       }
     }
 

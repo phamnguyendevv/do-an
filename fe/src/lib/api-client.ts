@@ -186,7 +186,11 @@ apiClient.interceptors.response.use(
  */
 export async function apiRequest<T>(
   path: string,
+<<<<<<< HEAD
   options: (AxiosRequestConfig & { method?: string; body?: unknown }) | RequestInit = {},
+=======
+  options: (AxiosRequestConfig & { method?: string; body?: any }) | RequestInit = {},
+>>>>>>> main
 ): Promise<T> {
   const method = (options.method || "GET").toLowerCase();
 
