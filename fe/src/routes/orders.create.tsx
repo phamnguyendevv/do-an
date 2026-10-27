@@ -459,9 +459,14 @@ function CreateOrderPage() {
             parsed.districtName && `Khu vực: ${parsed.districtName}`,
           ].filter(Boolean);
 
-          toast.success(parsed.isAiParsed ? "✨ Gemini AI: Đã tự động nhận diện thông tin khách hàng!" : "Đã tự động nhận diện thông tin khách hàng!", {
-            description: summaryParts.join(" • "),
-          });
+          toast.success(
+            parsed.isAiParsed
+              ? "✨ Gemini AI: Đã tự động nhận diện thông tin khách hàng!"
+              : "Đã tự động nhận diện thông tin khách hàng!",
+            {
+              description: summaryParts.join(" • "),
+            },
+          );
         }
       } else {
         // Chế độ 3 cấp: Yêu cầu đủ Tỉnh/TP, Quận/Huyện và Phường/Xã
@@ -494,9 +499,14 @@ function CreateOrderPage() {
             parsed.wardName && `Phường/Xã: ${parsed.wardName}`,
           ].filter(Boolean);
 
-          toast.success(parsed.isAiParsed ? "✨ Gemini AI: Đã tự động nhận diện và điền thông tin khách hàng!" : "Đã tự động nhận diện và điền thông tin khách hàng!", {
-            description: summaryParts.join(" • "),
-          });
+          toast.success(
+            parsed.isAiParsed
+              ? "✨ Gemini AI: Đã tự động nhận diện và điền thông tin khách hàng!"
+              : "Đã tự động nhận diện và điền thông tin khách hàng!",
+            {
+              description: summaryParts.join(" • "),
+            },
+          );
         }
       }
     } catch (e: any) {
@@ -562,9 +572,14 @@ function CreateOrderPage() {
           },
         );
       } else {
-        toast.success(parsed.isAiParsed ? `✨ Gemini AI: Đã thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!` : `Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
-          description: matchedNames.join(" • "),
-        });
+        toast.success(
+          parsed.isAiParsed
+            ? `✨ Gemini AI: Đã thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`
+            : `Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`,
+          {
+            description: matchedNames.join(" • "),
+          },
+        );
       }
     } catch (e: any) {
       console.error("Lỗi phân tích sản phẩm tự động:", e);
@@ -1227,10 +1242,11 @@ function CreateOrderPage() {
                   <button
                     type="button"
                     onClick={() => setCarrierType("GHN")}
-                    className={`rounded-lg border p-3 text-left transition-all ${carrierType === "GHN"
+                    className={`rounded-lg border p-3 text-left transition-all ${
+                      carrierType === "GHN"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/50"
-                      }`}
+                    }`}
                   >
                     <div className="font-semibold text-sm flex items-center gap-1.5">
                       <Truck className="h-4 w-4 text-primary" /> Giao Hàng Nhanh
@@ -1243,10 +1259,11 @@ function CreateOrderPage() {
                   <button
                     type="button"
                     onClick={() => setCarrierType("STORE")}
-                    className={`rounded-lg border p-3 text-left transition-all ${carrierType === "STORE"
+                    className={`rounded-lg border p-3 text-left transition-all ${
+                      carrierType === "STORE"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/50"
-                      }`}
+                    }`}
                   >
                     <div className="font-semibold text-sm">Nhận tại cửa hàng</div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -1257,10 +1274,11 @@ function CreateOrderPage() {
                   <button
                     type="button"
                     onClick={() => setCarrierType("OTHER")}
-                    className={`rounded-lg border p-3 text-left transition-all ${carrierType === "OTHER"
+                    className={`rounded-lg border p-3 text-left transition-all ${
+                      carrierType === "OTHER"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/50"
-                      }`}
+                    }`}
                   >
                     <div className="font-semibold text-sm">Đơn vị khác</div>
                     <p className="text-xs text-muted-foreground mt-1">Tự nhập phí vận chuyển</p>

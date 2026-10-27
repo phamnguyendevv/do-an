@@ -1,8 +1,5 @@
 ﻿import { describe, expect, it, vi } from "vitest";
-import {
-  geminiParseCustomerAndAddress,
-  geminiParseProducts,
-} from "./gemini-order-parser";
+import { geminiParseCustomerAndAddress, geminiParseProducts } from "./gemini-order-parser";
 import type { Book } from "@/types";
 import type { GhnProvince } from "./ghn-api";
 

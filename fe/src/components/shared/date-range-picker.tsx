@@ -349,7 +349,12 @@ export function DateRangePicker({
                       Áp dụng
                     </Button>
                   ) : null}
-                  <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={handleClear}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={handleClear}
+                  >
                     Xóa lọc
                   </Button>
                 </div>

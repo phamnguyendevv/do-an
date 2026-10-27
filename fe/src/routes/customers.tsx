@@ -480,11 +480,7 @@ function CustomersPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                  disabled={isSaving}
-                >
+                <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>
                   Hủy
                 </Button>
                 <Button

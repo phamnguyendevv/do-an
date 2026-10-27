@@ -277,9 +277,7 @@ export async function askAssistantApi(messages: ChatMessage[]): Promise<Assistan
     };
   } catch (error: any) {
     const msg =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Không thể kết nối đến máy chủ AI.";
+      error?.response?.data?.message || error?.message || "Không thể kết nối đến máy chủ AI.";
     return {
       ok: false,
       error: `Lỗi AI: ${msg}`,

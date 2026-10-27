@@ -43,11 +43,7 @@ export interface HybridProductResult extends ParsedProductListResult {
 /**
  * Fuzzy match a string query with a list of items using normalized text
  */
-function findBestMatch<T>(
-  query: string,
-  items: T[],
-  getName: (item: T) => string,
-): T | undefined {
+function findBestMatch<T>(query: string, items: T[], getName: (item: T) => string): T | undefined {
   if (!query || !items || !items.length) return undefined;
   const normQuery = normalizeText(query);
   if (!normQuery) return undefined;
@@ -105,10 +101,10 @@ export async function geminiParseCustomerAndAddress(
       res?.data?.customerName !== undefined || res?.data?.province !== undefined
         ? res.data
         : res?.customerName !== undefined || res?.province !== undefined
-        ? res
-        : res?.data?.data !== undefined
-        ? res.data.data
-        : undefined;
+          ? res
+          : res?.data?.data !== undefined
+            ? res.data.data
+            : undefined;
 
     if (aiData) {
       let matchedProvince: GhnProvince | undefined;
@@ -154,12 +150,7 @@ export async function geminiParseCustomerAndAddress(
   }
 
   // Fallback: Chạy bộ phân tích cú pháp local
-  const localResult = await parseCustomerAndAddress(
-    rawText,
-    provinces,
-    getDistricts,
-    getWards,
-  );
+  const localResult = await parseCustomerAndAddress(rawText, provinces, getDistricts, getWards);
   return { ...localResult, isAiParsed: false };
 }
 
@@ -185,19 +176,20 @@ export async function geminiParseProducts(
       }),
     });
 
-    const aiData: GeminiParsedProductsApi | undefined =
-      Array.isArray(res?.data?.items)
-        ? res.data
-        : Array.isArray(res?.items)
+    const aiData: GeminiParsedProductsApi | undefined = Array.isArray(res?.data?.items)
+      ? res.data
+      : Array.isArray(res?.items)
         ? res
         : Array.isArray(res?.data?.data?.items)
-        ? res.data.data
-        : undefined;
+          ? res.data.data
+          : undefined;
 
     if (aiData && aiData.items.length > 0) {
       const lineMap = new Map<string, { quantity: number; price: number }>();
       const matchedItems: ParsedProductItem[] = [];
-      const unmatchedTokens: string[] = Array.isArray(aiData.unmatched) ? [...aiData.unmatched] : [];
+      const unmatchedTokens: string[] = Array.isArray(aiData.unmatched)
+        ? [...aiData.unmatched]
+        : [];
 
       for (const item of aiData.items) {
         let matchedBook: Book | undefined;

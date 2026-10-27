@@ -90,9 +90,7 @@ function AnalyticsPage() {
         books,
         range,
         new Date(),
-        dateRange?.from
-          ? { from: dateRange.from, to: dateRange.to ?? dateRange.from }
-          : undefined,
+        dateRange?.from ? { from: dateRange.from, to: dateRange.to ?? dateRange.from } : undefined,
         imports,
         exports,
       ),
