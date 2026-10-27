@@ -36,8 +36,9 @@ import { useBooks, useCategories } from "@/hooks/use-store";
 import { useCustomerLookup } from "@/hooks/use-customer-lookup";
 import { defineAbilityFor } from "@/lib/ability";
 
-import { orderApi, sepayApi } from "@/lib/order-api";
+import { sepayApi } from "@/lib/order-api";
 import { orderService } from "@/services/order-service";
+import { store } from "@/services/store";
 import { storeSettingsService } from "@/services/store-settings";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import type { Book } from "@/types";
@@ -105,6 +106,7 @@ export function PosPage() {
     setCustomerPhone,
     suggestions: customerSuggestions,
     isLoading: isLoadingCustomer,
+    error: customerLookupError,
     showSuggestions: showPhoneSuggestions,
     setShowSuggestions: setShowPhoneSuggestions,
     handleSelectCustomer,
@@ -315,12 +317,21 @@ export function PosPage() {
 
   const finalizeSepayOrder = async (orderId: number | string): Promise<boolean> => {
     try {
-      const current = await orderApi.get(orderId);
+      const current = store
+        .getSnapshot()
+        .orders.find(
+          (order) => order.id === String(orderId) || order.orderCode === String(orderId),
+        );
+      if (!current) throw new Error("Không tìm thấy đơn SePay trong dữ liệu demo cục bộ.");
       if (current.status !== "DELIVERED") {
-        await orderApi.updateStatus(orderId, "DELIVERED");
+        const statusResult = await orderService.updateStatus(current.id, "DELIVERED");
+        if (!statusResult.ok) throw new Error(statusResult.error ?? "Không thể hoàn tất đơn hàng.");
       }
       if (current.payment !== "PAID") {
-        await orderApi.updatePayment(orderId, "PAID");
+        const paymentResult = await orderService.updatePayment(current.id, "PAID");
+        if (!paymentResult.ok) {
+          throw new Error(paymentResult.error ?? "Không thể ghi nhận thanh toán.");
+        }
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
@@ -328,9 +339,7 @@ export function PosPage() {
       ]);
       return true;
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Không thể chốt đơn SePay trên máy chủ.",
-      );
+      toast.error(error instanceof Error ? error.message : "Không thể chốt đơn SePay.");
       return false;
     }
   };
@@ -1041,6 +1050,9 @@ export function PosPage() {
                 ))}
               </div>
             )}
+            {customerLookupError ? (
+              <p className="text-xs text-destructive">{customerLookupError}</p>
+            ) : null}
           </div>
 
           {/* Cart Items List */}

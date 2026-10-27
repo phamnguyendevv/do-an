@@ -51,8 +51,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { supplierApi, type SupplierApiItem } from "@/lib/supplier-api";
 import { Can } from "@/lib/ability";
+import { supplierService } from "@/services/directory-service";
+import type { Supplier } from "@/types";
 
 export const Route = createFileRoute("/suppliers")({
   head: () => ({
@@ -81,7 +82,7 @@ function SupplierFormDialog({
   supplier,
   trigger,
 }: {
-  supplier?: SupplierApiItem;
+  supplier?: Supplier;
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -112,14 +113,17 @@ function SupplierFormDialog({
         ...(values.note !== undefined ? { note: values.note } : {}),
       };
       if (supplier) {
-        await supplierApi.update(supplier.id, payload);
+        const result = supplierService.update(supplier.id, payload);
+        if (!result.ok) throw new Error(result.error ?? "Không thể cập nhật nhà cung cấp.");
         toast.success("Cập nhật nhà cung cấp thành công");
       } else {
-        await supplierApi.create(payload);
+        const result = supplierService.create(payload);
+        if (!result.ok) throw new Error(result.error ?? "Không thể thêm nhà cung cấp.");
         toast.success("Thêm nhà cung cấp mới thành công");
       }
       await queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
       await queryClient.invalidateQueries({ queryKey: ["supplier-names"] });
+      await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       setOpen(false);
       form.reset();
     } catch (error) {
@@ -268,15 +272,17 @@ function SupplierFormDialog({
   );
 }
 
-function SupplierRowActions({ supplier }: { supplier: SupplierApiItem }) {
+function SupplierRowActions({ supplier }: { supplier: Supplier }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async () => {
     try {
-      await supplierApi.remove(supplier.id);
+      const result = supplierService.delete(supplier.id);
+      if (!result.ok) throw new Error(result.error ?? "Không thể xóa nhà cung cấp.");
       await queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
       await queryClient.invalidateQueries({ queryKey: ["supplier-names"] });
+      await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       toast.success("Đã xóa nhà cung cấp");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể xóa nhà cung cấp");
@@ -333,26 +339,16 @@ function SuppliersPage() {
   const { data: rawSuppliers = [], isLoading } = useQuery({
     queryKey: ["admin-suppliers"],
     queryFn: async () => {
-      try {
-        const res = await supplierApi.list({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items;
-      } catch {
-        return [];
+      const result = supplierService.list();
+      if (!result.ok || !result.data) {
+        throw new Error(result.error ?? "Không thể tải nhà cung cấp.");
       }
+      return result.data;
     },
     staleTime: 30_000,
   });
 
-  const suppliers: SupplierApiItem[] = useMemo(() => {
-    if (!Array.isArray(rawSuppliers)) return [];
-    return rawSuppliers
-      .map((item: any) => {
-        if (typeof item === "string") return { id: 0, name: item };
-        return item;
-      })
-      .filter((item): item is SupplierApiItem => Boolean(item && typeof item.name === "string"));
-  }, [rawSuppliers]);
+  const suppliers: Supplier[] = rawSuppliers;
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -367,7 +363,7 @@ function SuppliersPage() {
     );
   }, [suppliers, search]);
 
-  const columns: DataTableColumn<SupplierApiItem>[] = [
+  const columns: DataTableColumn<Supplier>[] = [
     {
       key: "id",
       header: "ID",

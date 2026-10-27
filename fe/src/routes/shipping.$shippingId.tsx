@@ -160,7 +160,10 @@ function ShippingDetailPage() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const activeIndex = stepIndexByStatus[shipment.status] ?? 0;
-  const failed = shipment.status === "FAILED" || shipment.status === "RETURNED";
+  const failed =
+    shipment.status === "FAILED" ||
+    shipment.status === "RETURNED" ||
+    shipment.status === "CANCELLED";
   const isGhn =
     (shipment.carrier?.includes("GHN") ?? false) ||
     (shipment.trackingNumber?.startsWith("GHN") ?? false) ||

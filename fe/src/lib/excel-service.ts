@@ -1,6 +1,5 @@
 import * as XLSX from "xlsx";
-import type { Book, Order } from "@/types";
-import type { StockMovementApiItem } from "@/lib/inventory-api";
+import type { Book, Order, StockMovement } from "@/types";
 
 export interface ParsedBookRow {
   title: string;
@@ -363,10 +362,7 @@ export function exportOrdersToExcel(orders: Order[], filename = "danh_sach_don_h
 /**
  * Xuất Sổ kho / Biến động tồn kho ra file Excel
  */
-export function exportMovementsToExcel(
-  movements: StockMovementApiItem[],
-  filename = "so_kho_bien_dong",
-) {
+export function exportMovementsToExcel(movements: StockMovement[], filename = "so_kho_bien_dong") {
   const headers = [
     "Mã biến động",
     "Tên sách",

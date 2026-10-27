@@ -57,6 +57,7 @@ export const shippingStatusLabel: Record<ShippingStatus, string> = {
   DELIVERED: "Đã giao",
   FAILED: "Giao thất bại",
   RETURNED: "Hoàn hàng",
+  CANCELLED: "Đã hủy",
 };
 
 export const shippingStatusTone: Record<ShippingStatus, StatusTone> = {
@@ -67,4 +68,5 @@ export const shippingStatusTone: Record<ShippingStatus, StatusTone> = {
   DELIVERED: "success",
   FAILED: "error",
   RETURNED: "warning",
+  CANCELLED: "neutral",
 };

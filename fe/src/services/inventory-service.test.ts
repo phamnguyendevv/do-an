@@ -1,260 +1,220 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { orderApi } from "@/lib/order-api";
-import { inventoryApi } from "@/lib/inventory-api";
 import { store } from "./store";
 import { inventoryService, checkAvailability, validateLines } from "./inventory-service";
 import { orderService } from "./order-service";
-import type { Book, Order } from "@/types";
+import type { Book } from "@/types";
 
-const testBooks: Book[] = [
-  {
-    id: "1",
-    title: "Clean Code",
-    author: "Robert C. Martin",
-    category: "Công nghệ",
-    purchasePrice: 200000,
-    sellingPrice: 300000,
-    stock: 20,
-    minStock: 5,
-    status: "IN_STOCK",
-    createdAt: new Date().toISOString(),
-  },
-];
+const testBook: Book = {
+  id: "BK-TEST",
+  title: "Clean Code",
+  author: "Robert C. Martin",
+  category: "Công nghệ",
+  purchasePrice: 200_000,
+  sellingPrice: 300_000,
+  stock: 20,
+  minStock: 5,
+  status: "IN_STOCK",
+  createdAt: new Date().toISOString(),
+};
 
 const firstBook = () => store.getSnapshot().books[0]!;
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   store.setState({
-    books: testBooks.map((b) => ({ ...b })),
+    books: [{ ...testBook }],
     orders: [],
     imports: [],
     exports: [],
     shipments: [],
+    movements: [],
+    stocktakes: [],
+    customers: [],
+    processedOperationKeys: [],
   });
-  vi.restoreAllMocks();
 });
 
-describe("validateLines", () => {
-  it("từ chối danh sách rỗng", () => {
+describe("inventory validation", () => {
+  it("rejects empty lines, non-positive quantities, duplicate books, and invalid prices", () => {
     expect(validateLines([], true)).toBeTruthy();
+    expect(validateLines([{ bookId: "BK-TEST", quantity: 0, price: 10 }], true)).toBeTruthy();
+    expect(
+      validateLines(
+        [
+          { bookId: "BK-TEST", quantity: 1, price: 10 },
+          { bookId: "BK-TEST", quantity: 1, price: 10 },
+        ],
+        true,
+      ),
+    ).toBeTruthy();
+    expect(
+      validateLines([{ bookId: "BK-TEST", quantity: 1, price: Number.NaN }], true),
+    ).toBeTruthy();
   });
 
-  it("từ chối số lượng <= 0", () => {
-    expect(validateLines([{ bookId: "B-1", quantity: 0, price: 100 }], true)).toBeTruthy();
-  });
-
-  it("chấp nhận dòng hợp lệ", () => {
-    expect(validateLines([{ bookId: "B-1", quantity: 2, price: 100 }], true)).toBeNull();
-  });
-});
-
-describe("checkAvailability", () => {
-  it("báo lỗi khi vượt tồn kho", () => {
-    const b = firstBook();
-    expect(checkAvailability([{ bookId: b.id, quantity: b.stock + 5, price: 0 }])).toBeTruthy();
-  });
-
-  it("hợp lệ khi trong tồn kho", () => {
-    const b = firstBook();
-    expect(checkAvailability([{ bookId: b.id, quantity: 1, price: 0 }])).toBeNull();
-  });
-});
-
-describe("inventoryService", () => {
-  it("nhập kho làm tăng tồn kho và tạo phiếu", async () => {
-    const before = firstBook();
-    vi.spyOn(inventoryApi, "createImport").mockResolvedValue({
-      id: 1,
-      receiptCode: "IMP-1001",
-      supplierName: "NXB Trẻ",
-      importDate: new Date().toISOString(),
-      totalItems: 10,
-      totalValue: 500000,
-      items: [],
-      createdAt: new Date().toISOString(),
-    });
-
-    const res = await inventoryService.createImport({
-      supplier: "NXB Trẻ",
-      date: new Date().toISOString(),
-      lines: [{ bookId: before.id, quantity: 10, price: 50000 }],
-    });
-    expect(res.ok).toBe(true);
-    expect(firstBook().stock).toBe(before.stock + 10);
-    expect(store.getSnapshot().imports[0]?.totalValue).toBe(500000);
-  });
-
-  it("không giả lập nhập kho thành công khi API lỗi", async () => {
-    const before = firstBook();
-    vi.spyOn(inventoryApi, "createImport").mockRejectedValue(new Error("API unavailable"));
-
-    const res = await inventoryService.createImport({
-      supplier: "NXB Trẻ",
-      date: new Date().toISOString(),
-      lines: [{ bookId: before.id, quantity: 10, price: 50000 }],
-    });
-
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe("API unavailable");
-    expect(firstBook().stock).toBe(before.stock);
-    expect(store.getSnapshot().imports).toHaveLength(0);
-  });
-
-  it("không giả lập nhập kho thành công khi API lỗi", async () => {
-    const before = firstBook();
-    vi.spyOn(inventoryApi, "createImport").mockRejectedValue(new Error("API unavailable"));
-
-    const res = await inventoryService.createImport({
-      supplier: "NXB Trẻ",
-      date: new Date().toISOString(),
-      lines: [{ bookId: before.id, quantity: 10, price: 50000 }],
-    });
-
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe("API unavailable");
-    expect(firstBook().stock).toBe(before.stock);
-    expect(store.getSnapshot().imports).toHaveLength(0);
-  });
-
-  it("xuất kho làm giảm tồn kho", async () => {
-    const before = firstBook();
-    vi.spyOn(inventoryApi, "createExport").mockResolvedValue({
-      id: 1,
-      receiptCode: "EXP-2001",
-      reason: "Bán lẻ",
-      exportDate: new Date().toISOString(),
-      totalItems: 2,
-      createdAt: new Date().toISOString(),
-      items: [],
-    });
-
-    const res = await inventoryService.createExport({
-      reason: "Bán lẻ",
-      lines: [{ bookId: before.id, quantity: 2, price: 0 }],
-    });
-    expect(res.ok).toBe(true);
-    expect(firstBook().stock).toBe(before.stock - 2);
-  });
-
-  it("không giả lập xuất kho thành công khi API lỗi", async () => {
-    const before = firstBook();
-    vi.spyOn(inventoryApi, "createExport").mockRejectedValue(new Error("API unavailable"));
-
-    const res = await inventoryService.createExport({
-      reason: "Bán lẻ",
-      lines: [{ bookId: before.id, quantity: 2, price: 0 }],
-    });
-
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe("API unavailable");
-    expect(firstBook().stock).toBe(before.stock);
-    expect(store.getSnapshot().exports).toHaveLength(0);
-  });
-
-  it("chặn xuất kho vượt tồn", async () => {
-    const before = firstBook();
-    const res = await inventoryService.createExport({
-      reason: "Bán lẻ",
-      lines: [{ bookId: before.id, quantity: before.stock + 1, price: 0 }],
-    });
-    expect(res.ok).toBe(false);
-    expect(firstBook().stock).toBe(before.stock);
+  it("does not accept an unknown book as available", () => {
+    expect(checkAvailability([{ bookId: "missing", quantity: 1, price: 0 }])).toContain(
+      "Không tìm thấy",
+    );
   });
 });
 
-describe("orderService", () => {
-  it("POS không báo bán thành công nếu đơn không lưu được trên server", async () => {
-    const before = firstBook();
-    vi.spyOn(orderApi, "create").mockRejectedValue(new Error("API unavailable"));
-
-    const res = await orderService.createOrder({
-      customerName: "Khách lẻ tại quầy",
-      customerPhone: "0900000000",
-      customerAddress: "Tại quầy",
-      shippingMethod: "Bán tại quầy (POS)",
-      shippingFee: 0,
-      discount: 0,
-      lines: [{ bookId: before.id, quantity: 2, price: 300000 }],
+describe("inventory service", () => {
+  it("creates an import, updates stock, and records line and movement snapshots atomically", async () => {
+    const result = await inventoryService.createImport({
+      supplier: "NXB Trẻ",
+      date: new Date().toISOString(),
+      lines: [{ bookId: testBook.id, quantity: 10, price: 50_000 }],
     });
 
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe("API unavailable");
-    expect(firstBook().stock).toBe(before.stock);
-    expect(store.getSnapshot().orders).toHaveLength(0);
+    expect(result.ok).toBe(true);
+    expect(firstBook().stock).toBe(testBook.stock + 10);
+    expect(store.getSnapshot().imports[0]?.items?.[0]?.title).toBe(testBook.title);
+    expect(store.getSnapshot().imports[0]?.totalValue).toBe(500_000);
+    expect(store.getSnapshot().movements).toHaveLength(1);
   });
 
-  it("tạo đơn hàng và trừ tồn kho", async () => {
-    const before = firstBook();
-    vi.spyOn(orderApi, "create").mockResolvedValue({
-      id: 1,
-      orderCode: "ORD-1",
-      customerName: "Nguyễn A",
-      customerPhone: "0900000000",
-      customerAddress: "Hà Nội",
-      items: [{ bookId: before.id, title: before.title, quantity: 3, price: 100000 }],
-      subtotal: 300000,
-      discount: 10000,
-      shippingFee: 20000,
-      total: 310000,
-      payment: "UNPAID",
-      shippingMethod: "STANDARD",
-      status: "PENDING",
-      createdAt: new Date().toISOString(),
+  it("creates an export only when stock is sufficient", async () => {
+    const result = await inventoryService.createExport({
+      reason: "Bán lẻ",
+      lines: [{ bookId: testBook.id, quantity: 2, price: 0 }],
     });
 
-    const res = await orderService.createOrder({
-      customerName: "Nguyễn A",
-      customerPhone: "0900000000",
-      customerAddress: "Hà Nội",
-      shippingMethod: "STANDARD",
-      shippingFee: 20000,
-      discount: 10000,
-      lines: [{ bookId: before.id, quantity: 3, price: 100000 }],
-    });
-    expect(res.ok).toBe(true);
-    expect(res.data?.total).toBe(3 * 100000 - 10000 + 20000);
-    expect(firstBook().stock).toBe(before.stock - 3);
+    expect(result.ok).toBe(true);
+    expect(firstBook().stock).toBe(testBook.stock - 2);
+    expect(store.getSnapshot().exports).toHaveLength(1);
+    expect(store.getSnapshot().movements[0]?.type).toBe("EXPORT");
   });
 
-  it("không cập nhật trạng thái hoặc hoàn tồn cục bộ nếu API từ chối hủy đơn", async () => {
-    const book = firstBook();
-    const order: Order = {
-      id: "7",
-      orderCode: "ORD-7",
-      customerName: "Nguyễn A",
-      customerPhone: "0900000000",
-      customerAddress: "Hà Nội",
-      items: [{ bookId: book.id, title: book.title, quantity: 3, price: 100000 }],
-      subtotal: 300000,
-      discount: 0,
-      shippingFee: 0,
-      total: 300000,
-      payment: "UNPAID",
-      shippingMethod: "STANDARD",
-      status: "PENDING",
-      createdAt: new Date().toISOString(),
+  it("rejects shortage and does not partially mutate any collection", async () => {
+    const before = store.getSnapshot();
+    const result = await inventoryService.createExport({
+      reason: "Bán lẻ",
+      lines: [{ bookId: testBook.id, quantity: testBook.stock + 1, price: 0 }],
+    });
+
+    expect(result).toMatchObject({ ok: false, code: "INSUFFICIENT_STOCK" });
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it("rejects repeat submissions with a reused idempotency key", async () => {
+    const input = {
+      supplier: "NXB Trẻ",
+      date: new Date().toISOString(),
+      lines: [{ bookId: testBook.id, quantity: 2, price: 10 }],
+      idempotencyKey: "import-form-1",
     };
-    store.setState({ orders: [order] });
-    vi.spyOn(orderApi, "updateStatus").mockRejectedValue(new Error("API unavailable"));
+    const first = await inventoryService.createImport(input);
+    const second = await inventoryService.createImport(input);
 
-    const res = await orderService.updateStatus(order.id, "CANCELLED");
-
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe("API unavailable");
-    expect(store.getSnapshot().orders[0]?.status).toBe("PENDING");
-    expect(firstBook().stock).toBe(book.stock);
+    expect(first.ok).toBe(true);
+    expect(second).toMatchObject({ ok: false, code: "DUPLICATE_OPERATION" });
+    expect(firstBook().stock).toBe(testBook.stock + 2);
+    expect(store.getSnapshot().imports).toHaveLength(1);
   });
 
-  it("yêu cầu thông tin khách hàng", async () => {
-    const res = await orderService.createOrder({
-      customerName: "",
-      customerPhone: "",
-      customerAddress: "",
+  it("leaves all memory unchanged if persistence fails", async () => {
+    const before = store.getSnapshot();
+    vi.spyOn(store, "setState").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+
+    const result = await inventoryService.createImport({
+      supplier: "NXB Trẻ",
+      date: new Date().toISOString(),
+      lines: [{ bookId: testBook.id, quantity: 2, price: 10 }],
+    });
+
+    expect(result).toMatchObject({ ok: false, code: "PERSISTENCE_ERROR" });
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it("creates an order and prevents stock from being restored twice", async () => {
+    const created = await orderService.createOrder({
+      customerName: "Khách demo",
+      customerPhone: "0900000000",
+      customerAddress: "Hà Nội",
       shippingMethod: "STANDARD",
       shippingFee: 0,
       discount: 0,
-      lines: [],
+      lines: [{ bookId: testBook.id, quantity: 3, price: 100_000 }],
     });
-    expect(res.ok).toBe(false);
+    expect(created.ok).toBe(true);
+    expect(firstBook().stock).toBe(testBook.stock - 3);
+
+    const cancel = await orderService.updateStatus(created.data!.id, "CANCELLED");
+    const secondCancel = await orderService.updateStatus(created.data!.id, "CANCELLED");
+    expect(cancel.ok).toBe(true);
+    expect(secondCancel.ok).toBe(true);
+    expect(firstBook().stock).toBe(testBook.stock);
+    expect(
+      store.getSnapshot().movements.filter((movement) => movement.type === "RESTOCK"),
+    ).toHaveLength(1);
+    expect(store.getSnapshot().customers).toHaveLength(1);
+
+    await orderService.createOrder({
+      customerName: "Khách demo",
+      customerPhone: "0900000000",
+      customerAddress: "Hà Nội",
+      shippingMethod: "STANDARD",
+      shippingFee: 0,
+      discount: 0,
+      lines: [{ bookId: testBook.id, quantity: 1, price: 100_000 }],
+    });
+    expect(store.getSnapshot().customers).toHaveLength(1);
+  });
+
+  it("records order-linked exports without decrementing stock a second time", async () => {
+    const order = await orderService.createOrder({
+      orderCode: "LOCAL-ORDER-1",
+      customerName: "Khách demo",
+      customerPhone: "0911111111",
+      customerAddress: "Hà Nội",
+      shippingMethod: "STANDARD",
+      shippingFee: 0,
+      discount: 0,
+      lines: [{ bookId: testBook.id, quantity: 3, price: 100_000 }],
+    });
+    const stockAfterOrder = firstBook().stock;
+    const movementsAfterOrder = store.getSnapshot().movements.length;
+    const input = {
+      orderId: order.data!.id,
+      reason: "Xuất bán theo đơn",
+      lines: [{ bookId: testBook.id, quantity: 3, price: 100_000 }],
+    };
+
+    const receipt = await inventoryService.createExport(input);
+    const duplicateReceipt = await inventoryService.createExport(input);
+
+    expect(receipt.ok).toBe(true);
+    expect(duplicateReceipt).toMatchObject({ ok: false, code: "CONFLICT" });
+    expect(firstBook().stock).toBe(stockAfterOrder);
+    expect(store.getSnapshot().movements).toHaveLength(movementsAfterOrder);
+  });
+
+  it("rejects duplicate order codes and repeated order submissions", async () => {
+    const input = {
+      orderCode: "LOCAL-IDEMPOTENT-1",
+      customerName: "Khách demo",
+      customerPhone: "0922222222",
+      customerAddress: "Hà Nội",
+      shippingMethod: "POS",
+      shippingFee: 0,
+      discount: 0,
+      lines: [{ bookId: testBook.id, quantity: 1, price: 100_000 }],
+      idempotencyKey: "pos-submit-1",
+    };
+    const first = await orderService.createOrder(input);
+    const replay = await orderService.createOrder(input);
+    const reusedCode = await orderService.createOrder({
+      ...input,
+      idempotencyKey: "different-key",
+    });
+
+    expect(first.ok).toBe(true);
+    expect(replay).toMatchObject({ ok: false, code: "DUPLICATE_OPERATION" });
+    expect(reusedCode).toMatchObject({ ok: false, code: "CONFLICT" });
+    expect(store.getSnapshot().orders).toHaveLength(1);
+    expect(firstBook().stock).toBe(testBook.stock - 1);
   });
 });

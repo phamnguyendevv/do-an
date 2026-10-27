@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Download, FileSpreadsheet, Info, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { bookApi } from "@/lib/book-api";
+import { booksService } from "@/services/books-service";
 import {
   downloadBookImportTemplate,
   parseBookExcelFile,
@@ -35,15 +34,16 @@ export function ExcelBookImportDialog({
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [fileFingerprint, setFileFingerprint] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setFileName(file.name);
+    setFileFingerprint(`${file.name}:${file.size}:${file.lastModified}`);
     setIsParsing(true);
     setErrors([]);
     setParsedData([]);
@@ -73,44 +73,31 @@ export function ExcelBookImportDialog({
     }
 
     setIsImporting(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (let i = 0; i < parsedData.length; i++) {
-      const item = parsedData[i];
-      if (!item) continue;
-      try {
-        await bookApi.create({
-          title: item.title,
-          author: item.author,
-          category: item.category,
-          purchasePrice: item.importPrice,
-          sellingPrice: item.price,
-          stock: item.stock,
-          minStock: item.minStock,
-          ...(item.description !== undefined && { description: item.description }),
-        });
-        successCount++;
-      } catch (e) {
-        console.warn(`Lỗi import sách "${item.title}":`, e);
-        failCount++;
-      }
-      setProgress(Math.round(((i + 1) / parsedData.length) * 100));
-    }
-
+    const result = booksService.createMany(
+      parsedData.map((item) => ({
+        title: item.title,
+        author: item.author,
+        category: item.category,
+        purchasePrice: item.importPrice,
+        sellingPrice: item.price,
+        stock: item.stock,
+        minStock: item.minStock,
+        ...(item.description !== undefined ? { description: item.description } : {}),
+      })),
+      fileFingerprint,
+    );
+    setProgress(100);
     setIsImporting(false);
-    await queryClient.invalidateQueries({ queryKey: ["books"] });
-    await queryClient.invalidateQueries({ queryKey: ["category-names"] });
-
-    if (successCount > 0) {
-      toast.success(`Đã nhập thành công ${successCount} cuốn sách vào hệ thống!`);
-      setOpen(false);
-      setParsedData([]);
-      setFileName(null);
-      onSuccess?.();
-    } else {
-      toast.error(`Nhập thất bại. Vui lòng kiểm tra lại kết nối backend.`);
+    if (!result.ok || !result.data) {
+      toast.error(result.error ?? "Nhập sách thất bại.");
+      return;
     }
+    toast.success(`Đã nhập thành công ${result.data.length} đầu sách vào hệ thống!`);
+    setOpen(false);
+    setParsedData([]);
+    setFileName(null);
+    setFileFingerprint("");
+    onSuccess?.();
   };
 
   return (

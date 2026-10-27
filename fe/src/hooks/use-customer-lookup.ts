@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { customerApi, type CustomerApiItem } from "@/lib/customer-api";
+import { customerService } from "@/services/directory-service";
+import type { Customer } from "@/types";
 
 export const normalizePhone = (value: string): string => {
   return value.replace(/\D/g, "").replace(/^84/, "0");
@@ -10,18 +11,20 @@ export interface UseCustomerLookupResult {
   setCustomerName: (name: string) => void;
   customerPhone: string;
   setCustomerPhone: (phone: string) => void;
-  suggestions: CustomerApiItem[];
+  suggestions: Customer[];
   isLoading: boolean;
+  error: string | null;
   showSuggestions: boolean;
   setShowSuggestions: (show: boolean) => void;
-  handleSelectCustomer: (customer: CustomerApiItem) => void;
+  handleSelectCustomer: (customer: Customer) => void;
 }
 
 export function useCustomerLookup(): UseCustomerLookupResult {
   const [customerName, setCustomerName] = useState("Khách lẻ");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [suggestions, setSuggestions] = useState<CustomerApiItem[]>([]);
+  const [suggestions, setSuggestions] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
@@ -40,15 +43,26 @@ export function useCustomerLookup(): UseCustomerLookupResult {
     }
 
     setIsLoading(true);
+    setError(null);
     const timer = setTimeout(async () => {
       try {
-        const res = await customerApi.list({ search: normalized, size: 8 });
-        const items = Array.isArray(res?.data) ? res.data : [];
+        const result = customerService.list();
+        if (!result.ok || !result.data) {
+          throw new Error(result.error ?? "Không thể tìm khách hàng.");
+        }
+        const items = result.data
+          .filter(
+            (customer) =>
+              normalizePhone(customer.phone).includes(normalized) ||
+              customer.name.toLocaleLowerCase().includes(phone.toLocaleLowerCase()),
+          )
+          .slice(0, 8);
         setSuggestions(items);
         setShowSuggestions(items.length > 0);
       } catch (error) {
         setSuggestions([]);
         setShowSuggestions(false);
+        setError(error instanceof Error ? error.message : "Không thể tìm khách hàng.");
       } finally {
         setIsLoading(false);
       }
@@ -57,7 +71,7 @@ export function useCustomerLookup(): UseCustomerLookupResult {
     return () => clearTimeout(timer);
   }, [customerPhone]);
 
-  const handleSelectCustomer = (customer: CustomerApiItem) => {
+  const handleSelectCustomer = (customer: Customer) => {
     setCustomerName(customer.name || "Khách lẻ");
     setCustomerPhone(normalizePhone(customer.phone) || "");
     setShowSuggestions(false);
@@ -71,6 +85,7 @@ export function useCustomerLookup(): UseCustomerLookupResult {
     setCustomerPhone,
     suggestions,
     isLoading,
+    error,
     showSuggestions,
     setShowSuggestions,
     handleSelectCustomer,

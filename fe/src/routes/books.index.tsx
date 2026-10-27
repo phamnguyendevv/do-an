@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eye, FileSpreadsheet, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,11 +35,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { bookApi } from "@/lib/book-api";
-import { categoryApi } from "@/lib/category-api";
 import { exportBooksToExcel } from "@/lib/excel-service";
 import { usePaginatedBooks } from "@/hooks/use-paginated-books";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useCategories } from "@/hooks/use-store";
+import { booksService } from "@/services/books-service";
 import { formatCompactCurrency, formatCurrency } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
 import { Can } from "@/lib/ability";
@@ -84,7 +83,7 @@ function BooksPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const queryClient = useQueryClient();
+  const categories = useCategories();
 
   const resetPage = () => setPage(1);
 
@@ -156,33 +155,10 @@ function BooksPage() {
     setPage(1);
   };
 
-  const { data: rawCategories = [] } = useQuery({
-    queryKey: ["category-names"],
-    queryFn: async () => {
-      try {
-        const res = await categoryApi.list({ size: 100 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items
-          .map((c: any) => (typeof c === "string" ? c : c?.name))
-          .filter(Boolean) as string[];
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 60_000,
-  });
-
-  const categoryNames = useMemo(() => {
-    if (!Array.isArray(rawCategories)) return [];
-    return Array.from(
-      new Set(
-        rawCategories
-          .map((c: any) => (typeof c === "string" ? c : c?.name))
-          .map((s) => (typeof s === "string" ? s.trim() : ""))
-          .filter((name): name is string => Boolean(name && name.length > 0)),
-      ),
-    );
-  }, [rawCategories]);
+  const categoryNames = useMemo(
+    () => Array.from(new Set(categories.map((item) => item.name.trim()).filter(Boolean))),
+    [categories],
+  );
 
   const { books, pagination, isLoading, isFetching, error } = usePaginatedBooks({
     page,
@@ -271,11 +247,7 @@ function BooksPage() {
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Excel
               </Button>
               <Can I="create" a="Book">
-                <ExcelBookImportDialog
-                  onSuccess={() => {
-                    queryClient.invalidateQueries({ queryKey: ["books"] });
-                  }}
-                />
+                <ExcelBookImportDialog />
                 <BookFormDialog
                   trigger={
                     <Button size="sm">
@@ -389,7 +361,6 @@ function BooksPage() {
 }
 
 function BookRowActions({ book }: { book: Book }) {
-  const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -435,8 +406,8 @@ function BookRowActions({ book }: { book: Book }) {
           confirmLabel="Xóa"
           onConfirm={async () => {
             try {
-              await bookApi.remove(book.id);
-              await queryClient.invalidateQueries({ queryKey: ["books"] });
+              const result = booksService.delete(book.id);
+              if (!result.ok) throw new Error(result.error ?? "Xóa sách thất bại.");
               toast.success("Đã xóa sách");
             } catch (error) {
               toast.error(error instanceof Error ? error.message : "Xóa sách thất bại");

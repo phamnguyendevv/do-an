@@ -1,307 +1,57 @@
-import React, { useEffect, useSyncExternalStore } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 import { store, type AppState } from "@/services/store";
-import { bookApi, type BookApiItem } from "@/lib/book-api";
-import { categoryApi } from "@/lib/category-api";
-import { orderApi, type OrderApiItem } from "@/lib/order-api";
-import {
-  inventoryApi,
-  type ImportReceiptApiItem,
-  type ExportReceiptApiItem,
-} from "@/lib/inventory-api";
+import { selectInventorySummary, selectStockMovements } from "@/services/report-service";
 import type {
   Book,
+  Customer,
   ExportReceipt,
   ImportReceipt,
   Order,
-  OrderStatus,
-  PaymentStatus,
-  BookStatus,
+  Shipping,
+  StockMovement,
 } from "@/types";
-import { BOOK_STATUSES } from "@/types";
-
-const mapApiBook = (book: BookApiItem): Book => {
-  const stock = Number(book?.stock ?? 0);
-  const minStock = Number(book?.minStock ?? 0);
-  const apiStatus = book?.status;
-  const rawStatus: BookStatus =
-    typeof apiStatus === "string" && (BOOK_STATUSES as readonly string[]).includes(apiStatus)
-      ? (apiStatus as BookStatus)
-      : stock === 0
-        ? "OUT_OF_STOCK"
-        : stock <= minStock
-          ? "LOW_STOCK"
-          : "IN_STOCK";
-
-  return {
-    id: String(book?.id ?? ""),
-    title: String(book?.title ?? ""),
-    author: String(book?.author ?? ""),
-    category: String(book?.category ?? ""),
-    purchasePrice: Number(book?.purchasePrice ?? 0),
-    sellingPrice: Number(book?.sellingPrice ?? 0),
-    stock,
-    minStock,
-    status: rawStatus,
-    createdAt:
-      typeof book?.createdAt === "string"
-        ? book.createdAt
-        : new Date(book?.createdAt ?? Date.now()).toISOString(),
-  };
-};
-
-const mapApiOrder = (o: OrderApiItem): Order => {
-  return {
-    id: String(o.id),
-    orderCode: o.orderCode,
-    customerName: o.customerName,
-    customerPhone: o.customerPhone,
-    customerAddress: o.customerAddress,
-    provinceId: o.provinceId,
-    districtId: o.districtId,
-    wardCode: o.wardCode,
-    items: (o.items || []).map((it) => ({
-      bookId: String(it.bookId),
-      title: it.title,
-      quantity: it.quantity,
-      price: Number(it.price),
-    })),
-    subtotal: Number(o.subtotal),
-    discount: Number(o.discount),
-    shippingFee: Number(o.shippingFee),
-    total: Number(o.total),
-    payment: o.payment as PaymentStatus,
-    shippingMethod: o.shippingMethod,
-    trackingCode: o.trackingCode,
-    note: o.note,
-    status: o.status as OrderStatus,
-    createdAt:
-      typeof o.createdAt === "string"
-        ? o.createdAt
-        : new Date(o.createdAt ?? Date.now()).toISOString(),
-  };
-};
-
-const mapApiImport = (r: ImportReceiptApiItem): ImportReceipt => ({
-  id: r.receiptCode || `IMP-${r.id}`,
-  supplier: r.supplierName,
-  date: typeof r.importDate === "string" ? r.importDate : new Date(r.importDate).toISOString(),
-  totalItems: Number(r.totalItems),
-  totalValue: Number(r.totalValue),
-  note: r.note,
-});
-
-const mapApiExport = (r: ExportReceiptApiItem): ExportReceipt => ({
-  id: r.receiptCode || `EXP-${r.id}`,
-  orderId: r.orderId || "",
-  date: typeof r.exportDate === "string" ? r.exportDate : new Date(r.exportDate).toISOString(),
-  totalItems: Number(r.totalItems),
-  reason: r.reason,
-  note: r.note,
-});
 
 function useAppState(): AppState {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
 }
 
 export function useBooks(): Book[] {
-  const stateBooks = useAppState().books;
-
-  const { data: apiBooks, isSuccess } = useQuery({
-    queryKey: ["books", "live-list"],
-    queryFn: async () => {
-      const res = await bookApi.list({ size: 500 });
-      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      return (items as BookApiItem[]).map(mapApiBook);
-    },
-    staleTime: 15_000,
-  });
-
-  useEffect(() => {
-    if (isSuccess && apiBooks) {
-      store.setState({ books: apiBooks });
-    }
-  }, [apiBooks, isSuccess]);
-
-  if (isSuccess) return apiBooks ?? [];
-  return stateBooks;
+  return useAppState().books;
 }
 
 export function useCategories(): Array<{ id: string; name: string }> {
-  const books = useBooks();
-  const { data: apiCategories } = useQuery({
-    queryKey: ["category-names"],
-    queryFn: async () => {
-      try {
-        const res: unknown = await categoryApi.list({ size: 100 });
-        const resAsRecord = res as Record<string, unknown>;
-        let items: unknown[] = [];
-        if (Array.isArray(res)) {
-          items = res;
-        } else if (Array.isArray(resAsRecord?.["data"])) {
-          items = resAsRecord["data"];
-        } else if (
-          typeof resAsRecord?.["data"] === "object" &&
-          resAsRecord["data"] !== null &&
-          Array.isArray((resAsRecord["data"] as Record<string, unknown>)["data"])
-        ) {
-          items = (resAsRecord["data"] as Record<string, unknown>)["data"] as unknown[];
-        }
-
-        const mapped = items
-          .map((item) => {
-            if (typeof item === "string") {
-              const name = item.trim();
-              return name ? { id: name, name } : null;
-            }
-            if (typeof item !== "object" || item === null) return null;
-            const c = item as Record<string, unknown>;
-            const name = String(
-              c["name"] || c["title"] || c["categoryName"] || c["category"] || "",
-            ).trim();
-            const id = String(c["id"] || name || "");
-            return { id, name };
-          })
-          .filter((c): c is { id: string; name: string } => Boolean(c?.name));
-
-        return mapped;
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 60_000,
-  });
-
-  if (apiCategories && apiCategories.length > 0) {
-    return apiCategories;
-  }
-
-  const uniqueNames = Array.from(
-    new Set(
-      books
-        .map((b) => (typeof b?.category === "string" ? b.category.trim() : ""))
-        .filter((cat) => Boolean(cat && cat.length > 0)),
-    ),
+  const { categories, books } = useAppState();
+  if (categories.length) return categories.map(({ id, name }) => ({ id, name }));
+  return Array.from(new Set(books.map((book) => book.category.trim()).filter(Boolean))).map(
+    (name) => ({ id: name, name }),
   );
-
-  return uniqueNames.map((name) => ({ id: name, name }));
 }
 
 export function useOrders(): Order[] {
-  const stateOrders = useAppState().orders;
+  return useAppState().orders;
+}
 
-  const { data: apiOrders, isSuccess } = useQuery({
-    queryKey: ["orders", "live-list"],
-    queryFn: async () => {
-      const res = await orderApi.list({ size: 500 });
-      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      return (items as OrderApiItem[]).map(mapApiOrder);
-    },
-    staleTime: 10_000,
-  });
-
-  useEffect(() => {
-    if (isSuccess && apiOrders) {
-      store.setState({ orders: apiOrders });
-    }
-  }, [apiOrders, isSuccess]);
-
-  if (isSuccess) return apiOrders ?? [];
-  return stateOrders;
+export function useCustomers(): Customer[] {
+  return useAppState().customers;
 }
 
 export function useImportReceipts(): ImportReceipt[] {
-  const stateImports = useAppState().imports;
-
-  const { data: apiImports, isSuccess } = useQuery({
-    queryKey: ["inventory", "imports-list"],
-    queryFn: async () => {
-      const res = await inventoryApi.listImports({ size: 200 });
-      const items = Array.isArray(res?.data) ? res.data : [];
-      return items.map(mapApiImport);
-    },
-    staleTime: 15_000,
-  });
-
-  useEffect(() => {
-    if (isSuccess && apiImports) {
-      store.setState({ imports: apiImports });
-    }
-  }, [apiImports, isSuccess]);
-
-  if (isSuccess) return apiImports ?? [];
-  return stateImports;
+  return useAppState().imports;
 }
 
 export function useExportReceipts(): ExportReceipt[] {
-  const stateExports = useAppState().exports;
-
-  const { data: apiExports, isSuccess } = useQuery({
-    queryKey: ["inventory", "exports-list"],
-    queryFn: async () => {
-      const res = await inventoryApi.listExports({ size: 200 });
-      const items = Array.isArray(res?.data) ? res.data : [];
-      return items.map(mapApiExport);
-    },
-    staleTime: 15_000,
-  });
-
-  useEffect(() => {
-    if (isSuccess && apiExports) {
-      store.setState({ exports: apiExports });
-    }
-  }, [apiExports, isSuccess]);
-
-  if (isSuccess) return apiExports ?? [];
-  return stateExports;
+  return useAppState().exports;
 }
 
-export function useShipments(): import("@/types").Shipping[] {
-  const stateShipments = useAppState().shipments;
-  const orders = useAppState().orders;
+export function useShipments(): Shipping[] {
+  return useAppState().shipments;
+}
 
-  const mergedShipments = React.useMemo(() => {
-    const existing = new Map(stateShipments.map((s) => [s.orderId, s]));
-    const generated: import("@/types").Shipping[] = [];
-
-    for (const order of orders) {
-      if (!existing.has(order.id) && !existing.has(order.orderCode ?? "")) {
-        generated.push({
-          id: `SHP-auto-${order.id}`,
-          orderId: order.id,
-          customerName: order.customerName,
-          carrier: order.shippingMethod || "Giao Hàng Nhanh (GHN)",
-          trackingNumber: order.trackingCode || "",
-          shippingFee: order.shippingFee || 0,
-          expectedDelivery: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-          status:
-            order.status === "DELIVERED"
-              ? "DELIVERED"
-              : order.status === "CANCELLED"
-                ? "RETURNED"
-                : order.status === "SHIPPING"
-                  ? "OUT_FOR_DELIVERY"
-                  : order.status === "PREPARING"
-                    ? "PICKED_UP"
-                    : "WAITING_PICKUP",
-          address: order.customerAddress,
-        });
-      }
-    }
-
-    if (generated.length === 0) return stateShipments;
-    return [...generated, ...stateShipments];
-  }, [stateShipments, orders]);
-
-  return mergedShipments;
+export function useStockMovements(): StockMovement[] {
+  const state = useAppState();
+  return selectStockMovements(state);
 }
 
 export function useInventorySummary() {
-  const books = useBooks();
-  return {
-    totalStock: books.reduce((s, b) => s + (b.stock || 0), 0),
-    lowStock: books.filter((b) => b.status === "LOW_STOCK").length,
-    outOfStock: books.filter((b) => b.status === "OUT_OF_STOCK").length,
-    inventoryValue: books.reduce((s, b) => s + (b.stock || 0) * (b.purchasePrice || 0), 0),
-  };
+  return selectInventorySummary(useAppState());
 }
