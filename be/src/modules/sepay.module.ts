@@ -11,13 +11,17 @@ import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-paym
 import { SePayController } from '@adapters/controllers/payment/sepay.controller'
 import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
 
+import { EnvironmentConfigModule } from '@infrastructure/config/environment/environment-config.module'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
 import { BookstoreOrderRepository } from '@infrastructure/databases/postgresql/repositories/bookstore-order.repository'
 import { PaymentTransactionRepository } from '@infrastructure/databases/postgresql/repositories/payment-transaction.repository'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BookstoreOrder, PaymentTransaction])],
+  imports: [
+    TypeOrmModule.forFeature([BookstoreOrder, PaymentTransaction]),
+    EnvironmentConfigModule,
+  ],
   controllers: [SePayController],
   providers: [
     {

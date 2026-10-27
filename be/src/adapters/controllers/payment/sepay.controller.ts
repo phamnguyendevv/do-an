@@ -28,6 +28,8 @@ import { verifySepayWebhookSignature } from '@domain/utils/sepay-signature.util'
 import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-status.use-case'
 import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
 
+import { EnvironmentConfigService } from '@infrastructure/config/environment/environment-config.service'
+
 import { SePayWebhookDto } from './dto/sepay-webhook.dto'
 
 export class SimulateSepayDto {
@@ -51,6 +53,7 @@ export class SePayController {
   constructor(
     private readonly getSepayOrderStatusUseCase: GetSepayOrderStatusUseCase,
     private readonly processSepayPaymentUseCase: ProcessSepayPaymentUseCase,
+    private readonly configService: EnvironmentConfigService,
   ) {}
 
   @Get('config')
@@ -60,9 +63,9 @@ export class SePayController {
   getConfig() {
     return {
       success: true,
-      bank: process.env.SEPAY_BANK || 'MBBank',
-      accountNumber: process.env.SEPAY_ACCOUNT || '00977512982',
-      accountName: process.env.SEPAY_ACCOUNT_NAME || 'PHAM TRUNG NGUYEN',
+      bank: this.configService.getSepayBank(),
+      accountNumber: this.configService.getSepayAccount(),
+      accountName: this.configService.getSepayAccountName(),
       webhookUrl: '/api/v1/payment/sepay/webhook',
     }
   }
@@ -85,7 +88,12 @@ export class SePayController {
   @ApiHeader({
     name: 'x-sepay-signature',
     required: false,
-    description: 'Chữ ký HMAC-SHA256 hoặc API Token do SePay gửi',
+    description: 'Chữ ký HMAC-SHA256 (sha256=...) do SePay gửi',
+  })
+  @ApiHeader({
+    name: 'x-sepay-timestamp',
+    required: false,
+    description: 'Unix timestamp do SePay gửi khi dùng HMAC-SHA256',
   })
   @ApiHeader({
     name: 'authorization',
@@ -97,9 +105,11 @@ export class SePayController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('x-sepay-signature') signature?: string,
     @Headers('x-signature') xSignature?: string,
+    @Headers('x-sepay-timestamp') timestamp?: string,
+    @Headers('x-timestamp') xTimestamp?: string,
     @Headers('authorization') authorization?: string,
   ) {
-    const secret = process.env.SEPAY_WEBHOOK_SECRET || ''
+    const secret = this.configService.getSepayWebhookSecret()
 
     // Verify HMAC-SHA256 / API Key Signature
     const isValid = verifySepayWebhookSignature({
@@ -108,11 +118,14 @@ export class SePayController {
       payload,
       signature,
       xSignature,
+      timestamp: timestamp || xTimestamp,
       authorization,
     })
 
     if (!isValid) {
-      this.logger.warn(`Invalid SePay webhook signature. Rejected request.`)
+      this.logger.warn(
+        `Invalid SePay webhook signature. Header authorization: ${authorization ? 'provided' : 'missing'}, signature: ${signature || xSignature ? 'provided' : 'missing'}, timestamp: ${timestamp || xTimestamp ? 'provided' : 'missing'}, secretConfigured: ${Boolean(secret)}`,
+      )
       throw new UnauthorizedException(
         'Chữ ký SePay Webhook (Signature) không hợp lệ',
       )
@@ -124,14 +137,14 @@ export class SePayController {
   @Post('simulate')
   @ApiOperation({ summary: 'Giả lập test Webhook SePay gạch nợ đơn hàng' })
   async simulateWebhook(@Body() body: SimulateSepayDto) {
-    if (process.env.NODE_ENV === 'production') {
+    if (this.configService.getNodeEnv() === 'production') {
       throw new ForbiddenException(
         'Simulate SePay webhook is disabled in production',
       )
     }
     return await this.processSepayPaymentUseCase.execute({
-      gateway: 'MBBank',
-      accountNumber: process.env.SEPAY_ACCOUNT || '00977512982',
+      gateway: this.configService.getSepayBank(),
+      accountNumber: this.configService.getSepayAccount(),
       transferType: 'in',
       transferAmount: body.amount || 100000,
       content: `${body.orderCode} TEST THANH TOAN SEPAY`,
