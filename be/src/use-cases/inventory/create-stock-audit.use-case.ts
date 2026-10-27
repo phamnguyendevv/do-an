@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 
 import {
+  CreateStockAuditInput,
   StockAuditEntity,
   StockAuditItemEntity,
+  StockAuditStatusEnum,
 } from '@domain/entities/stock-audit.entity'
 import {
   IStockAuditRepositoryInterface,
@@ -30,7 +32,7 @@ export class CreateStockAuditUseCase {
     private readonly auditRepository: IStockAuditRepositoryInterface,
   ) {}
 
-  async execute(dto: CreateStockAuditDto): Promise<StockAuditEntity> {
+  async execute(dto: CreateStockAuditInput): Promise<StockAuditEntity> {
     const auditCode = `AUD-${Date.now().toString().slice(-6)}`
     const auditDate = dto.auditDate || new Date().toISOString()
     const title =
@@ -54,7 +56,7 @@ export class CreateStockAuditUseCase {
       auditCode,
       title,
       auditDate,
-      status: 'DRAFT',
+      status: StockAuditStatusEnum.Draft,
       items,
       totalSystemStock,
       totalActualStock,

@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { orderService, orderTransitions } from "./order-service";
 import { store } from "./store";
 import type { Book, Order } from "@/types";
+import { orderApi } from "@/lib/order-api";
 
 const book: Book = {
   id: "1",
@@ -17,7 +18,8 @@ const book: Book = {
 };
 
 const order: Order = {
-  id: "ORD-TEST-1",
+  id: "1",
+  orderCode: "ORD-TEST-1",
   customerName: "K",
   customerPhone: "0900000000",
   customerAddress: "A",
@@ -37,6 +39,7 @@ beforeEach(() => {
     orders: [{ ...order }],
     books: [{ ...book }],
   });
+  vi.restoreAllMocks();
 });
 
 describe("order workflow", () => {
@@ -46,8 +49,34 @@ describe("order workflow", () => {
     expect(orderTransitions.PENDING).toContain("CONFIRMED");
   });
 
+  it("không cho phép hoàn trả một đơn đã hủy", async () => {
+    store.setState({
+      orders: [{ ...order, status: "CANCELLED" }],
+    });
+
+    const invalid = await orderService.updateStatus(order.id, "RETURNED");
+    expect(invalid.ok).toBe(false);
+  });
+
   it("hủy đơn thì hoàn lại tồn kho", async () => {
     const before = store.getSnapshot().books.find((b) => b.id === book.id)!.stock;
+    vi.spyOn(orderApi, "updateStatus").mockResolvedValue({
+      id: 1,
+      orderCode: order.orderCode!,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerAddress: order.customerAddress,
+      items: order.items,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      shippingFee: order.shippingFee,
+      total: order.total,
+      payment: order.payment,
+      shippingMethod: order.shippingMethod,
+      status: "CANCELLED",
+      createdAt: order.createdAt,
+    });
+
     const res = await orderService.updateStatus(order.id, "CANCELLED");
     expect(res.ok).toBe(true);
     const after = store.getSnapshot().books.find((b) => b.id === book.id)!.stock;
@@ -55,6 +84,25 @@ describe("order workflow", () => {
   });
 
   it("giao thành công thì ghi nhận đã thanh toán", async () => {
+    const statusApi = vi.spyOn(orderApi, "updateStatus");
+    statusApi.mockImplementation(async (_id, status) => ({
+      id: 1,
+      orderCode: order.orderCode!,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerAddress: order.customerAddress,
+      items: order.items,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      shippingFee: order.shippingFee,
+      total: order.total,
+      payment: status === "DELIVERED" ? "PAID" : "UNPAID",
+      shippingMethod: order.shippingMethod,
+      status: status as
+        "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPING" | "DELIVERED" | "CANCELLED" | "RETURNED",
+      createdAt: order.createdAt,
+    }));
+
     await orderService.updateStatus(order.id, "CONFIRMED");
     await orderService.updateStatus(order.id, "PREPARING");
     await orderService.updateStatus(order.id, "SHIPPING");

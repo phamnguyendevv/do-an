@@ -35,31 +35,31 @@ export function extractQuantityAndKeyword(token: string): { quantity: number; ke
 
   // Case 1: Prefix quantity with explicit multiplier or unit: "2 bản xanh lá", "3x zhenti", "2 * xanh lá", "2-xanh lá"
   const prefixExplicitMatch = trimmed.match(
-    /^(\d{1,4})\s*(?:x|\*|bản|ban|cuốn|cuon|quyển|quyen|c|q|k|-|\:)\s+(.+)$/i,
+    /^(\d{1,4})\s*(?:x|\*|bản|ban|cuốn|cuon|quyển|quyen|c|q|k|-|:)\s+(.+)$/i,
   );
   if (prefixExplicitMatch) {
-    const num = parseInt(prefixExplicitMatch[1], 10);
+    const num = parseInt(prefixExplicitMatch[1] ?? "", 10);
     if (!isNaN(num) && num > 0 && num <= 9999) {
       quantity = num;
-      rawKeyword = prefixExplicitMatch[2].trim();
+      rawKeyword = prefixExplicitMatch[2]?.trim() ?? "";
     }
   } else {
     // Case 1B: Prefix quantity connected like "2xanh lá", "3xzhenti", "2x xanh lá"
     const prefixJoinedMatch = trimmed.match(/^(\d{1,4})(?:x|\*)\s*(.+)$/i);
     if (prefixJoinedMatch) {
-      const num = parseInt(prefixJoinedMatch[1], 10);
+      const num = parseInt(prefixJoinedMatch[1] ?? "", 10);
       if (!isNaN(num) && num > 0 && num <= 9999) {
         quantity = num;
-        rawKeyword = prefixJoinedMatch[2].trim();
+        rawKeyword = prefixJoinedMatch[2]?.trim() ?? "";
       }
     } else {
       // Case 1C: Space separated number: "2 xanh lá", "10 tinh giảng"
       const prefixSpaceMatch = trimmed.match(/^(\d{1,4})\s+([a-zA-ZÀ-ỹ].+)$/i);
       if (prefixSpaceMatch) {
-        const num = parseInt(prefixSpaceMatch[1], 10);
+        const num = parseInt(prefixSpaceMatch[1] ?? "", 10);
         if (!isNaN(num) && num > 0 && num <= 9999) {
           quantity = num;
-          rawKeyword = prefixSpaceMatch[2].trim();
+          rawKeyword = prefixSpaceMatch[2]?.trim() ?? "";
         }
       } else {
         // Case 2: Suffix quantity: "xanh lá 2", "zhenti x3", "tinh giảng sl: 2", "bản xanh lá - 2"
@@ -67,8 +67,8 @@ export function extractQuantityAndKeyword(token: string): { quantity: number; ke
           /^(.+?)\s*(?:x|\*|:|-|sl|số lượng|so luong)?\s*(\d{1,4})\s*(?:bản|ban|cuốn|cuon|quyển|quyen|c|q)?$/i,
         );
         if (suffixMatch) {
-          const potentialTitle = suffixMatch[1].trim();
-          const num = parseInt(suffixMatch[2], 10);
+          const potentialTitle = suffixMatch[1]?.trim() ?? "";
+          const num = parseInt(suffixMatch[2] ?? "", 10);
           if (!isNaN(num) && num > 0 && num <= 9999 && /[a-zA-ZÀ-ỹ]{2,}/.test(potentialTitle)) {
             quantity = num;
             rawKeyword = potentialTitle;

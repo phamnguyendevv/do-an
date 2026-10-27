@@ -5,10 +5,16 @@ import { IAuth2Config } from '@domain/config/auth2.interface'
 import { IDatabaseConfig } from '@domain/config/database.interface'
 import { IJwtConfig } from '@domain/config/jwt.interface'
 import { INodeMailerConfig } from '@domain/config/node-mailer.interface'
+import { ISepayConfig } from '@domain/config/sepay.interface'
 
 @Injectable()
 export class EnvironmentConfigService
-  implements IDatabaseConfig, IJwtConfig, INodeMailerConfig, IAuth2Config
+  implements
+    IDatabaseConfig,
+    IJwtConfig,
+    INodeMailerConfig,
+    IAuth2Config,
+    ISepayConfig
 {
   constructor(private readonly configService: ConfigService) {}
 
@@ -96,18 +102,29 @@ export class EnvironmentConfigService
     return this.configService.get<string>('GOOGLE_CLIENT_SECRET') || ''
   }
 
-  getStripeSecretKey(): string {
-    return this.configService.get<string>('STRIPE_SECRET_KEY') || ''
-  }
-
   getRedisUrl(): string {
     return this.configService.get<string>('REDIS_URL') || ''
   }
 
-  getStripeWebhookSecret(): string {
-    return this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || ''
-  }
   getFEUrl(): string {
     return this.configService.get<string>('FRONTEND_URL') || ''
+  }
+
+  getSepayBank(): string {
+    return this.configService.get<string>('SEPAY_BANK') || 'MBBank'
+  }
+
+  getSepayAccount(): string {
+    return this.configService.get<string>('SEPAY_ACCOUNT') || '00977512982'
+  }
+
+  getSepayAccountName(): string {
+    return (
+      this.configService.get<string>('SEPAY_ACCOUNT_NAME') || 'PHAM TRUNG NGUYEN'
+    )
+  }
+
+  getSepayWebhookSecret(): string {
+    return this.configService.get<string>('SEPAY_WEBHOOK_SECRET') || ''
   }
 }

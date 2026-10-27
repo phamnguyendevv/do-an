@@ -1,4 +1,16 @@
+export enum OrderHistoryActionEnum {
+  Created = 'CREATED',
+  StatusChange = 'STATUS_CHANGE',
+  PaymentChange = 'PAYMENT_CHANGE',
+  UpdatedInfo = 'UPDATED_INFO',
+  SepayPayment = 'SEPAY_PAYMENT',
+  GhnSync = 'GHN_SYNC',
+  NoteAdded = 'NOTE_ADDED',
+  Cancelled = 'CANCELLED',
+}
+
 export type OrderHistoryAction =
+  | OrderHistoryActionEnum
   | 'CREATED'
   | 'STATUS_CHANGE'
   | 'PAYMENT_CHANGE'

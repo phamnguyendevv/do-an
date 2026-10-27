@@ -25,7 +25,7 @@ export class CaslAbilityFactory implements IAbilityFactory {
       // Admin has full access to all resources
       can('manage', 'all')
     } else if (user.role === UserRoleEnum.Staff) {
-      // Staff has access to operational resources: POS, books, categories, suppliers, orders, inventory, notifications, shipping
+      // Staff has access to operational resources: POS, books, categories, suppliers, orders, inventory, shipping
       can(['read', 'create', 'update'], 'Book')
       can(['read', 'create', 'update'], 'Category')
       can(['read', 'create', 'update'], 'Supplier')
@@ -38,7 +38,6 @@ export class CaslAbilityFactory implements IAbilityFactory {
       can(['read', 'create', 'update'], 'StockMovement')
       can(['read', 'create', 'update'], 'Payment')
       can(['read', 'create', 'update'], 'Shipping')
-      can(['read', 'update'], 'Notification')
       can(['read', 'update'], 'User')
       cannot('update', 'User', ['role', 'status'])
       cannot('delete', 'User')
@@ -56,7 +55,6 @@ export class CaslAbilityFactory implements IAbilityFactory {
       can(['read', 'update'], 'User')
       cannot('update', 'User', ['role', 'status'])
       cannot('delete', 'User')
-      can(['read', 'update'], 'Notification')
     } else {
       // Client / Customer
       can('read', 'Book')
@@ -65,7 +63,6 @@ export class CaslAbilityFactory implements IAbilityFactory {
       can(['read', 'update'], 'User')
       cannot('update', 'User', ['role', 'status'])
       cannot('delete', 'User')
-      can(['read', 'update'], 'Notification')
     }
 
     return build({

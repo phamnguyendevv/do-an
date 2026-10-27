@@ -1,11 +1,15 @@
-export type BookStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "DISCONTINUED";
+export const BOOK_STATUSES = ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK", "DISCONTINUED"] as const;
+export type BookStatus = (typeof BOOK_STATUSES)[number];
 
 export interface Book {
   id: string;
   title: string;
   author: string;
   category: string;
+  description?: string | undefined;
+  categoryId?: string | undefined;
   publisher?: string | undefined;
+  publisherId?: string | undefined;
   isbn?: string | undefined;
   purchasePrice: number;
   sellingPrice: number;
@@ -17,28 +21,50 @@ export interface Book {
   createdAt: string;
 }
 
-export type OrderStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "PREPARING"
-  | "SHIPPING"
-  | "DELIVERED"
-  | "CANCELLED"
-  | "FAILED"
-  | "RETURNED";
+export const ORDER_STATUSES = [
+  "PENDING",
+  "CONFIRMED",
+  "PREPARING",
+  "SHIPPING",
+  "DELIVERED",
+  "CANCELLED",
+  "FAILED",
+  "RETURNED",
+] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export type PaymentStatus = "PAID" | "UNPAID" | "REFUNDED";
+export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["PREPARING", "CANCELLED"],
+  PREPARING: ["SHIPPING", "CANCELLED"],
+  SHIPPING: ["DELIVERED", "FAILED"],
+  DELIVERED: ["RETURNED"],
+  FAILED: ["RETURNED", "SHIPPING"],
+  CANCELLED: [],
+  RETURNED: [],
+};
+
+export const PAYMENT_STATUSES = ["PAID", "UNPAID", "REFUNDED"] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export const PAYMENT_STATUS_TRANSITIONS: Record<PaymentStatus, readonly PaymentStatus[]> = {
+  UNPAID: ["PAID"],
+  PAID: ["REFUNDED"],
+  REFUNDED: [],
+};
 
 export interface OrderItem {
   bookId: string;
   title: string;
   quantity: number;
   price: number;
+  purchasePrice?: number | undefined;
 }
 
 export interface Order {
   id: string;
   orderCode?: string | undefined;
+  customerId?: string | undefined;
   customerName: string;
   customerPhone: string;
   customerAddress: string;
@@ -61,9 +87,11 @@ export interface Order {
 export interface ImportReceipt {
   id: string;
   supplier: string;
+  supplierId?: string | undefined;
   date: string;
   totalItems: number;
   totalValue: number;
+  items?: ReceiptItem[] | undefined;
   note?: string | undefined;
 }
 
@@ -72,18 +100,40 @@ export interface ExportReceipt {
   orderId: string;
   date: string;
   totalItems: number;
+  items?: ReceiptItem[] | undefined;
   reason: string;
   note?: string | undefined;
 }
 
-export type ShippingStatus =
-  | "WAITING_PICKUP"
-  | "PICKED_UP"
-  | "IN_TRANSIT"
-  | "OUT_FOR_DELIVERY"
-  | "DELIVERED"
-  | "FAILED"
-  | "RETURNED";
+export interface ReceiptItem {
+  bookId: string;
+  title: string;
+  quantity: number;
+  price: number;
+}
+
+export const SHIPPING_STATUSES = [
+  "WAITING_PICKUP",
+  "PICKED_UP",
+  "IN_TRANSIT",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "FAILED",
+  "RETURNED",
+  "CANCELLED",
+] as const;
+export type ShippingStatus = (typeof SHIPPING_STATUSES)[number];
+
+export const SHIPPING_STATUS_TRANSITIONS: Record<ShippingStatus, readonly ShippingStatus[]> = {
+  WAITING_PICKUP: ["PICKED_UP", "FAILED", "RETURNED", "CANCELLED"],
+  PICKED_UP: ["IN_TRANSIT", "FAILED", "RETURNED"],
+  IN_TRANSIT: ["OUT_FOR_DELIVERY", "FAILED", "RETURNED"],
+  OUT_FOR_DELIVERY: ["DELIVERED", "FAILED", "RETURNED"],
+  DELIVERED: ["RETURNED"],
+  FAILED: ["PICKED_UP", "IN_TRANSIT", "RETURNED"],
+  RETURNED: [],
+  CANCELLED: [],
+} as const satisfies Record<ShippingStatus, readonly ShippingStatus[]>;
 
 export interface Shipping {
   id: string;
@@ -95,6 +145,75 @@ export interface Shipping {
   expectedDelivery: string;
   status: ShippingStatus;
   address: string;
+}
+
+export interface StockMovement {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  type: "IMPORT" | "EXPORT" | "SALE" | "RESTOCK" | "ADJUST";
+  quantity: number;
+  beforeStock: number;
+  afterStock: number;
+  referenceCode?: string | undefined;
+  note?: string | undefined;
+  createdBy?: string | undefined;
+  createdAt: string;
+}
+
+export interface StocktakeItem {
+  bookId: string;
+  title: string;
+  systemStock: number;
+  actualStock: number;
+  diffQuantity: number;
+  reason?: string | undefined;
+}
+
+export interface Stocktake {
+  id: string;
+  title: string;
+  auditDate: string;
+  status: "DRAFT" | "BALANCED";
+  items: StocktakeItem[];
+  totalSystemStock: number;
+  totalActualStock: number;
+  totalDiff: number;
+  note?: string | undefined;
+  auditedBy?: string | undefined;
+  balancedAt?: string | undefined;
+  createdAt?: string | undefined;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string | undefined;
+}
+
+export interface Publisher {
+  id: string;
+  name: string;
+  description?: string | undefined;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName?: string | undefined;
+  phone?: string | undefined;
+  email?: string | undefined;
+  address?: string | undefined;
+  note?: string | undefined;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string | undefined;
+  address?: string | undefined;
+  note?: string | undefined;
 }
 
 export type UserRole = "ADMIN" | "STAFF";

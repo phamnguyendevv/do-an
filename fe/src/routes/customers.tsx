@@ -1,7 +1,18 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Search, Trash2, X, Calendar, Phone, Mail, MapPin, ShoppingBag, DollarSign } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Trash2,
+  X,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  ShoppingBag,
+  DollarSign,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
@@ -9,40 +20,66 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { customerApi, type CustomerApiItem } from "@/lib/customer-api";
-import { orderApi } from "@/lib/order-api";
+import { customerService } from "@/services/directory-service";
+import { useCustomers, useOrders } from "@/hooks/use-store";
+import type { Customer } from "@/types";
 
 export const Route = createFileRoute("/customers")({ component: CustomersPage });
 
+type CustomerRow = Customer & {
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt?: string;
+};
+
 function CustomersPage() {
+  const customers = useCustomers();
+  const orders = useOrders();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [quickAddName, setQuickAddName] = useState("");
   const [quickAddPhone, setQuickAddPhone] = useState("");
   const [isQuickAdding, setIsQuickAdding] = useState(false);
-  const [editing, setEditing] = useState<CustomerApiItem | null>(null);
-  const [viewing, setViewing] = useState<CustomerApiItem | null>(null);
+  const [editing, setEditing] = useState<CustomerRow | null>(null);
+  const [viewing, setViewing] = useState<CustomerRow | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", note: "" });
-  const client = useQueryClient();
-  
-  const query = useQuery({
-    queryKey: ["customers", search],
-    queryFn: () => customerApi.list({ search, size: 100 }),
-    enabled: search !== "", // Chỉ chạy khi search không rỗng
-    staleTime: 0, // Always treat as stale to force fresh data
-    gcTime: 0, // Don't cache
-    refetchOnMount: true, // Always refetch on mount
-  });
-
-  // Query orders by customer phone
-  const ordersQuery = useQuery({
-    queryKey: ["customer-orders", viewing?.phone],
-    queryFn: () => orderApi.list({ search: viewing?.phone, size: 100 }),
-    enabled: !!viewing?.phone,
-    staleTime: 0, // Always treat as stale to force fresh data
-  });
+  const customerRows = useMemo(
+    () =>
+      customers.map((customer) => {
+        const customerOrders = orders.filter(
+          (order) => order.customerId === customer.id || order.customerPhone === customer.phone,
+        );
+        const lastOrder = customerOrders.reduce<string | undefined>(
+          (latest, order) =>
+            !latest || Date.parse(order.createdAt) > Date.parse(latest) ? order.createdAt : latest,
+          undefined,
+        );
+        return {
+          ...customer,
+          totalOrders: customerOrders.length,
+          totalSpent: customerOrders.reduce((total, order) => total + order.total, 0),
+          ...(lastOrder ? { lastOrderAt: lastOrder } : {}),
+        };
+      }),
+    [customers, orders],
+  );
+  const filteredCustomers = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return customerRows.filter(
+      (customer) =>
+        customer.name.toLocaleLowerCase().includes(query) ||
+        customer.phone.replace(/\D/g, "").includes(query.replace(/\D/g, "")),
+    );
+  }, [customerRows, search]);
+  const customerOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) => order.customerId === viewing?.id || order.customerPhone === viewing?.phone,
+      ),
+    [orders, viewing?.id, viewing?.phone],
+  );
 
   const handleSearch = () => {
     setSearch(searchInput);
@@ -62,12 +99,12 @@ function CustomersPage() {
     setIsQuickAdding(true);
     try {
       // Normalize phone before saving
-      const normalizedPhone = quickAddPhone.replace(/\D/g, '').replace(/^84/, '0');
-      await customerApi.create({
+      const normalizedPhone = quickAddPhone.replace(/\D/g, "").replace(/^84/, "0");
+      const result = customerService.create({
         name: quickAddName,
         phone: normalizedPhone,
       });
-      await client.invalidateQueries({ queryKey: ["customers"] });
+      if (!result.ok) throw new Error(result.error ?? "Không thể thêm khách hàng.");
       toast.success(`Đã thêm khách hàng ${quickAddName}`);
       setQuickAddName("");
       setQuickAddPhone("");
@@ -77,7 +114,7 @@ function CustomersPage() {
       setIsQuickAdding(false);
     }
   };
-  const open = (customer?: CustomerApiItem) => {
+  const open = (customer?: CustomerRow) => {
     setEditing(customer || null);
     setDialogOpen(true);
     setForm(
@@ -92,15 +129,19 @@ function CustomersPage() {
         : { name: "", phone: "", email: "", address: "", note: "" },
     );
   };
-
-  const viewDetails = (customer: CustomerApiItem) => {
+  const viewDetails = (customer: CustomerRow) => {
     setViewing(customer);
     setDetailOpen(true);
   };
   const save = async () => {
     try {
-      editing ? await customerApi.update(editing.id, form) : await customerApi.create(form);
-      await client.invalidateQueries({ queryKey: ["customers"] });
+      if (editing) {
+        const result = customerService.update(editing.id, form);
+        if (!result.ok) throw new Error(result.error ?? "Không thể cập nhật khách hàng.");
+      } else {
+        const result = customerService.create(form);
+        if (!result.ok) throw new Error(result.error ?? "Không thể thêm khách hàng.");
+      }
       toast.success("Đã lưu khách hàng");
       setEditing(null);
       setDialogOpen(false);
@@ -108,22 +149,25 @@ function CustomersPage() {
       toast.error(e instanceof Error ? e.message : "Không thể lưu khách hàng");
     }
   };
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!window.confirm("Xóa khách hàng này?")) return;
     try {
-      await customerApi.remove(id);
-      await client.invalidateQueries({ queryKey: ["customers"] });
+      const result = customerService.delete(id);
+      if (!result.ok) throw new Error(result.error ?? "Không thể xóa khách hàng.");
       toast.success("Đã xóa khách hàng");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Không thể xóa");
     }
   };
-  const columns: DataTableColumn<CustomerApiItem>[] = [
+  const columns: DataTableColumn<CustomerRow>[] = [
     {
       key: "name",
       header: "Khách hàng",
       cell: (row) => (
-        <button className="text-left font-medium hover:underline text-blue-600" onClick={() => viewDetails(row)}>
+        <button
+          className="text-left font-medium hover:underline text-blue-600"
+          onClick={() => viewDetails(row)}
+        >
           {row.name}
         </button>
       ),
@@ -225,45 +269,30 @@ function CustomersPage() {
             </Button>
           )}
         </div>
-        
+
         {search === "" ? (
           <div className="flex items-center justify-center h-64 text-muted-foreground">
             <p>💡 Nhập tên hoặc SĐT khách hàng rồi nhấn "Tra cứu"</p>
           </div>
-        ) : query.isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">Đang tải dữ liệu khách hàng...</p>
-          </div>
-        ) : query.isError ? (
-          <div className="flex items-center justify-center h-64 text-destructive">
-            <div className="text-center space-y-2">
-              <p className="font-semibold">Lỗi tải dữ liệu</p>
-              <p>{query.error?.message || "Không thể tải danh sách khách hàng"}</p>
-              <p className="text-xs text-muted-foreground">
-                {JSON.stringify(query.error)}
-              </p>
-            </div>
-          </div>
-        ) : query.isSuccess ? (
+        ) : (
           <>
             <div className="mb-3 text-sm text-muted-foreground">
-              Tìm thấy: {query.data?.data?.length || 0} khách hàng
+              Tìm thấy: {filteredCustomers.length} khách hàng
             </div>
-            {(!query.data?.data || query.data.data.length === 0) ? (
+            {filteredCustomers.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-muted-foreground">
                 <p>Không tìm thấy khách hàng nào</p>
               </div>
             ) : (
               <DataTable
                 columns={columns}
-                data={query.data.data}
+                data={filteredCustomers}
                 rowKey={(row) => String(row.id)}
-                loading={query.isLoading}
               />
             )}
           </>
-        ) : null}
-        
+        )}
+
         <>
           {dialogOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -309,7 +338,9 @@ function CustomersPage() {
                 {/* Customer Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase">Số điện thoại</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">
+                      Số điện thoại
+                    </p>
                     <p className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
                       {viewing.phone}
@@ -372,17 +403,15 @@ function CustomersPage() {
                 {/* Order History */}
                 <div>
                   <h3 className="font-semibold mb-3">Lịch sử mua hàng</h3>
-                  {ordersQuery.isLoading ? (
-                    <p className="text-sm text-muted-foreground">Đang tải...</p>
-                  ) : ordersQuery.data?.data && ordersQuery.data.data.length > 0 ? (
+                  {customerOrders.length > 0 ? (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {ordersQuery.data.data.map((order) => (
+                      {customerOrders.map((order) => (
                         <div
                           key={order.id}
                           className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                         >
                           <div>
-                            <p className="font-semibold text-sm">{order.orderCode}</p>
+                            <p className="font-semibold text-sm">{order.orderCode ?? order.id}</p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(order.createdAt).toLocaleString("vi-VN")}
                             </p>

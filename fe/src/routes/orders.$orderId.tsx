@@ -44,53 +44,12 @@ import { orderService, orderTransitions } from "@/services/order-service";
 import type { Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import { orderStatusLabel, orderStatusTone, paymentLabel, paymentTone } from "@/utils/status";
-import { orderApi } from "@/lib/order-api";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
-import type { PaymentStatus } from "@/types";
 
 export const Route = createFileRoute("/orders/$orderId")({
   loader: async ({ params }) => {
     const { orders, shipments } = store.getSnapshot();
-    let order = orders.find((o) => o.id === params.orderId || o.orderCode === params.orderId);
-    if (!order) {
-      try {
-        const fetched = await orderApi.get(params.orderId);
-        if (fetched) {
-          order = {
-            id: String(fetched.id),
-            orderCode: fetched.orderCode,
-            customerName: fetched.customerName,
-            customerPhone: fetched.customerPhone,
-            customerAddress: fetched.customerAddress,
-            provinceId: fetched.provinceId,
-            districtId: fetched.districtId,
-            wardCode: fetched.wardCode,
-            items: (fetched.items || []).map((it) => ({
-              bookId: String(it.bookId),
-              title: it.title,
-              quantity: it.quantity,
-              price: Number(it.price),
-            })),
-            subtotal: Number(fetched.subtotal),
-            discount: Number(fetched.discount),
-            shippingFee: Number(fetched.shippingFee),
-            total: Number(fetched.total),
-            payment: fetched.payment as PaymentStatus,
-            shippingMethod: fetched.shippingMethod,
-            trackingCode: fetched.trackingCode,
-            note: fetched.note,
-            status: fetched.status as OrderStatus,
-            createdAt:
-              typeof fetched.createdAt === "string"
-                ? fetched.createdAt
-                : new Date(fetched.createdAt ?? Date.now()).toISOString(),
-          };
-          store.setState({ orders: [order, ...orders.filter((o) => o.id !== order!.id)] });
-        }
-      } catch {
-        // Order not found in backend either
-      }
-    }
+    const order = orders.find((o) => o.id === params.orderId || o.orderCode === params.orderId);
     if (!order) throw notFound();
     const shipment =
       shipments.find((s) => s.orderId === order!.id || s.orderId === order!.orderCode) ?? null;
@@ -451,16 +410,16 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
           customerPhone: form.customerPhone,
           customerAddress: fullAddress,
           note: form.note,
-          toWardCode: form.wardCode || undefined,
-          toDistrictId: form.districtId ? Number(form.districtId) : undefined,
-          weight: form.weight ? Number(form.weight) : undefined,
-          length: form.length ? Number(form.length) : undefined,
-          width: form.width ? Number(form.width) : undefined,
-          height: form.height ? Number(form.height) : undefined,
-          insuranceValue: form.insuranceValue ? Number(form.insuranceValue) : undefined,
+          ...(form.wardCode ? { toWardCode: form.wardCode } : {}),
+          ...(form.districtId ? { toDistrictId: Number(form.districtId) } : {}),
+          ...(form.weight ? { weight: Number(form.weight) } : {}),
+          ...(form.length ? { length: Number(form.length) } : {}),
+          ...(form.width ? { width: Number(form.width) } : {}),
+          ...(form.height ? { height: Number(form.height) } : {}),
+          ...(form.insuranceValue ? { insuranceValue: Number(form.insuranceValue) } : {}),
           paymentTypeId: (Number(form.paymentTypeId) || 2) as 1 | 2,
           requiredNote: form.requiredNote,
-          content: form.content.trim() || undefined,
+          ...(form.content.trim() ? { content: form.content.trim() } : {}),
         },
         order.trackingCode,
       );
@@ -901,6 +860,7 @@ function OrderWorkflow({ order }: { order: Order }) {
       toast.error(res.error ?? "Không thể cập nhật trạng thái");
     } else {
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
       toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[next]}`, {
         description:
           next === "CANCELLED" || next === "RETURNED"

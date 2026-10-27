@@ -11,6 +11,7 @@ const statuses: ShippingStatus[] = [
   "DELIVERED",
   "FAILED",
   "RETURNED",
+  "CANCELLED",
 ];
 
 export const mockShipments: Shipping[] = mockOrders.slice(0, 18).map((order, i) => ({
@@ -43,4 +44,5 @@ export const stepIndexByStatus: Record<ShippingStatus, number> = {
   DELIVERED: 6,
   FAILED: 5,
   RETURNED: 5,
+  CANCELLED: 0,
 };

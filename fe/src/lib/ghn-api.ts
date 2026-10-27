@@ -118,6 +118,8 @@ export interface GhnOrderStatus {
   to_name: string;
   to_phone: string;
   to_address: string;
+  to_district_id?: number;
+  to_ward_code?: string;
   note: string;
   cod_amount: number;
   content: string;
@@ -125,6 +127,8 @@ export interface GhnOrderStatus {
   length: number;
   width: number;
   height: number;
+  insurance_value?: number;
+  required_note?: "CHOTHUHANG" | "CHOXEMHANGKHONGTHU" | "KHONGCHOXEMHANG";
   service_type_id: number;
   payment_type_id: number;
   expected_delivery_time: string;

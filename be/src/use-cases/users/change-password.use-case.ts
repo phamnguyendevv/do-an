@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { UserEntity } from '@domain/entities/user.entity'
+import {
+  IChangePasswordInput,
+  IUserIdInput,
+  UserEntity,
+} from '@domain/entities/user.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   IUserRepositoryInterface,
@@ -10,8 +14,6 @@ import {
   BCRYPT_SERVICE,
   IBcryptService,
 } from '@domain/services/bcrypt.interface'
-
-import { ChangePasswordDto } from '@adapters/controllers/users/dto/change-password.dto'
 
 @Injectable()
 export class ChangePasswordUseCase {
@@ -25,8 +27,8 @@ export class ChangePasswordUseCase {
   ) {}
 
   async execute(
-    params: { id: number },
-    userPayload: ChangePasswordDto,
+    params: IUserIdInput,
+    userPayload: IChangePasswordInput,
   ): Promise<boolean> {
     await this.checkPassword(params, userPayload)
     // Hash the new password
@@ -37,8 +39,8 @@ export class ChangePasswordUseCase {
   }
 
   private async checkPassword(
-    params: { id: number },
-    userPayload: ChangePasswordDto,
+    params: IUserIdInput,
+    userPayload: IChangePasswordInput,
   ): Promise<void> {
     const { id } = params
     const { oldPassword, password, confirmPassword } = userPayload

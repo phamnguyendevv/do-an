@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   ArrowRight,
@@ -22,7 +23,12 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchInput } from "@/components/shared/search-input";
 import { FilterBar } from "@/components/shared/filter-bar";
-import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import {
+  DateRangePicker,
+  type DateRange,
+  toApiDateRange,
+  formatDateRange,
+} from "@/components/shared/date-range-picker";
 import { PriceRangeFilter, type PriceRange } from "@/components/shared/price-range-filter";
 import { ActiveFilterChips, type ActiveFilter } from "@/components/shared/active-filter-chips";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -115,7 +121,7 @@ function OrdersPage() {
     if (status !== "all")
       chips.push({
         key: "status",
-        label: `Trạng thái: ${orderStatusLabel[status] ?? status}`,
+        label: `Trạng thái: ${orderStatusLabel[status as keyof typeof orderStatusLabel] ?? status}`,
         onRemove: () => {
           setStatus("all");
           resetPage();
@@ -124,20 +130,16 @@ function OrdersPage() {
     if (payment !== "all")
       chips.push({
         key: "payment",
-        label: `Thanh toán: ${paymentLabel[payment] ?? payment}`,
+        label: `Thanh toán: ${paymentLabel[payment as keyof typeof paymentLabel] ?? payment}`,
         onRemove: () => {
           setPayment("all");
           resetPage();
         },
       });
     if (dateRange?.from) {
-      const d = dateRange;
-      const label = d.to
-        ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
-        : d.from.toLocaleDateString("vi");
       chips.push({
         key: "date",
-        label: `Ngày tạo: ${label}`,
+        label: `Ngày tạo: ${formatDateRange(dateRange)}`,
         onRemove: () => {
           setDateRange(undefined);
           resetPage();
@@ -187,8 +189,7 @@ function OrdersPage() {
     search: debouncedSearch,
     status,
     payment,
-    startDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
-    endDate: dateRange?.to ? dateRange.to.toISOString() : undefined,
+    ...toApiDateRange(dateRange),
   });
 
   // Query paginated order histories
@@ -212,10 +213,9 @@ function OrdersPage() {
         const res = await orderApi.listHistories({
           page: historyPage,
           size: historyPageSize,
-          search: debouncedHistorySearch || undefined,
-          action: historyAction !== "all" ? historyAction : undefined,
-          startDate: historyDateRange?.from ? historyDateRange.from.toISOString() : undefined,
-          endDate: historyDateRange?.to ? historyDateRange.to.toISOString() : undefined,
+          ...(debouncedHistorySearch ? { search: debouncedHistorySearch } : {}),
+          ...(historyAction !== "all" ? { action: historyAction } : {}),
+          ...toApiDateRange(historyDateRange),
         });
         return res || { data: [], pagination: { total: 0, page: 1, size: historyPageSize } };
       } catch (err) {
@@ -370,18 +370,18 @@ function OrdersPage() {
           return (
             <div className="flex items-center gap-1 text-xs">
               <span className="text-muted-foreground text-[11px]">
-                {orderStatusLabel[h.fromStatus as any] || h.fromStatus}
+                {orderStatusLabel[h.fromStatus as keyof typeof orderStatusLabel] || h.fromStatus}
               </span>
               <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
               <span className="font-medium text-primary">
-                {orderStatusLabel[h.toStatus as any] || h.toStatus}
+                {orderStatusLabel[h.toStatus as keyof typeof orderStatusLabel] || h.toStatus}
               </span>
             </div>
           );
         }
         return (
           <span className="text-xs text-muted-foreground">
-            {orderStatusLabel[h.toStatus as any] || h.toStatus}
+            {orderStatusLabel[h.toStatus as keyof typeof orderStatusLabel] || h.toStatus}
           </span>
         );
       },
@@ -634,6 +634,7 @@ function OrderRowActions({
   order: Order;
   onStatusChanged?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const next = orderTransitions[order.status]?.find((t) => t !== "CANCELLED" && t !== "FAILED");
   const canCancel = orderTransitions[order.status]?.includes("CANCELLED");
@@ -643,6 +644,7 @@ function OrderRowActions({
     const res = await orderService.updateStatus(order.id, next);
     if (res.ok) {
       toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[next]}`);
+      void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
       onStatusChanged?.();
     } else {
       toast.error(res.error ?? "Không thể cập nhật");
@@ -653,6 +655,7 @@ function OrderRowActions({
     const res = await orderService.updateStatus(order.id, "CANCELLED");
     if (res.ok) {
       toast.success("Đã hủy đơn và hoàn lại tồn kho");
+      void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
       onStatusChanged?.();
     } else {
       toast.error(res.error ?? "Không thể hủy đơn");

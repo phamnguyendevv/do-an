@@ -10,22 +10,21 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "paths": {
       "@domain/*": [
-        "src/domain/*"
+        "./src/domain/*"
       ],
       "@use-cases/*": [
-        "src/use-cases/*"
+        "./src/use-cases/*"
       ],
       "@adapters/*": [
-        "src/adapters/*"
+        "./src/adapters/*"
       ],
       "@infrastructure/*": [
-        "src/infrastructure/*"
+        "./src/infrastructure/*"
       ],
       "@modules/*": [
-        "src/modules/*"
+        "./src/modules/*"
       ]
     },
     "incremental": true,

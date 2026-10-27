@@ -1,11 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { BookEntity } from '@domain/entities/book.entity'
+import { BookEntity, ISearchBooksInput } from '@domain/entities/book.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
 import {
   BOOK_REPOSITORY,
   IBookRepositoryInterface,
-  ISearchBooksParams,
 } from '@domain/repositories/book.repository.interface'
 import {
   IRedisCacheService,
@@ -22,7 +21,7 @@ export class GetListBooksUseCase {
   ) {}
 
   async execute(
-    queryParams: ISearchBooksParams,
+    queryParams: ISearchBooksInput,
   ): Promise<{ data: BookEntity[]; pagination: IPaginationParams }> {
     const cacheKey = [
       `books:list`,

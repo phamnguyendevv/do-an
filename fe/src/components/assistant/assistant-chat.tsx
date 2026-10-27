@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { Bot, Loader2, Send, Sparkles, User as UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { askAssistant, type ChatMessage } from "@/lib/ai-assistant.functions";
+import { askAssistantApi, type ChatMessage } from "@/lib/ai-assistant.functions";
 import { executeTool, type PendingAction } from "@/services/assistant-tools";
 import { analyzeWarehouse } from "@/services/warehouse-intel";
 import { store } from "@/services/store";
@@ -21,6 +20,7 @@ interface Bubble {
 }
 
 const SUGGESTIONS = [
+  "Tư vấn sách cần nhập thêm và sách tồn lâu",
   "Phân tích tình trạng kho hiện tại",
   "Tìm sách công nghệ dưới 200 nghìn còn dưới 30 cuốn",
   "Cho tôi xem các đơn hàng đang giao",
@@ -41,6 +41,8 @@ function systemPrompt() {
 Nguyên tắc:
 - Luôn dùng tool để lấy dữ liệu thật, không được bịa số liệu.
 - Ưu tiên insight hành động được, kèm đề xuất cụ thể.
+- Khi được hỏi nên nhập thêm sách nào hoặc cân bằng tồn kho, hãy gọi inventory_recommendations. Nêu số bán 30 ngày, số ngày tồn ước tính, số lượng đề xuất và giả định thời gian giao hàng; không đề xuất nhập sách không có doanh số gần đây.
+- Phân biệt sách cần nhập với sách tồn lâu cần xử lý. Số ngày tồn lâu chỉ là ước tính theo ngày tạo sách nếu chưa có lịch sử bán.
 - Với yêu cầu thay đổi dữ liệu (tạo đơn, nhập kho, xuất kho) chỉ được gọi tool prepare_* để tạo bản xem trước; người dùng sẽ tự bấm xác nhận. Không bao giờ khẳng định là đã thực hiện xong.
 - Nếu yêu cầu mơ hồ, nêu rõ cách bạn đã hiểu (bộ lọc áp dụng) trước khi đưa kết quả.
 - Giữ ngữ cảnh hội thoại: đại từ hoặc câu hỏi tiếp theo tham chiếu tới đối tượng vừa nhắc.
@@ -49,7 +51,6 @@ Bối cảnh nhanh (ngày ${new Date().toLocaleDateString("vi-VN")}): ${a.totals
 }
 
 export function AssistantChat() {
-  const ask = useServerFn(askAssistant);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,7 +75,7 @@ export function AssistantChat() {
     const actions: PendingAction[] = [];
     try {
       for (let step = 0; step < 4; step++) {
-        const reply = await ask({ data: { messages: history.current } });
+        const reply = await askAssistantApi(history.current);
         if (!reply.ok) {
           setBubbles((b) => [
             ...b,
@@ -109,6 +110,7 @@ export function AssistantChat() {
             id: c.id,
             type: "function" as const,
             function: { name: c.name, arguments: c.args },
+            ...(c.extra_content ? { extra_content: c.extra_content } : {}),
           })),
         });
         for (const call of calls) {

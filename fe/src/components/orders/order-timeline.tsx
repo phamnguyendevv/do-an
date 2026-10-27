@@ -21,6 +21,7 @@ import {
   FileText,
   Building2,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -39,7 +40,7 @@ interface OrderTimelineProps {
 const ACTION_CONFIG: Record<
   string,
   {
-    icon: any;
+    icon: LucideIcon;
     label: string;
     bgClass: string;
     textClass: string;
@@ -150,7 +151,7 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
       refetch();
       queryClient.invalidateQueries({ queryKey: ["order-histories", targetId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error(err?.message || "Không thể thêm ghi chú");
     },
   });
@@ -333,11 +334,13 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                         <div className="flex items-center gap-1 text-[11px]">
                           <span className="text-muted-foreground">Trạng thái:</span>
                           <span className="font-medium text-muted-foreground">
-                            {orderStatusLabel[item.fromStatus as any] || item.fromStatus}
+                            {orderStatusLabel[item.fromStatus as keyof typeof orderStatusLabel] ||
+                              item.fromStatus}
                           </span>
                           <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
                           <span className="font-semibold text-primary">
-                            {orderStatusLabel[item.toStatus as any] || item.toStatus}
+                            {orderStatusLabel[item.toStatus as keyof typeof orderStatusLabel] ||
+                              item.toStatus}
                           </span>
                         </div>
                       )}
@@ -348,11 +351,13 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                           <div className="flex items-center gap-1 text-[11px]">
                             <span className="text-muted-foreground">Thanh toán:</span>
                             <span className="font-medium text-muted-foreground">
-                              {paymentLabel[item.fromPayment as any] || item.fromPayment}
+                              {paymentLabel[item.fromPayment as keyof typeof paymentLabel] ||
+                                item.fromPayment}
                             </span>
                             <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
                             <span className="font-semibold text-emerald-600">
-                              {paymentLabel[item.toPayment as any] || item.toPayment}
+                              {paymentLabel[item.toPayment as keyof typeof paymentLabel] ||
+                                item.toPayment}
                             </span>
                           </div>
                         )}
@@ -371,23 +376,24 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                         <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-medium">
                           <span className="flex items-center gap-1.5">
                             <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-                            Cổng SePay: {item.metadata.gateway || "Ngân hàng"}
+                            Cổng SePay: {item.metadata["gateway"] || "Ngân hàng"}
                           </span>
                           <span className="font-bold tabular-nums">
-                            +{formatCurrency(Number(item.metadata.transferAmount || order.total))}
+                            +
+                            {formatCurrency(Number(item.metadata["transferAmount"] || order.total))}
                           </span>
                         </div>
-                        {item.metadata.referenceCode && (
+                        {item.metadata["referenceCode"] && (
                           <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400 flex justify-between">
                             <span>Mã GD / Tham chiếu:</span>
-                            <span className="font-mono">{item.metadata.referenceCode}</span>
+                            <span className="font-mono">{item.metadata["referenceCode"]}</span>
                           </div>
                         )}
-                        {item.metadata.content && (
+                        {item.metadata["content"] && (
                           <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400 flex justify-between">
                             <span>Nội dung CK:</span>
                             <span className="font-mono truncate max-w-[240px]">
-                              {item.metadata.content}
+                              {item.metadata["content"]}
                             </span>
                           </div>
                         )}

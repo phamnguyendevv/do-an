@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common'
 
 import { DataSource } from 'typeorm'
 
+import {
+  OrderStatusEnum,
+  PaymentStatusEnum,
+} from '@domain/entities/order-enums.entity'
+
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 
 @Injectable()
@@ -33,17 +38,17 @@ export class GetOverviewRevenueUseCase {
     let totalBooksSold = 0
 
     for (const order of orders) {
-      if (order.status === 'CANCELLED') {
+      if (order.status === OrderStatusEnum.Cancelled) {
         cancelledOrders++
         continue
       }
 
-      if (order.status === 'DELIVERED') {
+      if (order.status === OrderStatusEnum.Delivered) {
         deliveredOrders++
       }
 
       const totalVal = Number(order.total || 0)
-      if (order.payment === 'PAID') {
+      if (order.payment === PaymentStatusEnum.Paid) {
         totalRevenue += totalVal
       } else {
         pendingRevenue += totalVal

@@ -60,9 +60,9 @@ const SEPAY_STORAGE_KEY = "bookstock_sepay_settings";
 const STORE_STORAGE_KEY = "bookstock_store_branding";
 
 export const defaultSepayConfig: SepayConfig = {
-  bank: import.meta.env.VITE_SEPAY_BANK || "MBBank",
-  accountNumber: import.meta.env.VITE_SEPAY_ACCOUNT || "00977512982",
-  accountName: import.meta.env.VITE_SEPAY_ACCOUNT_NAME || "PHAM TRUNG NGUYEN",
+  bank: import.meta.env["VITE_SEPAY_BANK"] || "MBBank",
+  accountNumber: import.meta.env["VITE_SEPAY_ACCOUNT"] || "00977512982",
+  accountName: import.meta.env["VITE_SEPAY_ACCOUNT_NAME"] || "PHAM TRUNG NGUYEN",
   qrTemplate: "compact",
 };
 

@@ -1,4 +1,6 @@
-import type { Book, ExportReceipt, ImportReceipt, Order } from "@/types";
+import type { Book, ExportReceipt, ImportReceipt, Order, StockMovement } from "@/types";
+import { store, type AppState } from "./store";
+import { serviceFailure, serviceSuccess, type ServiceResult } from "./service-result";
 
 export type RangeKey = "7d" | "30d" | "3m" | "6m" | "1y";
 
@@ -65,7 +67,7 @@ const emptyTotals = (): Totals => ({
   pendingRevenue: 0,
 });
 
-const totalsOf = (orders: Order[], books: Book[]): Totals => {
+export const selectOrderTotals = (orders: Order[], books: Book[]): Totals => {
   const bookMap = new Map(books.map((b) => [String(b.id), b]));
   const billable = orders.filter((o) => REVENUE_STATUSES.has(o.status));
   const revenue = billable.reduce((s, o) => s + (o.total || 0), 0);
@@ -79,13 +81,13 @@ const totalsOf = (orders: Order[], books: Book[]): Totals => {
       const bk =
         bookMap.get(String(it.bookId)) ||
         books.find((b) => b.title.trim().toLowerCase() === it.title.trim().toLowerCase());
-      const unitCost = bk?.purchasePrice || bk?.importPrice || (it.price || 0) * 0.7;
+      const unitCost = it.purchasePrice ?? bk?.purchasePrice ?? bk?.importPrice ?? 0;
       return subAcc + unitCost * (it.quantity || 0);
     }, 0);
     return acc + oCost;
   }, 0);
 
-  const grossProfit = Math.max(0, revenue - cogs);
+  const grossProfit = revenue - cogs;
   const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED").length;
   const paidOrders = billable.filter((o) => o.payment === "PAID" || o.status === "DELIVERED");
@@ -128,21 +130,25 @@ export function buildReport(
   custom?: { from: Date; to?: Date },
   imports: ImportReceipt[] = [],
   exports: ExportReceipt[] = [],
+  movements?: StockMovement[],
 ): Report {
   const msPerDay = 86_400_000;
   let end = now.getTime();
   let days = rangeDays(range);
+  let start = end - days * msPerDay;
+  let prevStart = start - days * msPerDay;
 
   if (custom?.from) {
     const from = new Date(custom.from);
     from.setHours(0, 0, 0, 0);
     const to = new Date(custom.to ?? custom.from);
     to.setHours(23, 59, 59, 999);
+    start = from.getTime();
     end = to.getTime();
-    days = Math.max(1, Math.round((end - from.getTime()) / msPerDay));
+    const duration = end - start;
+    days = Math.max(1, Math.round((end - start) / msPerDay));
+    prevStart = start - duration;
   }
-  const start = end - days * msPerDay;
-  const prevStart = start - days * msPerDay;
 
   const at = (o: Order) => new Date(o.createdAt).getTime();
   const currentOrders = orders.filter((o) => at(o) >= start && at(o) <= end);
@@ -167,7 +173,7 @@ export function buildReport(
         const bk =
           bookMap.get(String(it.bookId)) ||
           books.find((b) => b.title.trim().toLowerCase() === it.title.trim().toLowerCase());
-        const unitCost = bk?.purchasePrice || bk?.importPrice || (it.price || 0) * 0.7;
+        const unitCost = it.purchasePrice ?? bk?.purchasePrice ?? bk?.importPrice ?? 0;
         return subAcc + unitCost * (it.quantity || 0);
       }, 0);
       return acc + oCost;
@@ -180,7 +186,7 @@ export function buildReport(
       }).format(new Date(from)),
       revenue: sliceRevenue,
       cogs: sliceCogs,
-      profit: Math.max(0, sliceRevenue - sliceCogs),
+      profit: sliceRevenue - sliceCogs,
       orders: slice.length,
     };
   });
@@ -215,25 +221,43 @@ export function buildReport(
     const from = start + i * bucketMs;
     const to = from + bucketMs;
 
-    const matchingImports = imports.filter((imp) => {
-      const t = new Date(imp.date).getTime();
-      return t >= from && t < to;
-    });
-    const nhap = matchingImports.reduce((s, it) => s + (it.totalItems || 0), 0);
-
-    const matchingExports = exports.filter((exp) => {
-      const t = new Date(exp.date).getTime();
-      return t >= from && t < to;
-    });
-    const exportCount = matchingExports.reduce((s, it) => s + (it.totalItems || 0), 0);
-
-    const sliceOrders = currentOrders.filter(
-      (o) => at(o) >= from && at(o) < to && o.status !== "CANCELLED",
-    );
-    const orderItems = sliceOrders.reduce(
-      (s, o) => s + (o.items || []).reduce((sum, it) => sum + (it.quantity || 0), 0),
-      0,
-    );
+    let nhap: number;
+    let xuat: number;
+    if (movements) {
+      const slice = movements.filter((movement) => {
+        const time = new Date(movement.createdAt).getTime();
+        return time >= from && time < to;
+      });
+      nhap = slice
+        .filter((movement) => movement.type === "IMPORT" || movement.type === "RESTOCK")
+        .reduce((sum, movement) => sum + movement.quantity, 0);
+      xuat = slice
+        .filter((movement) => movement.type === "EXPORT" || movement.type === "SALE")
+        .reduce((sum, movement) => sum + movement.quantity, 0);
+      for (const movement of slice.filter((item) => item.type === "ADJUST")) {
+        if (movement.afterStock >= movement.beforeStock) nhap += movement.quantity;
+        else xuat += movement.quantity;
+      }
+    } else {
+      const matchingImports = imports.filter((imp) => {
+        const t = new Date(imp.date).getTime();
+        return t >= from && t < to;
+      });
+      nhap = matchingImports.reduce((s, it) => s + (it.totalItems || 0), 0);
+      const matchingExports = exports.filter((exp) => {
+        const t = new Date(exp.date).getTime();
+        return t >= from && t < to;
+      });
+      const exportCount = matchingExports.reduce((s, it) => s + (it.totalItems || 0), 0);
+      const sliceOrders = currentOrders.filter(
+        (o) => at(o) >= from && at(o) < to && o.status !== "CANCELLED",
+      );
+      const orderItems = sliceOrders.reduce(
+        (s, o) => s + (o.items || []).reduce((sum, it) => sum + (it.quantity || 0), 0),
+        0,
+      );
+      xuat = exportCount + orderItems;
+    }
 
     return {
       month: new Intl.DateTimeFormat("vi-VN", {
@@ -241,7 +265,7 @@ export function buildReport(
         month: "2-digit",
       }).format(new Date(from)),
       nhap,
-      xuat: exportCount + orderItems,
+      xuat,
     };
   });
 
@@ -273,8 +297,8 @@ export function buildReport(
   }));
 
   return {
-    current: currentOrders.length ? totalsOf(currentOrders, books) : emptyTotals(),
-    previous: previousOrders.length ? totalsOf(previousOrders, books) : emptyTotals(),
+    current: currentOrders.length ? selectOrderTotals(currentOrders, books) : emptyTotals(),
+    previous: previousOrders.length ? selectOrderTotals(previousOrders, books) : emptyTotals(),
     series,
     stockMovement,
     bestSellers: [...soldByBook.values()].sort((a, b) => b.sold - a.sold).slice(0, 5),
@@ -282,12 +306,102 @@ export function buildReport(
       .map(([category, data]) => ({ category, value: data.value, count: data.count }))
       .sort((a, b) => b.value - a.value),
     byStatus,
-    inventoryValue: books.reduce(
-      (s, b) => s + (b.stock || 0) * (b.purchasePrice || b.price || 0),
-      0,
-    ),
+    inventoryValue: books.reduce((total, book) => total + book.stock * book.purchasePrice, 0),
   };
 }
+
+export function selectBusinessReport(
+  range: RangeKey,
+  now: Date = new Date(),
+  custom?: { from: Date; to?: Date },
+  state: AppState = store.getSnapshot(),
+): Report {
+  return buildReport(
+    state.orders,
+    state.books,
+    range,
+    now,
+    custom,
+    state.imports,
+    state.exports,
+    state.movements,
+  );
+}
+
+export function selectInventorySummary(state: AppState = store.getSnapshot()) {
+  const activeBooks = state.books.filter((book) => book.status !== "DISCONTINUED");
+  return {
+    totalStock: activeBooks.reduce((total, book) => total + book.stock, 0),
+    lowStock: activeBooks.filter((book) => book.stock > 0 && book.stock <= book.minStock).length,
+    outOfStock: activeBooks.filter((book) => book.stock === 0).length,
+    inventoryValue: activeBooks.reduce((total, book) => total + book.stock * book.purchasePrice, 0),
+  };
+}
+
+export const selectStockMovements = (state: AppState = store.getSnapshot()) => state.movements;
+
+export function selectStockMovementSeries(
+  months = 6,
+  now: Date = new Date(),
+  state: AppState = store.getSnapshot(),
+): StockMovementPoint[] {
+  return Array.from({ length: months }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - months + index + 1, 1);
+    const monthMovements = state.movements.filter((movement) => {
+      const movedAt = new Date(movement.createdAt);
+      return movedAt.getFullYear() === date.getFullYear() && movedAt.getMonth() === date.getMonth();
+    });
+    const nhap = monthMovements
+      .filter((movement) => movement.type === "IMPORT" || movement.type === "RESTOCK")
+      .reduce((sum, movement) => sum + movement.quantity, 0);
+    const xuat = monthMovements
+      .filter((movement) => movement.type === "EXPORT" || movement.type === "SALE")
+      .reduce((sum, movement) => sum + movement.quantity, 0);
+    return {
+      month: `T${String(date.getMonth() + 1).padStart(2, "0")}`,
+      nhap:
+        nhap +
+        monthMovements
+          .filter(
+            (movement) => movement.type === "ADJUST" && movement.afterStock >= movement.beforeStock,
+          )
+          .reduce((sum, movement) => sum + movement.quantity, 0),
+      xuat:
+        xuat +
+        monthMovements
+          .filter(
+            (movement) => movement.type === "ADJUST" && movement.afterStock < movement.beforeStock,
+          )
+          .reduce((sum, movement) => sum + movement.quantity, 0),
+    };
+  });
+}
+
+export const reportService = {
+  getReport(
+    range: RangeKey,
+    now: Date = new Date(),
+    custom?: { from: Date; to?: Date },
+  ): ServiceResult<Report> {
+    if (!reportRanges.some((item) => item.value === range)) {
+      return serviceFailure("VALIDATION_ERROR", "Khoảng thời gian báo cáo không hợp lệ.");
+    }
+    if (
+      Number.isNaN(now.getTime()) ||
+      (custom &&
+        (Number.isNaN(custom.from.getTime()) ||
+          (custom.to !== undefined && Number.isNaN(custom.to.getTime())) ||
+          (custom.to !== undefined && custom.to < custom.from)))
+    ) {
+      return serviceFailure("VALIDATION_ERROR", "Khoảng ngày báo cáo không hợp lệ.");
+    }
+    return serviceSuccess(selectBusinessReport(range, now, custom));
+  },
+
+  getInventorySummary(): ServiceResult<ReturnType<typeof selectInventorySummary>> {
+    return serviceSuccess(selectInventorySummary());
+  },
+};
 
 /** Export rich multi-section analytics report to CSV */
 export function exportFullAnalyticsReport(filename: string, report: Report, rangeLabel: string) {

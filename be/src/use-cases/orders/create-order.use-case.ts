@@ -2,12 +2,18 @@ import { Inject, Injectable } from '@nestjs/common'
 
 import { DataSource } from 'typeorm'
 
-import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
+import {
+  BookstoreOrderEntity,
+  CreateOrderInput,
+} from '@domain/entities/bookstore-order.entity'
 import {
   BookStatusEnum,
   OrderStatusEnum,
   PaymentStatusEnum,
+  PromotionDiscountTypeEnum,
 } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -30,6 +36,8 @@ import { OrderHistory } from '@infrastructure/databases/postgresql/entities/orde
 import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 
+export { CreateOrderInput }
+
 @Injectable()
 export class CreateBookstoreOrderUseCase {
   constructor(
@@ -44,32 +52,7 @@ export class CreateBookstoreOrderUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-  async execute(dto: {
-    orderCode?: string
-    customerName: string
-    customerPhone: string
-    customerId?: number
-    customerAddress: string
-    provinceId?: number
-    districtId?: number
-    wardCode?: string
-    items: Array<{
-      bookId: number | string
-      title: string
-      quantity: number
-      price: number
-    }>
-    shippingFee?: number
-    discount?: number
-    promotionCode?: string
-    shippingMethod?: string
-    trackingCode?: string
-    note?: string
-    status?: OrderStatusEnum | string
-    payment?: PaymentStatusEnum | string
-    actor?: string
-    actorRole?: string
-  }): Promise<BookstoreOrderEntity> {
+  async execute(dto: CreateOrderInput): Promise<BookstoreOrderEntity> {
     if (!dto.customerName || !dto.customerPhone) {
       throw this.exceptionsService.badRequestException({
         type: 'OrderValidationException',
@@ -165,7 +148,7 @@ export class CreateBookstoreOrderUseCase {
           const movement = queryRunner.manager.create(StockMovement, {
             bookId: book.id,
             bookTitle: book.title,
-            type: 'SALE',
+            type: StockMovementTypeEnum.Sale,
             quantity: -item.quantity,
             beforeStock,
             afterStock,
@@ -224,7 +207,7 @@ export class CreateBookstoreOrderUseCase {
       let discount = dto.discount || 0
       if (promotion && subtotal >= Number(promotion.minOrderValue)) {
         const promotionDiscount =
-          promotion.discountType === 'PERCENTAGE'
+          promotion.discountType === PromotionDiscountTypeEnum.Percentage
             ? (subtotal * Number(promotion.discountValue)) / 100
             : Number(promotion.discountValue)
         discount +=
@@ -242,8 +225,7 @@ export class CreateBookstoreOrderUseCase {
       const isPos =
         dto.shippingMethod?.includes('POS') ||
         dto.shippingMethod?.includes('quầy') ||
-        dto.status === OrderStatusEnum.Delivered ||
-        dto.status === 'DELIVERED'
+        dto.status === OrderStatusEnum.Delivered
 
       const status =
         dto.status ||
@@ -282,7 +264,7 @@ export class CreateBookstoreOrderUseCase {
       const history = queryRunner.manager.create(OrderHistory, {
         orderId: savedOrder.id,
         orderCode: savedOrder.orderCode,
-        action: 'CREATED',
+        action: OrderHistoryActionEnum.Created,
         toStatus: String(savedOrder.status),
         toPayment: String(savedOrder.payment),
         title: isPos ? 'Tạo đơn hàng tại quầy (POS)' : 'Tạo đơn hàng mới',

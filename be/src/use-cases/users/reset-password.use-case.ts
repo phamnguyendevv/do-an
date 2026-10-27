@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { IResetPasswordInput } from '@domain/entities/user.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   IUserRepositoryInterface,
@@ -27,11 +28,7 @@ export class ResetPasswordUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(params: {
-    email: string
-    inputOtp: string
-    newPassword: string
-  }): Promise<string> {
+  async execute(params: IResetPasswordInput): Promise<string> {
     await this.checkOtp(params)
 
     await this.updatePassword({

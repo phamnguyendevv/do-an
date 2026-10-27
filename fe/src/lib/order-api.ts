@@ -21,7 +21,14 @@ export type OrderApiItem = {
   shippingMethod: string;
   trackingCode?: string;
   status:
-    "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPING" | "DELIVERED" | "CANCELLED" | "RETURNED";
+    | "PENDING"
+    | "CONFIRMED"
+    | "PREPARING"
+    | "SHIPPING"
+    | "DELIVERED"
+    | "CANCELLED"
+    | "FAILED"
+    | "RETURNED";
   note?: string;
   createdAt: string;
   updatedAt?: string;
@@ -186,5 +193,15 @@ export const sepayApi = {
       payment?: string;
       total?: number;
     }>(`/payment/sepay/status/${encodeURIComponent(orderCode)}`);
+  },
+
+  async simulateWebhook(orderCode: string, amount: number) {
+    return apiRequest<{ success: boolean; message?: string; error?: string }>(
+      "/payment/sepay/simulate",
+      {
+        method: "POST",
+        body: JSON.stringify({ orderCode, amount }),
+      },
+    );
   },
 };

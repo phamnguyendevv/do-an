@@ -23,6 +23,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProductLines, type ProductLine } from "@/components/inventory/product-lines";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import { useBooks, useOrders } from "@/hooks/use-store";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
 import { normalizeText, parseCustomerAndAddress } from "@/lib/vn-address-parser";
 import { parseProductList } from "@/lib/product-parser";
+import { geminiParseCustomerAndAddress, geminiParseProducts } from "@/lib/gemini-order-parser";
 import {
   AddressBookDialog,
   type AddressBookContact,
@@ -250,7 +252,7 @@ function CreateOrderPage() {
     if (c.address) {
       setIsAutoParsing(true);
       try {
-        const parsed = await parseCustomerAndAddress(
+        const parsed = await geminiParseCustomerAndAddress(
           c.address,
           provinces,
           ghnApi.getDistricts,
@@ -413,7 +415,7 @@ function CreateOrderPage() {
         return;
       }
 
-      const parsed = await parseCustomerAndAddress(
+      const parsed = await geminiParseCustomerAndAddress(
         textToParse,
         provinces,
         ghnApi.getDistricts,
@@ -457,9 +459,14 @@ function CreateOrderPage() {
             parsed.districtName && `Khu vực: ${parsed.districtName}`,
           ].filter(Boolean);
 
-          toast.success("Đã tự động nhận diện thông tin khách hàng!", {
-            description: summaryParts.join(" • "),
-          });
+          toast.success(
+            parsed.isAiParsed
+              ? "✨ Gemini AI: Đã tự động nhận diện thông tin khách hàng!"
+              : "Đã tự động nhận diện thông tin khách hàng!",
+            {
+              description: summaryParts.join(" • "),
+            },
+          );
         }
       } else {
         // Chế độ 3 cấp: Yêu cầu đủ Tỉnh/TP, Quận/Huyện và Phường/Xã
@@ -492,9 +499,14 @@ function CreateOrderPage() {
             parsed.wardName && `Phường/Xã: ${parsed.wardName}`,
           ].filter(Boolean);
 
-          toast.success("Đã tự động nhận diện và điền thông tin khách hàng!", {
-            description: summaryParts.join(" • "),
-          });
+          toast.success(
+            parsed.isAiParsed
+              ? "✨ Gemini AI: Đã tự động nhận diện và điền thông tin khách hàng!"
+              : "Đã tự động nhận diện và điền thông tin khách hàng!",
+            {
+              description: summaryParts.join(" • "),
+            },
+          );
         }
       }
     } catch (e: any) {
@@ -531,7 +543,7 @@ function CreateOrderPage() {
         return;
       }
 
-      const parsed = parseProductList(textToParse, books);
+      const parsed = await geminiParseProducts(textToParse, books);
 
       if (parsed.lines.length === 0) {
         toast.warning("Không tìm thấy sản phẩm nào phù hợp trong kho!", {
@@ -560,9 +572,14 @@ function CreateOrderPage() {
           },
         );
       } else {
-        toast.success(`Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
-          description: matchedNames.join(" • "),
-        });
+        toast.success(
+          parsed.isAiParsed
+            ? `✨ Gemini AI: Đã thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`
+            : `Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`,
+          {
+            description: matchedNames.join(" • "),
+          },
+        );
       }
     } catch (e: any) {
       console.error("Lỗi phân tích sản phẩm tự động:", e);
@@ -583,7 +600,7 @@ function CreateOrderPage() {
       }));
       setAutoInputText(`${contact.name}, ${contact.phone}, ${contact.address}`);
 
-      const parsed = await parseCustomerAndAddress(
+      const parsed = await geminiParseCustomerAndAddress(
         contact.address,
         provinces,
         ghnApi.getDistricts,
@@ -672,8 +689,8 @@ function CreateOrderPage() {
       customerName: customer.name,
       customerPhone: customer.phone,
       customerAddress: fullAddress || customer.detailAddress,
-      provinceId,
-      districtId,
+      ...(provinceId !== undefined ? { provinceId } : {}),
+      ...(districtId !== undefined ? { districtId } : {}),
       wardCode,
       shippingMethod:
         carrierType === "GHN"
@@ -683,9 +700,9 @@ function CreateOrderPage() {
             : "Vận chuyển khác",
       shippingFee,
       discount,
-      trackingCode: ghnTrackingCode,
-      note: customer.note,
-      expectedDelivery: ghnLeadTime || undefined,
+      ...(ghnTrackingCode ? { trackingCode: ghnTrackingCode } : {}),
+      ...(customer.note ? { note: customer.note } : {}),
+      ...(ghnLeadTime ? { expectedDelivery: ghnLeadTime } : {}),
       lines,
     });
 
@@ -698,6 +715,7 @@ function CreateOrderPage() {
     // Invalidate react-query cache for orders and audit logs
     queryClient.invalidateQueries({ queryKey: ["orders"] });
     queryClient.invalidateQueries({ queryKey: ["order-audit-logs"] });
+    queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
 
     toast.success(
       `Tạo đơn hàng ${res.data?.orderCode || res.data?.id} thành công — tồn kho đã được trừ`,
@@ -806,7 +824,7 @@ function CreateOrderPage() {
                         </>
                       ) : (
                         <>
-                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán và nhập tự động
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Dán & Nhập
                         </>
                       )}
                     </Button>
@@ -982,9 +1000,8 @@ function CreateOrderPage() {
                             // Tự động gán mã phường mặc định của quận/huyện để tính cước GHN
                             try {
                               const ws = await ghnApi.getWards(id);
-                              if (ws && ws.length > 0) {
-                                setWardCode(ws[0].WardCode);
-                              }
+                              const firstWard = ws[0];
+                              if (firstWard) setWardCode(firstWard.WardCode);
                             } catch {
                               // fallback
                             }
@@ -1196,7 +1213,7 @@ function CreateOrderPage() {
                         </>
                       ) : (
                         <>
-                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán & Thêm sản phẩm
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Dán & Thêm
                         </>
                       )}
                     </Button>

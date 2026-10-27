@@ -21,7 +21,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import {
   DateRangePicker,
   inDateRange,
-  DATE_PRESETS,
+  getActivePreset,
+  formatDateRange,
   type DateRange,
 } from "@/components/shared/date-range-picker";
 import { StatCard } from "@/components/shared/stat-card";
@@ -35,9 +36,9 @@ import {
   RevenueAreaChart,
   StockMovementChart,
 } from "@/components/analytics/charts";
-import { stockMovement as mockStockMovement } from "@/mock/inventory";
-import { useBooks, useExportReceipts, useImportReceipts, useOrders } from "@/hooks/use-store";
+import { useBooks, useInventorySummary, useOrders } from "@/hooks/use-store";
 import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
+import { selectOrderTotals, selectStockMovementSeries } from "@/services/report-service";
 import {
   bookStatusLabel,
   bookStatusTone,
@@ -217,8 +218,7 @@ const lowStockColumns: DataTableColumn<Book>[] = [
 function DashboardPage() {
   const books = useBooks();
   const orders = useOrders();
-  const imports = useImportReceipts();
-  const exports = useExportReceipts();
+  const inventorySummary = useInventorySummary();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Filter orders by date range if selected
@@ -235,47 +235,22 @@ function DashboardPage() {
 
   // Inventory analysis
   const lowStockBooks = useMemo(
-    () => books.filter((b) => b.status === "LOW_STOCK" || b.status === "OUT_OF_STOCK"),
+    () =>
+      books.filter(
+        (book) =>
+          book.status !== "DISCONTINUED" &&
+          (book.status === "LOW_STOCK" || book.status === "OUT_OF_STOCK"),
+      ),
     [books],
   );
   const outOfStockBooks = useMemo(
-    () => books.filter((b) => b.status === "OUT_OF_STOCK" || b.stock === 0),
+    () => books.filter((book) => book.status !== "DISCONTINUED" && book.stock === 0),
     [books],
   );
 
   // Financial & Order Metrics (Reacts dynamically to selected dateRange)
   const stats = useMemo(() => {
-    const totalBooks = books.length;
-    const totalStock = books.reduce((s, b) => s + (b.stock || 0), 0);
-    const inventoryValue = books.reduce(
-      (s, b) => s + (b.stock || 0) * (b.purchasePrice || b.price || 0),
-      0,
-    );
-
-    // Active (non-cancelled) orders in current period
-    const validOrders = periodOrders.filter((o) => o.status !== "CANCELLED");
-    const activeRevenue = validOrders.reduce((s, o) => s + (o.total || 0), 0);
-
-    // Confirmed/Paid/Delivered revenue
-    const paidOrders = validOrders.filter((o) => o.payment === "PAID" || o.status === "DELIVERED");
-    const paidRevenue = paidOrders.reduce((s, o) => s + (o.total || 0), 0);
-
-    // Pending revenue (COD or awaiting payment)
-    const pendingRevenue = activeRevenue - paidRevenue;
-
-    // Cost of Goods Sold (COGS) estimation
-    const bookMap = new Map(books.map((b) => [b.id, b]));
-    const cogs = validOrders.reduce((acc, order) => {
-      const orderCogs = (order.items || []).reduce((itemAcc, it) => {
-        const bk = bookMap.get(it.bookId);
-        const unitCost = bk?.purchasePrice || bk?.importPrice || (it.price || 0) * 0.7;
-        return itemAcc + unitCost * (it.quantity || 0);
-      }, 0);
-      return acc + orderCogs;
-    }, 0);
-
-    const grossProfit = Math.max(0, activeRevenue - cogs);
-    const profitMargin = activeRevenue > 0 ? (grossProfit / activeRevenue) * 100 : 0;
+    const totals = selectOrderTotals(periodOrders, books);
 
     // Order pipeline breakdown
     const deliveredCount = periodOrders.filter((o) => o.status === "DELIVERED").length;
@@ -285,28 +260,23 @@ function DashboardPage() {
     const shippingCount = periodOrders.filter((o) => o.status === "SHIPPING").length;
     const cancelledCount = periodOrders.filter((o) => o.status === "CANCELLED").length;
 
-    const totalSoldUnits = validOrders.reduce(
-      (s, o) => s + (o.items || []).reduce((sum, it) => sum + (it.quantity || 0), 0),
-      0,
-    );
-
     return {
-      totalBooks,
-      totalStock,
-      inventoryValue,
+      totalBooks: books.length,
+      totalStock: inventorySummary.totalStock,
+      inventoryValue: inventorySummary.inventoryValue,
       totalOrders: periodOrders.length,
-      activeRevenue,
-      paidRevenue,
-      pendingRevenue,
-      grossProfit,
-      profitMargin,
-      totalSoldUnits,
+      activeRevenue: totals.revenue,
+      paidRevenue: totals.paidRevenue,
+      pendingRevenue: totals.pendingRevenue,
+      grossProfit: totals.grossProfit,
+      profitMargin: totals.margin,
+      totalSoldUnits: totals.units,
       deliveredCount,
       pendingCount,
       shippingCount,
       cancelledCount,
     };
-  }, [books, periodOrders]);
+  }, [books, periodOrders, inventorySummary]);
 
   // Dynamic Monthly / Period Revenue Series for Chart
   const revenueSeries = useMemo(() => {
@@ -361,70 +331,14 @@ function DashboardPage() {
     return sorted;
   }, [periodOrders, books]);
 
-  // Dynamic Stock Movement based on actual import/export receipts + orders
-  const stockMovementData = useMemo(() => {
-    const months = 6;
-    const now = new Date();
-    const result: { month: string; nhap: number; xuat: number }[] = [];
+  const stockMovementData = selectStockMovementSeries();
 
-    for (let i = months - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const label = `T${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const year = d.getFullYear();
-      const month = d.getMonth();
-
-      // Imports in that month
-      const impCount = imports
-        .filter((imp) => {
-          const id = new Date(imp.date);
-          return id.getFullYear() === year && id.getMonth() === month;
-        })
-        .reduce((sum, imp) => sum + (imp.totalItems || 0), 0);
-
-      // Exports in that month
-      const expCount = exports
-        .filter((exp) => {
-          const ed = new Date(exp.date);
-          return ed.getFullYear() === year && ed.getMonth() === month;
-        })
-        .reduce((sum, exp) => sum + (exp.totalItems || 0), 0);
-
-      // Delivered orders in that month (stock dispatched)
-      const orderSold = orders
-        .filter((o) => {
-          if (o.status === "CANCELLED") return false;
-          const od = new Date(o.createdAt);
-          return od.getFullYear() === year && od.getMonth() === month;
-        })
-        .reduce((sum, o) => sum + (o.items || []).reduce((n, it) => n + (it.quantity || 0), 0), 0);
-
-      result.push({
-        month: label,
-        nhap: impCount,
-        xuat: expCount + orderSold,
-      });
-    }
-
-    const hasData = result.some((r) => r.nhap > 0 || r.xuat > 0);
-    return hasData ? result : mockStockMovement;
-  }, [imports, exports, orders]);
-
-  // Resolve preset label for current dateRange
+  // Resolve preset or formatted label for current dateRange
   const activePeriodLabel = useMemo(() => {
     if (!dateRange?.from) return null;
-    for (const p of DATE_PRESETS) {
-      const r = p.resolve();
-      const fromMatch = r.from!.toDateString() === dateRange.from.toDateString();
-      const toMatch =
-        r.to && dateRange.to
-          ? r.to.toDateString() === dateRange.to.toDateString()
-          : !r.to && !dateRange.to;
-      if (fromMatch && toMatch) return p.label;
-    }
-    const days = dateRange.to
-      ? Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / 86400000) + 1
-      : 1;
-    return `${days} ngày`;
+    const preset = getActivePreset(dateRange);
+    if (preset) return preset;
+    return formatDateRange(dateRange);
   }, [dateRange]);
 
   return (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowDownRight,
@@ -40,13 +40,12 @@ import {
   RevenueAreaChart,
   StockMovementChart,
 } from "@/components/analytics/charts";
-import { useBooks, useExportReceipts, useImportReceipts, useOrders } from "@/hooks/use-store";
 import {
-  buildReport,
   exportFullAnalyticsReport,
   growth,
   growthHint,
   reportRanges,
+  selectBusinessReport,
   type RangeKey,
 } from "@/services/report-service";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "@/utils/format";
@@ -71,28 +70,15 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  const orders = useOrders();
-  const books = useBooks();
-  const imports = useImportReceipts();
-  const exports = useExportReceipts();
-
   const [range, setRange] = useState<RangeKey>("30d");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
-  const report = useMemo(
-    () =>
-      buildReport(
-        orders,
-        books,
-        range,
-        new Date(),
-        dateRange?.from
-          ? { from: dateRange.from, ...(dateRange.to ? { to: dateRange.to } : {}) }
-          : undefined,
-        imports,
-        exports,
-      ),
-    [orders, books, range, dateRange, imports, exports],
+  const report = selectBusinessReport(
+    range,
+    new Date(),
+    dateRange?.from
+      ? { from: dateRange.from, ...(dateRange.to ? { to: dateRange.to } : {}) }
+      : undefined,
   );
 
   const rangeLabel = dateRange?.from

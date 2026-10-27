@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { orderApi, type OrderApiItem } from "@/lib/order-api";
-import type { Order, OrderStatus, PaymentStatus } from "@/types";
+import { useMemo, useSyncExternalStore } from "react";
+import type { Order } from "@/types";
+import { store } from "@/services/store";
 
 export interface UsePaginatedOrdersParams {
   page?: number;
@@ -12,84 +12,41 @@ export interface UsePaginatedOrdersParams {
   endDate?: string;
 }
 
-export const mapApiOrder = (o: OrderApiItem): Order => {
-  return {
-    id: String(o.id),
-    orderCode: o.orderCode,
-    customerName: o.customerName,
-    customerPhone: o.customerPhone,
-    customerAddress: o.customerAddress,
-    provinceId: o.provinceId,
-    districtId: o.districtId,
-    wardCode: o.wardCode,
-    items: (o.items || []).map((it) => ({
-      bookId: String(it.bookId),
-      title: it.title,
-      quantity: it.quantity,
-      price: Number(it.price),
-    })),
-    subtotal: Number(o.subtotal),
-    discount: Number(o.discount),
-    shippingFee: Number(o.shippingFee),
-    total: Number(o.total),
-    payment: o.payment as PaymentStatus,
-    shippingMethod: o.shippingMethod,
-    trackingCode: o.trackingCode,
-    note: o.note,
-    status: o.status as OrderStatus,
-    createdAt:
-      typeof o.createdAt === "string"
-        ? o.createdAt
-        : new Date(o.createdAt ?? Date.now()).toISOString(),
-  };
-};
-
 export function usePaginatedOrders(params: UsePaginatedOrdersParams = {}) {
   const { page = 1, size = 10, search, status, payment, startDate, endDate } = params;
+  const orders = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot).orders;
 
-  const query = useQuery({
-    queryKey: ["orders", "paginated", { page, size, search, status, payment, startDate, endDate }],
-    queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const p: any = { page, size };
-      if (search?.trim()) p["search"] = search.trim();
-      if (status && status !== "all") p["status"] = status;
-      if (payment && payment !== "all") p["payment"] = payment;
-      if (startDate) p["startDate"] = startDate;
-      if (endDate) p["endDate"] = endDate;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res: any = await orderApi.list(p);
-
-      let items: OrderApiItem[] = [];
-      let total = 0;
-
-      if (Array.isArray(res?.data)) {
-        items = res.data;
-        total = res.pagination?.total ?? res.data.length;
-      } else if (Array.isArray(res)) {
-        items = res;
-        total = res.length;
-      }
-
-      return {
-        items: items.map(mapApiOrder),
-        pagination: {
-          total,
-          page: res?.pagination?.page ?? page,
-          size: res?.pagination?.size ?? size,
-        },
-      };
-    },
-    placeholderData: (prev) => prev,
-    staleTime: 10_000,
-  });
+  const result = useMemo(() => {
+    const query = search?.trim().toLocaleLowerCase();
+    const from = startDate ? Date.parse(startDate) : undefined;
+    const to = endDate ? Date.parse(endDate) + 24 * 60 * 60 * 1000 : undefined;
+    const filtered = orders.filter((order) => {
+      const created = Date.parse(order.createdAt);
+      return (
+        (!query ||
+          (order.orderCode ?? order.id).toLocaleLowerCase().includes(query) ||
+          order.customerName.toLocaleLowerCase().includes(query) ||
+          order.customerPhone.toLocaleLowerCase().includes(query)) &&
+        (!status || status === "all" || order.status === status) &&
+        (!payment || payment === "all" || order.payment === payment) &&
+        (from === undefined || created >= from) &&
+        (to === undefined || created < to)
+      );
+    });
+    const safePage = Math.max(1, Math.floor(page));
+    const safeSize = Math.max(1, Math.floor(size));
+    return {
+      items: filtered.slice((safePage - 1) * safeSize, safePage * safeSize),
+      pagination: { total: filtered.length, page: safePage, size: safeSize },
+    };
+  }, [endDate, orders, page, payment, search, size, startDate, status]);
 
   return {
-    orders: query.data?.items ?? [],
-    pagination: query.data?.pagination ?? { total: 0, page, size },
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    error: query.error ? (query.error as Error).message : null,
-    refetch: query.refetch,
+    orders: result.items,
+    pagination: result.pagination,
+    isLoading: false,
+    isFetching: false,
+    error: null,
+    refetch: () => Promise.resolve({ data: result }),
   };
 }

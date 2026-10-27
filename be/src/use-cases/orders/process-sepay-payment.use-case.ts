@@ -2,38 +2,28 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 
 import { DataSource, ILike } from 'typeorm'
 
+import { ISePayWebhookInput } from '@domain/entities/bookstore-order.entity'
 import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
   IBookstoreOrderRepositoryInterface,
 } from '@domain/repositories/bookstore-order.repository.interface'
 import {
+  IPaymentGateway,
+  PAYMENT_GATEWAY,
+} from '@domain/services/payment-gateway.interface'
+import {
   IRedisCacheService,
   REDIS_SERVICE,
 } from '@domain/services/redis.interface'
 
-import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
-
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
-
-export interface ProcessSepayWebhookDto {
-  id?: number
-  gateway?: string
-  transactionDate?: string
-  accountNumber?: string
-  subAccount?: string | null
-  transferType?: string
-  transferAmount?: number
-  accumulated?: number
-  code?: string | null
-  content?: string
-  referenceCode?: string
-  description?: string
-}
+import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
 
 export interface ProcessSepayResult {
   success: boolean
@@ -57,10 +47,11 @@ export class ProcessSepayPaymentUseCase {
     @Inject(REDIS_SERVICE)
     private readonly redisService?: IRedisCacheService,
     @Optional()
-    private readonly paymentGateway?: PaymentGateway,
+    @Inject(PAYMENT_GATEWAY)
+    private readonly paymentGateway?: IPaymentGateway,
   ) {}
 
-  async execute(payload: ProcessSepayWebhookDto): Promise<ProcessSepayResult> {
+  async execute(payload: ISePayWebhookInput): Promise<ProcessSepayResult> {
     this.logger.log(`SePay Webhook received: ${JSON.stringify(payload)}`)
 
     if (payload.transferType && payload.transferType.toLowerCase() !== 'in') {
@@ -99,11 +90,36 @@ export class ProcessSepayPaymentUseCase {
       codeWithoutHyphen = `DH${rawCode}`
     }
 
+    const referenceCode = String(
+      payload.referenceCode || payload.code || payload.id || '',
+    ).trim()
+
     const queryRunner = this.dataSource.createQueryRunner()
     await queryRunner.connect()
     await queryRunner.startTransaction()
 
     try {
+      if (referenceCode) {
+        const existingTx = await queryRunner.manager.findOne(
+          PaymentTransaction,
+          {
+            where: { referenceCode },
+          },
+        )
+        if (existingTx) {
+          this.logger.warn(
+            `SePay Webhook duplicate referenceCode: ${referenceCode}`,
+          )
+          await queryRunner.rollbackTransaction()
+          return {
+            success: true,
+            message: 'Giao dịch đã được xử lý trước đó (Idempotency duplicate)',
+            orderCode: existingTx.orderCode,
+            status: existingTx.status,
+          }
+        }
+      }
+
       let order: BookstoreOrder | null = null
 
       if (extractedDigits) {
@@ -136,82 +152,14 @@ export class ProcessSepayPaymentUseCase {
       }
 
       if (!order) {
-        const fallbackOrderCode =
-          codeWithHyphen || `DH-${Date.now().toString().slice(-6)}`
-        this.logger.log(
-          `Tự động tạo đơn hàng mới từ Webhook SePay: ${fallbackOrderCode}`,
-        )
-
-        order = queryRunner.manager.create(BookstoreOrder, {
-          orderCode: fallbackOrderCode,
-          customerName: 'Khách thanh toán SePay QR',
-          customerPhone: '0900000000',
-          customerAddress: 'Bán lẻ tại quầy POS',
-          shippingMethod: 'Bán tại quầy (POS)',
-          shippingFee: 0,
-          discount: 0,
-          subtotal: transferAmount,
-          total: transferAmount,
-          payment: PaymentStatusEnum.Paid,
-          status: OrderStatusEnum.Delivered,
-          note: `Tự động ghi nhận từ SePay: ${payload.gateway || 'Bank'} - ${payload.content || ''}`,
-          items: [
-            {
-              bookId: 0,
-              title: 'Thanh toán SePay QR tại quầy',
-              quantity: 1,
-              price: transferAmount,
-            },
-          ],
-        })
-
-        const savedNew = await queryRunner.manager.save(BookstoreOrder, order)
-
-        // Save Order History for Auto Created Order
-        const history = queryRunner.manager.create(OrderHistory, {
-          orderId: savedNew.id,
-          orderCode: savedNew.orderCode,
-          action: 'SEPAY_PAYMENT',
-          fromStatus: 'PENDING',
-          toStatus: 'DELIVERED',
-          fromPayment: 'UNPAID',
-          toPayment: 'PAID',
-          title: 'Tự động tạo đơn & thanh toán SePay QR',
-          note: `Nhận ${transferAmount.toLocaleString('vi-VN')}đ qua SePay (${payload.gateway || 'Ngân hàng'}). Mã tham chiếu: ${payload.referenceCode || payload.code || 'N/A'}. Nội dung: "${payload.content || ''}"`,
-          actor: 'SePay Webhook',
-          actorRole: 'WEBHOOK',
-          metadata: {
-            transferAmount,
-            gateway: payload.gateway,
-            transactionDate: payload.transactionDate,
-            accountNumber: payload.accountNumber,
-            content: payload.content,
-            referenceCode: payload.referenceCode || payload.code,
-          },
-        })
-        await queryRunner.manager.save(OrderHistory, history)
-
-        await queryRunner.commitTransaction()
-
-        await this.redisService?.delPattern('orders:*')
-
-        // Push real-time payment update via WebSocket
-        this.paymentGateway?.emitPaymentSuccess({
-          orderCode: savedNew.orderCode,
-          orderId: savedNew.id,
-          amount: Number(savedNew.total),
-          paymentStatus: 'PAID',
-          transactionDate: payload.transactionDate,
-          gateway: payload.gateway,
-        })
-
+        // Standard rule: a webhook only confirms an existing order.
+        // Never auto-create an order (with placeholder customer data)
+        // from an unverified incoming transfer.
+        await queryRunner.rollbackTransaction()
         return {
-          success: true,
-          message: 'Tự động tạo và xác nhận thanh toán SePay thành công!',
-          orderCode: savedNew.orderCode,
-          status: String(savedNew.status),
-          payment: String(savedNew.payment),
-          total: Number(savedNew.total),
+          success: false,
+          message: 'Không tìm thấy đơn hàng khớp với nội dung chuyển khoản',
+          orderCode: codeWithHyphen || undefined,
         }
       }
 
@@ -219,6 +167,44 @@ export class ProcessSepayPaymentUseCase {
       this.logger.log(
         `Khớp đơn hàng ${order.orderCode} (Tổng: ${orderTotal}đ, Số tiền nhận: ${transferAmount}đ)`,
       )
+
+      if (order.payment === PaymentStatusEnum.Paid) {
+        await queryRunner.rollbackTransaction()
+        return {
+          success: true,
+          message: 'Đơn hàng đã được xác nhận thanh toán trước đó',
+          orderCode: order.orderCode,
+          status: String(order.status),
+          payment: String(order.payment),
+          total: orderTotal,
+        }
+      }
+
+      const configuredAccount = (process.env.SEPAY_ACCOUNT || '').trim()
+      if (
+        payload.accountNumber &&
+        configuredAccount &&
+        payload.accountNumber.trim() !== configuredAccount
+      ) {
+        await queryRunner.rollbackTransaction()
+        return {
+          success: false,
+          message:
+            'Tài khoản nhận tiền không khớp với tài khoản SePay đã cấu hình',
+          orderCode: order.orderCode,
+          total: orderTotal,
+        }
+      }
+
+      if (!transferAmount || transferAmount !== orderTotal) {
+        await queryRunner.rollbackTransaction()
+        return {
+          success: false,
+          message: 'Số tiền chuyển khoản không khớp với tổng tiền đơn hàng',
+          orderCode: order.orderCode,
+          total: orderTotal,
+        }
+      }
 
       const previousStatus = String(order.status)
       const previousPayment = String(order.payment)
@@ -241,11 +227,11 @@ export class ProcessSepayPaymentUseCase {
       const history = queryRunner.manager.create(OrderHistory, {
         orderId: updatedOrder.id,
         orderCode: updatedOrder.orderCode,
-        action: 'SEPAY_PAYMENT',
+        action: OrderHistoryActionEnum.SepayPayment,
         fromStatus: previousStatus,
         toStatus: String(updatedOrder.status),
         fromPayment: previousPayment,
-        toPayment: 'PAID',
+        toPayment: PaymentStatusEnum.Paid,
         title: 'Xác nhận thanh toán tự động qua SePay QR',
         note: `Nhận ${transferAmount.toLocaleString('vi-VN')}đ qua SePay (${payload.gateway || 'Ngân hàng'}). Mã tham chiếu: ${payload.referenceCode || payload.code || 'N/A'}. Nội dung: "${payload.content || ''}". Trạng thái đơn: ${previousStatus} → ${updatedOrder.status}.`,
         actor: 'SePay Webhook',
@@ -262,6 +248,21 @@ export class ProcessSepayPaymentUseCase {
       })
       await queryRunner.manager.save(OrderHistory, history)
 
+      if (referenceCode) {
+        const paymentTx = queryRunner.manager.create(PaymentTransaction, {
+          referenceCode,
+          gateway: payload.gateway,
+          accountNumber: payload.accountNumber,
+          transferAmount,
+          orderCode: updatedOrder.orderCode,
+          orderId: updatedOrder.id,
+          content: payload.content,
+          status: 'SUCCESS',
+          rawPayload: payload as unknown as Record<string, unknown>,
+        })
+        await queryRunner.manager.save(PaymentTransaction, paymentTx)
+      }
+
       await queryRunner.commitTransaction()
 
       await this.redisService?.delPattern('orders:*')
@@ -271,7 +272,7 @@ export class ProcessSepayPaymentUseCase {
         orderCode: updatedOrder.orderCode,
         orderId: updatedOrder.id,
         amount: Number(updatedOrder.total),
-        paymentStatus: 'PAID',
+        paymentStatus: PaymentStatusEnum.Paid,
         transactionDate: payload.transactionDate,
         gateway: payload.gateway,
       })
