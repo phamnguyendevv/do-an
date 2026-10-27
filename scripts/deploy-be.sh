@@ -132,7 +132,11 @@ HEALTH_OK=false
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-        http://localhost:3000/health 2>/dev/null || echo "000")
+        http://localhost:3000/api/v1/health 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" != "200" ]; then
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://localhost:3000/health 2>/dev/null || echo "000")
+    fi
 
     if [ "$HTTP_CODE" = "200" ]; then
         HEALTH_OK=true
