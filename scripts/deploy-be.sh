@@ -80,7 +80,42 @@ log "Pull Docker image moi nhat..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend || docker pull "$IMAGE" || error "Khong the pull image $IMAGE"
 
 # ============================================================
-# 3. Khởi động/cập nhật container Backend
+# 3. Đảm bảo Postgres sẵn sàng và đồng bộ mật khẩu DB
+# ============================================================
+log "Khởi chạy database Postgres..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d postgres
+sleep 5
+
+# Nếu có thông tin database từ secret GitHub, cập nhật vào file .env.production
+if [ -n "${DATABASE_PASSWORD:-}" ] && [ -f "$ENV_FILE" ]; then
+    sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=${DATABASE_PASSWORD}|" "$ENV_FILE"
+fi
+if [ -n "${DATABASE_USER:-}" ] && [ -f "$ENV_FILE" ]; then
+    sed -i "s|^DATABASE_USER=.*|DATABASE_USER=${DATABASE_USER}|" "$ENV_FILE"
+fi
+if [ -n "${DATABASE_NAME:-}" ] && [ -f "$ENV_FILE" ]; then
+    sed -i "s|^DATABASE_NAME=.*|DATABASE_NAME=${DATABASE_NAME}|" "$ENV_FILE"
+fi
+
+DB_USER=$(grep '^DATABASE_USER=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r\n')
+DB_PASS=$(grep '^DATABASE_PASSWORD=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r\n')
+DB_NAME=$(grep '^DATABASE_NAME=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '\r\n')
+
+if [ -n "$DB_USER" ] && [ -n "$DB_PASS" ]; then
+    log "Đồng bộ mật khẩu PostgreSQL cho user '$DB_USER'..."
+    docker exec -u postgres app-postgres psql -c "ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASS';" 2>/dev/null || \
+    docker exec app-postgres psql -U postgres -c "ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASS';" 2>/dev/null || true
+
+    if [ -n "$DB_NAME" ]; then
+        docker exec -u postgres app-postgres psql -c "CREATE DATABASE \"$DB_NAME\" OWNER \"$DB_USER\";" 2>/dev/null || \
+        docker exec app-postgres psql -U postgres -c "CREATE DATABASE \"$DB_NAME\" OWNER \"$DB_USER\";" 2>/dev/null || true
+        docker exec -u postgres app-postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";" 2>/dev/null || \
+        docker exec app-postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";" 2>/dev/null || true
+    fi
+fi
+
+# ============================================================
+# 4. Khởi động/cập nhật container Backend
 # ============================================================
 log "Khởi chạy container Backend..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d backend
