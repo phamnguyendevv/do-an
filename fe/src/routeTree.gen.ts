@@ -33,7 +33,6 @@ import { Route as InventoryImportRouteImport } from './routes/inventory.import'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as OrdersCreateRouteImport } from './routes/orders.create'
-import { Route as PosMinimalRouteImport } from './routes/pos.minimal'
 import { Route as ShippingIndexRouteImport } from './routes/shipping.index'
 import { Route as ShippingShippingIdRouteImport } from './routes/shipping.$shippingId'
 
@@ -157,11 +156,6 @@ const OrdersCreateRoute = OrdersCreateRouteImport.update({
   path: '/orders/create',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PosMinimalRoute = PosMinimalRouteImport.update({
-  id: '/minimal',
-  path: '/minimal',
-  getParentRoute: () => PosRoute,
-} as any)
 const ShippingIndexRoute = ShippingIndexRouteImport.update({
   id: '/shipping/',
   path: '/shipping/',
@@ -195,7 +189,6 @@ export interface FileRoutesByFullPath {
   '/inventory/import': typeof InventoryImportRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/create': typeof OrdersCreateRoute
-  '/pos/minimal': typeof PosMinimalRoute
   '/shipping/$shippingId': typeof ShippingShippingIdRoute
   '/books/': typeof BooksIndexRoute
   '/inventory/': typeof InventoryIndexRoute
@@ -211,7 +204,7 @@ export interface FileRoutesByTo {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/pos': typeof PosRouteWithChildren
+  '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
   '/register': typeof RegisterRoute
@@ -224,7 +217,6 @@ export interface FileRoutesByTo {
   '/inventory/import': typeof InventoryImportRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/create': typeof OrdersCreateRoute
-  '/pos/minimal': typeof PosMinimalRoute
   '/shipping/$shippingId': typeof ShippingShippingIdRoute
   '/books': typeof BooksIndexRoute
   '/inventory': typeof InventoryIndexRoute
@@ -241,7 +233,7 @@ export interface FileRoutesById {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/pos': typeof PosRouteWithChildren
+  '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
   '/register': typeof RegisterRoute
@@ -254,7 +246,6 @@ export interface FileRoutesById {
   '/inventory/import': typeof InventoryImportRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/create': typeof OrdersCreateRoute
-  '/pos/minimal': typeof PosMinimalRoute
   '/shipping/$shippingId': typeof ShippingShippingIdRoute
   '/books/': typeof BooksIndexRoute
   '/inventory/': typeof InventoryIndexRoute
@@ -285,7 +276,6 @@ export interface FileRouteTypes {
     | '/inventory/import'
     | '/orders/$orderId'
     | '/orders/create'
-    | '/pos/minimal'
     | '/shipping/$shippingId'
     | '/books/'
     | '/inventory/'
@@ -314,7 +304,6 @@ export interface FileRouteTypes {
     | '/inventory/import'
     | '/orders/$orderId'
     | '/orders/create'
-    | '/pos/minimal'
     | '/shipping/$shippingId'
     | '/books'
     | '/inventory'
@@ -343,7 +332,6 @@ export interface FileRouteTypes {
     | '/inventory/import'
     | '/orders/$orderId'
     | '/orders/create'
-    | '/pos/minimal'
     | '/shipping/$shippingId'
     | '/books/'
     | '/inventory/'
@@ -550,13 +538,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pos/minimal': {
-      id: '/pos/minimal'
-      path: '/minimal'
-      fullPath: '/pos/minimal'
-      preLoaderRoute: typeof PosMinimalRouteImport
-      parentRoute: typeof PosRoute
-    }
     '/shipping/': {
       id: '/shipping/'
       path: '/shipping'
@@ -574,16 +555,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface PosRouteChildren {
-  PosMinimalRoute: typeof PosMinimalRoute
-}
-
-const PosRouteChildren: PosRouteChildren = {
-  PosMinimalRoute: PosMinimalRoute,
-}
-
-const PosRouteWithChildren = PosRoute._addFileChildren(PosRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityLogsRoute: ActivityLogsRoute,
@@ -593,7 +564,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
-  PosRoute: PosRouteWithChildren,
+  PosRoute: PosRoute,
   ProfileRoute: ProfileRoute,
   PromotionsRoute: PromotionsRoute,
   RegisterRoute: RegisterRoute,

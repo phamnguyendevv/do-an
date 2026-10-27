@@ -96,17 +96,10 @@ export class EnvironmentConfigService
     return this.configService.get<string>('GOOGLE_CLIENT_SECRET') || ''
   }
 
-  getStripeSecretKey(): string {
-    return this.configService.get<string>('STRIPE_SECRET_KEY') || ''
-  }
-
   getRedisUrl(): string {
     return this.configService.get<string>('REDIS_URL') || ''
   }
 
-  getStripeWebhookSecret(): string {
-    return this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || ''
-  }
   getFEUrl(): string {
     return this.configService.get<string>('FRONTEND_URL') || ''
   }
