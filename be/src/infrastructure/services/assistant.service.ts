@@ -33,18 +33,22 @@ export interface AssistantReply {
 @Injectable()
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name)
-  private readonly client: OpenAI
+  private readonly client: OpenAI | null
   private readonly model: string
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GROQ_API_KEY')
     if (!apiKey) {
-      throw new Error('GROQ_API_KEY is not configured')
+      this.logger.warn(
+        'GROQ_API_KEY is not configured, AI assistant is disabled. Backend will still start.',
+      )
+      this.client = null
+    } else {
+      this.client = new OpenAI({
+        apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+      })
     }
-    this.client = new OpenAI({
-      apiKey,
-      baseURL: 'https://api.groq.com/openai/v1',
-    })
     this.model =
       this.configService.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile'
   }
@@ -53,6 +57,12 @@ export class AssistantService {
     messages: ChatMessage[],
     tools: ToolDefinition[],
   ): Promise<AssistantReply> {
+    if (!this.client) {
+      return {
+        ok: false,
+        error: 'AI assistant is not configured (missing GROQ_API_KEY)',
+      }
+    }
     try {
       const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
         []
