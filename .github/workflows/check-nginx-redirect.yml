@@ -1,0 +1,45 @@
+name: Check Nginx Redirect (one-time, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check Nginx Redirect on VPS
+    runs-on: ubuntu-latest
+    environment: cicd
+    steps:
+      - name: SSH to VPS and inspect nginx redirect (read-only)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            echo "=== sites-enabled ==="
+            ls -l /etc/nginx/sites-enabled/ || true
+            echo "=== sites-available ==="
+            ls -l /etc/nginx/sites-available/ || true
+            echo "=== nginx -t ==="
+            nginx -t || true
+            echo "=== redirect/proxy lines in live nginx ==="
+            grep -rn "return 301\|return 302\|rewrite \|proxy_pass\|server_name" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || true
+            echo "=== nginx -T server blocks ==="
+            nginx -T 2>&1 | grep -E "server_name|listen|return |rewrite |proxy_pass|location|# configuration file" || true
+            echo "=== listening ports ==="
+            ss -tlnp 2>/dev/null | grep -E ":80 |:443 |:3000|:3001" || true
+            echo "=== docker ps ==="
+            docker ps --format '{{.Names}} {{.Status}} {{.Ports}}' || true
+            echo "=== curl localhost frontend 3001 ==="
+            curl -s -i --max-time 10 http://127.0.0.1:3001/robots.txt | head -20 || true
+            curl -s -i --max-time 10 http://127.0.0.1:3001/ | head -20 || true
+            echo "=== curl localhost backend 3000 ==="
+            curl -s -i --max-time 10 http://127.0.0.1:3000/health | head -20 || true
+            curl -s -i --max-time 10 http://127.0.0.1:3000/ | head -20 || true
+            echo "=== curl through public nginx, first hop only ==="
+            for u in https://zymail.site/ https://zymail.site/robots.txt https://zymail.site/dashboard https://api.zymail.site/health https://api.zymail.site/ http://zymail.site/ http://api.zymail.site/health; do echo "--- $u"; curl -s -i --max-time 10 "$u" | head -20 || true; curl -s -o /dev/null -w "code=%{http_code} redirect=%{redirect_url}\n" --max-time 10 "$u" || true; done
+            echo "=== nginx access log tail 30 ==="
+            tail -30 /var/log/nginx/access.log 2>/dev/null || true
+            echo "=== nginx error log tail 30 ==="
+            tail -30 /var/log/nginx/error.log 2>/dev/null || true
