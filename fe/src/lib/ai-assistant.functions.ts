@@ -1,17 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
+import { apiRequest } from "@/lib/api-client";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
   tool_call_id?: string;
-  tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[];
+  tool_calls?: {
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+    extra_content?: Record<string, any>;
+  }[];
 }
 
 export interface AssistantReply {
   ok: boolean;
   error?: string;
   content?: string;
-  toolCalls?: { id: string; name: string; args: string }[];
+  toolCalls?: { id: string; name: string; args: string; extra_content?: Record<string, any> }[];
 }
 
 const TOOLS = [
@@ -240,51 +246,102 @@ function normalizeGeminiToolCalls(
   return { text: text.trim(), toolCalls };
 }
 
-export const askAssistant = createServerFn({ method: "POST" })
-  .validator((input: { messages: ChatMessage[] }) => input)
-  .handler(async ({ data }): Promise<AssistantReply> => {
-    // Gemini backend configuration
-    const backendUrl = process.env["BACKEND_URL"] ?? "http://localhost:3000";
-    const assistantEndpoint = `${backendUrl}/api/v1/api/assistant/chat`;
-
-    const res = await fetch(assistantEndpoint, {
+export async function askAssistantApi(messages: ChatMessage[]): Promise<AssistantReply> {
+  try {
+    const res = await apiRequest<
+      | AssistantReply
+      | {
+          data?: AssistantReply;
+          ok?: boolean;
+          error?: string;
+          content?: string;
+          toolCalls?: { id: string; name: string; args: string }[];
+        }
+    >("/api/assistant/chat", {
       method: "POST",
-      headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        messages: data.messages,
+        messages,
         tools: TOOLS,
       }),
     });
 
-    if (res.status === 429)
-      return { ok: false, error: "Đã vượt giới hạn yêu cầu AI, vui lòng thử lại sau." };
-    if (res.status === 402) return { ok: false, error: "Đã hết credit AI của workspace." };
-    if (!res.ok) {
-      const errorData = await res.text();
-      return { ok: false, error: `Lỗi AI (${res.status}): ${errorData}` };
-    }
-
-    const responseBody = (await res.json()) as {
-      ok: boolean;
-      error?: string;
-      content?: string;
-      toolCalls?: { id: string; name: string; args: string }[];
-      data?: {
-        ok: boolean;
-        error?: string;
-        content?: string;
-        toolCalls?: { id: string; name: string; args: string }[];
-      };
-    };
-    const json = responseBody.data ?? responseBody;
-
-    if (!json.ok) {
-      return { ok: false, error: json.error ?? "Lỗi từ AI service." };
+    const reply = (res as any)?.data?.ok !== undefined ? (res as any).data : res;
+    if (!reply.ok) {
+      return { ok: false, error: reply.error ?? "Lỗi từ AI service." };
     }
 
     return {
       ok: true,
-      content: json.content ?? "",
-      toolCalls: json.toolCalls ?? [],
+      content: reply.content ?? "",
+      toolCalls: reply.toolCalls ?? [],
     };
+  } catch (error: any) {
+    const msg =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Không thể kết nối đến máy chủ AI.";
+    return {
+      ok: false,
+      error: `Lỗi AI: ${msg}`,
+    };
+  }
+}
+
+export const askAssistant = createServerFn({ method: "POST" })
+  .validator((input: { messages: ChatMessage[] }) => input)
+  .handler(async ({ data }): Promise<AssistantReply> => {
+    // Backend configuration
+    const backendUrl =
+      process.env["BACKEND_URL"] ||
+      process.env["VITE_API_BASE"] ||
+      (process.env["NODE_ENV"] === "production" ? "http://backend:3000" : "http://localhost:3000");
+    const assistantEndpoint = `${backendUrl.replace(/\/+$/, "")}/api/v1/api/assistant/chat`;
+
+    try {
+      const res = await fetch(assistantEndpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          messages: data.messages,
+          tools: TOOLS,
+        }),
+      });
+
+      if (res.status === 429)
+        return { ok: false, error: "Đã vượt giới hạn yêu cầu AI, vui lòng thử lại sau." };
+      if (res.status === 402) return { ok: false, error: "Đã hết credit AI của workspace." };
+      if (!res.ok) {
+        const errorData = await res.text();
+        return { ok: false, error: `Lỗi AI (${res.status}): ${errorData}` };
+      }
+
+      const responseBody = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        content?: string;
+        toolCalls?: { id: string; name: string; args: string }[];
+        data?: {
+          ok: boolean;
+          error?: string;
+          content?: string;
+          toolCalls?: { id: string; name: string; args: string }[];
+        };
+      };
+      const json = responseBody.data ?? responseBody;
+
+      if (!json.ok) {
+        return { ok: false, error: json.error ?? "Lỗi từ AI service." };
+      }
+
+      return {
+        ok: true,
+        content: json.content ?? "",
+        toolCalls: json.toolCalls ?? [],
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        error: `Không thể kết nối đến backend AI: ${err?.message || err}`,
+      };
+    }
   });

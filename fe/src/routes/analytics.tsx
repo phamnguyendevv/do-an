@@ -23,7 +23,11 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import {
+  DateRangePicker,
+  type DateRange,
+  formatDateRange,
+} from "@/components/shared/date-range-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -87,7 +91,7 @@ function AnalyticsPage() {
         range,
         new Date(),
         dateRange?.from
-          ? { from: dateRange.from, ...(dateRange.to ? { to: dateRange.to } : {}) }
+          ? { from: dateRange.from, to: dateRange.to ?? dateRange.from }
           : undefined,
         imports,
         exports,
@@ -96,7 +100,7 @@ function AnalyticsPage() {
   );
 
   const rangeLabel = dateRange?.from
-    ? "Theo khoảng ngày đã chọn"
+    ? formatDateRange(dateRange)
     : (reportRanges.find((r) => r.value === range)?.label ?? "30 ngày qua");
 
   const revenue = growthHint(report.current.revenue, report.previous.revenue);

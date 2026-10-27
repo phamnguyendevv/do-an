@@ -12,22 +12,31 @@ import {
 
 export class CreateCustomerDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Tên khách hàng không được để trống' })
   name!: string
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Số điện thoại không được để trống' })
   phone!: string
 
   @IsOptional()
-  @IsEmail()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
+  @IsEmail({}, { message: 'Email không đúng định dạng' })
   email?: string
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
   @IsString()
   address?: string
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
   @IsString()
   note?: string
 }
@@ -35,23 +44,32 @@ export class CreateCustomerDto {
 export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Tên khách hàng không được để trống' })
   name?: string
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Số điện thoại không được để trống' })
   phone?: string
 
   @IsOptional()
-  @IsEmail()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
+  @IsEmail({}, { message: 'Email không đúng định dạng' })
   email?: string
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
   @IsString()
   address?: string
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
   @IsString()
   note?: string
 }

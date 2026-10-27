@@ -23,11 +23,18 @@ export interface ToolDefinition {
   }
 }
 
+export interface ToolCallItem {
+  id: string
+  name: string
+  args: string
+  extra_content?: Record<string, any>
+}
+
 export interface AssistantReply {
   ok: boolean
   error?: string
   content?: string
-  toolCalls?: { id: string; name: string; args: string }[]
+  toolCalls?: ToolCallItem[]
 }
 
 @Injectable()
@@ -37,20 +44,39 @@ export class AssistantService {
   private readonly model: string
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('GROQ_API_KEY')
-    if (!apiKey) {
-      this.logger.warn(
-        'GROQ_API_KEY is not configured, AI assistant is disabled. Backend will still start.',
-      )
-      this.client = null
-    } else {
+    const geminiKey =
+      this.configService.get<string>('GEMINI_API_KEY') ||
+      process.env.GEMINI_API_KEY
+    const groqKey =
+      this.configService.get<string>('GROQ_API_KEY') || process.env.GROQ_API_KEY
+
+    if (geminiKey) {
       this.client = new OpenAI({
-        apiKey,
+        apiKey: geminiKey,
+        baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      })
+      this.model =
+        this.configService.get<string>('GEMINI_MODEL') ||
+        process.env.GEMINI_MODEL ||
+        'gemini-3.5-flash-lite'
+      this.logger.log(`AI Assistant initialized with Gemini (model: ${this.model})`)
+    } else if (groqKey) {
+      this.client = new OpenAI({
+        apiKey: groqKey,
         baseURL: 'https://api.groq.com/openai/v1',
       })
+      this.model =
+        this.configService.get<string>('GROQ_MODEL') ||
+        process.env.GROQ_MODEL ||
+        'openai/gpt-oss-120b'
+      this.logger.log(`AI Assistant initialized with Groq fallback (model: ${this.model})`)
+    } else {
+      this.logger.warn(
+        'GEMINI_API_KEY is not configured, AI assistant is disabled. Backend will still start.',
+      )
+      this.client = null
+      this.model = ''
     }
-    this.model =
-      this.configService.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile'
   }
 
   async chat(
@@ -60,7 +86,7 @@ export class AssistantService {
     if (!this.client) {
       return {
         ok: false,
-        error: 'AI assistant is not configured (missing GROQ_API_KEY)',
+        error: 'AI assistant chưa được cấu hình (thiếu GEMINI_API_KEY)',
       }
     }
     try {
@@ -80,13 +106,16 @@ export class AssistantService {
             content: message.content || null,
             ...(message.tool_calls?.length
               ? {
-                  tool_calls: message.tool_calls.map((call) => ({
+                  tool_calls: message.tool_calls.map((call: any) => ({
                     id: call.id,
                     type: 'function' as const,
                     function: {
                       name: call.function.name,
                       arguments: call.function.arguments,
                     },
+                    ...(call.extra_content
+                      ? { extra_content: call.extra_content }
+                      : {}),
                   })),
                 }
               : {}),
@@ -122,15 +151,16 @@ export class AssistantService {
       })
 
       const reply = response.choices[0]?.message
-      if (!reply) throw new Error('Groq không trả về nội dung phản hồi')
+      if (!reply) throw new Error('AI không trả về nội dung phản hồi')
 
-      const toolCalls = (reply.tool_calls ?? []).flatMap((call) =>
+      const toolCalls = (reply.tool_calls ?? []).flatMap((call: any) =>
         call.type === 'function'
           ? [
               {
                 id: call.id,
                 name: call.function.name,
                 args: call.function.arguments,
+                ...(call.extra_content ? { extra_content: call.extra_content } : {}),
               },
             ]
           : [],
@@ -148,7 +178,7 @@ export class AssistantService {
 
       return {
         ok: false,
-        error: `Lỗi khi gọi Groq: ${errorMessage}`,
+        error: `Lỗi khi gọi AI Gemini: ${errorMessage}`,
       }
     }
   }

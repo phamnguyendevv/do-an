@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, ChevronDown, X } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 
@@ -12,17 +12,62 @@ import { formatDate } from "@/utils/format";
 export type { DateRange };
 
 // ---------------------------------------------------------------------------
-// Quick preset helpers
+// Quick preset helpers & time normalizers
 // ---------------------------------------------------------------------------
-function startOf(d: Date) {
+export function startOf(d: Date): Date {
   const r = new Date(d);
   r.setHours(0, 0, 0, 0);
   return r;
 }
-function endOf(d: Date) {
+
+export function endOf(d: Date): Date {
   const r = new Date(d);
   r.setHours(23, 59, 59, 999);
   return r;
+}
+
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Normalize a DateRange so that from is start-of-day (00:00:00) and to is end-of-day (23:59:59) */
+export function normalizeDateRange(range: DateRange | undefined): DateRange | undefined {
+  if (!range?.from) return undefined;
+  const from = startOf(range.from);
+  const to = endOf(range.to ?? range.from);
+  return { from, to };
+}
+
+/** Converts DateRange into API query parameters (startDate and endDate in ISO format) */
+export function toApiDateRange(range: DateRange | undefined): {
+  startDate?: string;
+  endDate?: string;
+} {
+  if (!range?.from) return {};
+  const norm = normalizeDateRange(range);
+  if (!norm?.from || !norm?.to) return {};
+  return {
+    startDate: norm.from.toISOString(),
+    endDate: norm.to.toISOString(),
+  };
+}
+
+/** Format a DateRange for display in labels, chips, or trigger buttons */
+export function formatDateRange(
+  range: DateRange | undefined,
+  placeholder = "Chọn khoảng ngày",
+): string {
+  if (!range?.from) return placeholder;
+  const fromStr = formatDate(range.from.toISOString());
+  if (!range.to || isSameDay(range.from, range.to)) {
+    return fromStr;
+  }
+  const toStr = formatDate(range.to.toISOString());
+  return `${fromStr} – ${toStr}`;
 }
 
 export interface DatePreset {
@@ -53,6 +98,17 @@ export const DATE_PRESETS: DatePreset[] = [
       const from = new Date();
       from.setDate(from.getDate() - 6);
       return { from: startOf(from), to: endOf(to) };
+    },
+  },
+  {
+    label: "Tuần này",
+    resolve: () => {
+      const now = new Date();
+      const day = now.getDay();
+      // Monday as first day of week (1: Monday, ..., 0: Sunday)
+      const diff = now.getDate() - (day === 0 ? 6 : day - 1);
+      const monday = new Date(now.getFullYear(), now.getMonth(), diff);
+      return { from: startOf(monday), to: endOf(now) };
     },
   },
   {
@@ -87,20 +143,15 @@ export const DATE_PRESETS: DatePreset[] = [
 // ---------------------------------------------------------------------------
 // Helpers to detect which preset is active
 // ---------------------------------------------------------------------------
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function getActivePreset(value: DateRange | undefined): string | null {
+export function getActivePreset(value: DateRange | undefined): string | null {
   if (!value?.from) return null;
+  const norm = normalizeDateRange(value);
+  if (!norm?.from || !norm?.to) return null;
+
   for (const p of DATE_PRESETS) {
     const range = p.resolve();
-    const fromMatch = isSameDay(range.from!, value.from);
-    const toMatch = range.to && value.to ? isSameDay(range.to, value.to) : !range.to && !value.to;
+    const fromMatch = isSameDay(range.from!, norm.from);
+    const toMatch = isSameDay(range.to!, norm.to);
     if (fromMatch && toMatch) return p.label;
   }
   return null;
@@ -126,35 +177,94 @@ export function DateRangePicker({
   showPresets = true,
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
+  const [pendingRange, setPendingRange] = useState<DateRange | undefined>(value);
+
+  // Keep pendingRange in sync with value whenever popover opens or prop changes
+  useEffect(() => {
+    setPendingRange(value);
+  }, [value, open]);
+
   const activePreset = getActivePreset(value);
+  const label = formatDateRange(value, placeholder);
 
-  const label = value?.from
-    ? value.to
-      ? `${formatDate(value.from.toISOString())} – ${formatDate(value.to.toISOString())}`
-      : `${formatDate(value.from.toISOString())} – ...`
-    : placeholder;
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      // If user closed popover while having selected a start day without end day
+      if (pendingRange?.from && !pendingRange.to) {
+        const single = {
+          from: startOf(pendingRange.from),
+          to: endOf(pendingRange.from),
+        };
+        onValueChange(single);
+      }
+    }
+    setOpen(nextOpen);
+  };
 
-  const handleSelect = (range: DateRange | undefined) => {
-    onValueChange(range);
-    // Auto-close when a full range (from + to) is selected via calendar
-    if (range?.from && range?.to) {
+  const handleSelect = (range: DateRange | undefined, selectedDay: Date) => {
+    // If react-day-picker unselects (user clicked start day again)
+    if (!range) {
+      const single = { from: startOf(selectedDay), to: endOf(selectedDay) };
+      setPendingRange(single);
+      onValueChange(single);
+      setOpen(false);
+      return;
+    }
+
+    // If user clicked the same day when from was already chosen
+    if (pendingRange?.from && isSameDay(pendingRange.from, selectedDay) && !pendingRange.to) {
+      const single = { from: startOf(selectedDay), to: endOf(selectedDay) };
+      setPendingRange(single);
+      onValueChange(single);
+      setOpen(false);
+      return;
+    }
+
+    // If both from and to are selected (a range)
+    if (range.from && range.to) {
+      const normalized = {
+        from: startOf(range.from),
+        to: endOf(range.to),
+      };
+      setPendingRange(normalized);
+      onValueChange(normalized);
+      setOpen(false);
+      return;
+    }
+
+    // Only from is selected so far:
+    const partial = { from: startOf(range.from), to: undefined };
+    setPendingRange(partial);
+  };
+
+  const handleApplyPending = () => {
+    if (pendingRange?.from) {
+      const finalized = {
+        from: startOf(pendingRange.from),
+        to: endOf(pendingRange.to ?? pendingRange.from),
+      };
+      setPendingRange(finalized);
+      onValueChange(finalized);
       setOpen(false);
     }
   };
 
   const handlePreset = (preset: DatePreset) => {
-    onValueChange(preset.resolve());
+    const range = preset.resolve();
+    setPendingRange(range);
+    onValueChange(range);
     setOpen(false);
   };
 
   const handleClear = () => {
+    setPendingRange(undefined);
     onValueChange(undefined);
     setOpen(false);
   };
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             id="date-range-picker-trigger"
@@ -166,7 +276,7 @@ export function DateRangePicker({
             )}
             aria-label="Lọc theo khoảng ngày"
           >
-            <CalendarIcon className="h-4 w-4 shrink-0" />
+            <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate max-w-[200px]">{label}</span>
             {value?.from && (
               <span className="ml-auto rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary leading-none">
@@ -186,20 +296,23 @@ export function DateRangePicker({
                   <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Chọn nhanh
                   </p>
-                  {DATE_PRESETS.map((p) => (
-                    <Button
-                      key={p.label}
-                      variant={activePreset === p.label ? "secondary" : "ghost"}
-                      size="sm"
-                      className={cn(
-                        "h-8 justify-start text-xs font-normal",
-                        activePreset === p.label && "font-semibold text-primary",
-                      )}
-                      onClick={() => handlePreset(p)}
-                    >
-                      {p.label}
-                    </Button>
-                  ))}
+                  {DATE_PRESETS.map((p) => {
+                    const isPresetActive = activePreset === p.label;
+                    return (
+                      <Button
+                        key={p.label}
+                        variant={isPresetActive ? "secondary" : "ghost"}
+                        size="sm"
+                        className={cn(
+                          "h-8 justify-start text-xs font-normal",
+                          isPresetActive && "font-semibold text-primary",
+                        )}
+                        onClick={() => handlePreset(p)}
+                      >
+                        {p.label}
+                      </Button>
+                    );
+                  })}
                 </div>
                 <Separator orientation="vertical" />
               </>
@@ -210,22 +323,36 @@ export function DateRangePicker({
               <Calendar
                 mode="range"
                 numberOfMonths={1}
-                {...(value?.from ? { defaultMonth: value.from } : {})}
-                {...(value ? { selected: value } : {})}
+                {...(pendingRange?.from ? { defaultMonth: pendingRange.from } : {})}
+                {...(pendingRange ? { selected: pendingRange } : {})}
                 onSelect={handleSelect}
                 className="p-2 sm:[--cell-size:2.1rem]"
               />
-              <div className="flex items-center justify-between border-t px-3 py-2">
-                <span className="text-xs text-muted-foreground">
-                  {value?.from
-                    ? value.to
-                      ? `${Math.round((value.to.getTime() - value.from.getTime()) / 86400000) + 1} ngày đã chọn`
+              <div className="flex items-center justify-between border-t px-3 py-2 gap-2">
+                <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                  {pendingRange?.from
+                    ? pendingRange.to
+                      ? isSameDay(pendingRange.from, pendingRange.to)
+                        ? "1 ngày đã chọn"
+                        : `${Math.round((pendingRange.to.getTime() - pendingRange.from.getTime()) / 86400000) + 1} ngày đã chọn`
                       : "Chọn ngày kết thúc"
                     : "Chọn ngày bắt đầu"}
                 </span>
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleClear}>
-                  Xóa lọc
-                </Button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {pendingRange?.from ? (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-7 text-xs px-2.5"
+                      onClick={handleApplyPending}
+                    >
+                      Áp dụng
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={handleClear}>
+                    Xóa lọc
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -237,7 +364,7 @@ export function DateRangePicker({
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0"
+          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
           aria-label="Xóa khoảng ngày"
           onClick={handleClear}
         >
@@ -249,14 +376,12 @@ export function DateRangePicker({
 }
 
 /** True when the ISO date falls inside the (inclusive) selected range. */
-export function inDateRange(iso: string | null | undefined, range?: DateRange) {
+export function inDateRange(iso: string | null | undefined, range?: DateRange): boolean {
   if (!range?.from) return true;
   if (!iso) return true;
   const t = new Date(iso).getTime();
   if (isNaN(t)) return true;
-  const start = new Date(range.from);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(range.to ?? range.from);
-  end.setHours(23, 59, 59, 999);
-  return t >= start.getTime() && t <= end.getTime();
+  const start = startOf(range.from).getTime();
+  const end = endOf(range.to ?? range.from).getTime();
+  return t >= start && t <= end;
 }

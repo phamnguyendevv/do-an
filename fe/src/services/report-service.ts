@@ -132,17 +132,20 @@ export function buildReport(
   const msPerDay = 86_400_000;
   let end = now.getTime();
   let days = rangeDays(range);
+  let start = end - days * msPerDay;
+  let prevStart = start - days * msPerDay;
 
   if (custom?.from) {
     const from = new Date(custom.from);
     from.setHours(0, 0, 0, 0);
     const to = new Date(custom.to ?? custom.from);
     to.setHours(23, 59, 59, 999);
+    start = from.getTime();
     end = to.getTime();
-    days = Math.max(1, Math.round((end - from.getTime()) / msPerDay));
+    const duration = end - start;
+    days = Math.max(1, Math.round((end - start) / msPerDay));
+    prevStart = start - duration;
   }
-  const start = end - days * msPerDay;
-  const prevStart = start - days * msPerDay;
 
   const at = (o: Order) => new Date(o.createdAt).getTime();
   const currentOrders = orders.filter((o) => at(o) >= start && at(o) <= end);

@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { Bot, Loader2, Send, Sparkles, User as UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { askAssistant, type ChatMessage } from "@/lib/ai-assistant.functions";
+import { askAssistantApi, type ChatMessage } from "@/lib/ai-assistant.functions";
 import { executeTool, type PendingAction } from "@/services/assistant-tools";
 import { analyzeWarehouse } from "@/services/warehouse-intel";
 import { store } from "@/services/store";
@@ -52,7 +51,6 @@ Bối cảnh nhanh (ngày ${new Date().toLocaleDateString("vi-VN")}): ${a.totals
 }
 
 export function AssistantChat() {
-  const ask = useServerFn(askAssistant);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,7 +75,7 @@ export function AssistantChat() {
     const actions: PendingAction[] = [];
     try {
       for (let step = 0; step < 4; step++) {
-        const reply = await ask({ data: { messages: history.current } });
+        const reply = await askAssistantApi(history.current);
         if (!reply.ok) {
           setBubbles((b) => [
             ...b,
@@ -112,6 +110,7 @@ export function AssistantChat() {
             id: c.id,
             type: "function" as const,
             function: { name: c.name, arguments: c.args },
+            ...(c.extra_content ? { extra_content: c.extra_content } : {}),
           })),
         });
         for (const call of calls) {

@@ -23,7 +23,12 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchInput } from "@/components/shared/search-input";
 import { FilterBar } from "@/components/shared/filter-bar";
-import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import {
+  DateRangePicker,
+  type DateRange,
+  toApiDateRange,
+  formatDateRange,
+} from "@/components/shared/date-range-picker";
 import { PriceRangeFilter, type PriceRange } from "@/components/shared/price-range-filter";
 import { ActiveFilterChips, type ActiveFilter } from "@/components/shared/active-filter-chips";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -132,14 +137,9 @@ function OrdersPage() {
         },
       });
     if (dateRange?.from) {
-      const from = dateRange.from;
-      const to = dateRange.to;
-      const label = to
-        ? `${from.toLocaleDateString("vi")} – ${to.toLocaleDateString("vi")}`
-        : from.toLocaleDateString("vi");
       chips.push({
         key: "date",
-        label: `Ngày tạo: ${label}`,
+        label: `Ngày tạo: ${formatDateRange(dateRange)}`,
         onRemove: () => {
           setDateRange(undefined);
           resetPage();
@@ -189,8 +189,7 @@ function OrdersPage() {
     search: debouncedSearch,
     status,
     payment,
-    ...(dateRange?.from ? { startDate: dateRange.from.toISOString() } : {}),
-    ...(dateRange?.to ? { endDate: dateRange.to.toISOString() } : {}),
+    ...toApiDateRange(dateRange),
   });
 
   // Query paginated order histories
@@ -216,8 +215,7 @@ function OrdersPage() {
           size: historyPageSize,
           ...(debouncedHistorySearch ? { search: debouncedHistorySearch } : {}),
           ...(historyAction !== "all" ? { action: historyAction } : {}),
-          ...(historyDateRange?.from ? { startDate: historyDateRange.from.toISOString() } : {}),
-          ...(historyDateRange?.to ? { endDate: historyDateRange.to.toISOString() } : {}),
+          ...toApiDateRange(historyDateRange),
         });
         return res || { data: [], pagination: { total: 0, page: 1, size: historyPageSize } };
       } catch (err) {

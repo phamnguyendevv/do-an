@@ -21,7 +21,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import {
   DateRangePicker,
   inDateRange,
-  DATE_PRESETS,
+  getActivePreset,
+  formatDateRange,
   type DateRange,
 } from "@/components/shared/date-range-picker";
 import { StatCard } from "@/components/shared/stat-card";
@@ -407,22 +408,12 @@ function DashboardPage() {
     return result;
   }, [imports, exports, orders]);
 
-  // Resolve preset label for current dateRange
+  // Resolve preset or formatted label for current dateRange
   const activePeriodLabel = useMemo(() => {
     if (!dateRange?.from) return null;
-    for (const p of DATE_PRESETS) {
-      const r = p.resolve();
-      const fromMatch = r.from!.toDateString() === dateRange.from.toDateString();
-      const toMatch =
-        r.to && dateRange.to
-          ? r.to.toDateString() === dateRange.to.toDateString()
-          : !r.to && !dateRange.to;
-      if (fromMatch && toMatch) return p.label;
-    }
-    const days = dateRange.to
-      ? Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / 86400000) + 1
-      : 1;
-    return `${days} ngày`;
+    const preset = getActivePreset(dateRange);
+    if (preset) return preset;
+    return formatDateRange(dateRange);
   }, [dateRange]);
 
   return (

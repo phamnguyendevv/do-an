@@ -46,7 +46,13 @@ function ImportPage() {
   const queryClient = useQueryClient();
   const books = useBooks();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<ProductLine[]>([{ bookId: "", quantity: 1, price: 0 }]);
   const [submitting, setSubmitting] = useState(false);

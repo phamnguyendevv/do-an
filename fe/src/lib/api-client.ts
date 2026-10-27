@@ -171,9 +171,13 @@ apiClient.interceptors.response.use(
     }
 
     const errorBody = error.response?.data as
-      { error?: { message?: string }; message?: string } | undefined;
+      | { error?: { message?: string | string[] }; message?: string | string[] }
+      | undefined;
+    const rawMsg = errorBody?.error?.message ?? errorBody?.message;
     const errorMsg =
-      errorBody?.error?.message || errorBody?.message || error.message || "Yêu cầu thất bại";
+      (Array.isArray(rawMsg) ? rawMsg.join(", ") : rawMsg) ||
+      error.message ||
+      "Yêu cầu thất bại";
 
     return Promise.reject(new Error(errorMsg));
   },

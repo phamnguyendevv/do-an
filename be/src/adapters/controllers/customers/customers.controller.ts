@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -63,34 +64,6 @@ export class CustomersController {
     return { data, pagination: { total, page, size } }
   }
 
-  @Get(':id')
-  @CheckPolicies({ action: 'read', subject: 'Customer' })
-  get(@Param('id', ParseIntPipe) id: number) {
-    return this.repository.findOneBy({ id })
-  }
-
-  @Post()
-  @CheckPolicies({ action: 'create', subject: 'Customer' })
-  create(@Body() dto: CreateCustomerDto) {
-    return this.repository.save(this.repository.create(dto))
-  }
-
-  @Put(':id')
-  @CheckPolicies({ action: 'update', subject: 'Customer' })
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateCustomerDto,
-  ) {
-    await this.repository.update({ id }, dto)
-    return this.get(id)
-  }
-
-  @Delete(':id')
-  @CheckPolicies({ action: 'delete', subject: 'Customer' })
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return (await this.repository.delete({ id })).affected !== 0
-  }
-
   @Get('lookup')
   @CheckPolicies({ action: 'read', subject: 'Customer' })
   async lookupByPhone(@Query('phone') phone?: string) {
@@ -118,5 +91,46 @@ export class CustomersController {
       where,
       order: { createdAt: 'DESC' },
     })
+  }
+
+  @Get(':id')
+  @CheckPolicies({ action: 'read', subject: 'Customer' })
+  get(@Param('id', ParseIntPipe) id: number) {
+    return this.repository.findOneBy({ id })
+  }
+
+  @Post()
+  @CheckPolicies({ action: 'create', subject: 'Customer' })
+  async create(@Body() dto: CreateCustomerDto) {
+    const phone = dto.phone.replace(/\D/g, '').replace(/^84/, '0')
+    const existing = await this.repository.findOneBy({ phone })
+    if (existing) {
+      throw new BadRequestException('Số điện thoại này đã tồn tại trong danh sách khách hàng')
+    }
+    return this.repository.save(this.repository.create({ ...dto, phone }))
+  }
+
+  @Put(':id')
+  @CheckPolicies({ action: 'update', subject: 'Customer' })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCustomerDto,
+  ) {
+    if (dto.phone) {
+      const phone = dto.phone.replace(/\D/g, '').replace(/^84/, '0')
+      const existing = await this.repository.findOneBy({ phone })
+      if (existing && Number(existing.id) !== id) {
+        throw new BadRequestException('Số điện thoại này đã thuộc về khách hàng khác')
+      }
+      dto.phone = phone
+    }
+    await this.repository.update({ id }, dto)
+    return this.get(id)
+  }
+
+  @Delete(':id')
+  @CheckPolicies({ action: 'delete', subject: 'Customer' })
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    return (await this.repository.delete({ id })).affected !== 0
   }
 }

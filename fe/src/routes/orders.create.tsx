@@ -23,6 +23,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProductLines, type ProductLine } from "@/components/inventory/product-lines";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import { useBooks, useOrders } from "@/hooks/use-store";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
 import { normalizeText, parseCustomerAndAddress } from "@/lib/vn-address-parser";
 import { parseProductList } from "@/lib/product-parser";
+import { geminiParseCustomerAndAddress, geminiParseProducts } from "@/lib/gemini-order-parser";
 import {
   AddressBookDialog,
   type AddressBookContact,
@@ -250,7 +252,7 @@ function CreateOrderPage() {
     if (c.address) {
       setIsAutoParsing(true);
       try {
-        const parsed = await parseCustomerAndAddress(
+        const parsed = await geminiParseCustomerAndAddress(
           c.address,
           provinces,
           ghnApi.getDistricts,
@@ -413,7 +415,7 @@ function CreateOrderPage() {
         return;
       }
 
-      const parsed = await parseCustomerAndAddress(
+      const parsed = await geminiParseCustomerAndAddress(
         textToParse,
         provinces,
         ghnApi.getDistricts,
@@ -457,7 +459,7 @@ function CreateOrderPage() {
             parsed.districtName && `Khu vực: ${parsed.districtName}`,
           ].filter(Boolean);
 
-          toast.success("Đã tự động nhận diện thông tin khách hàng!", {
+          toast.success(parsed.isAiParsed ? "✨ Gemini AI: Đã tự động nhận diện thông tin khách hàng!" : "Đã tự động nhận diện thông tin khách hàng!", {
             description: summaryParts.join(" • "),
           });
         }
@@ -492,7 +494,7 @@ function CreateOrderPage() {
             parsed.wardName && `Phường/Xã: ${parsed.wardName}`,
           ].filter(Boolean);
 
-          toast.success("Đã tự động nhận diện và điền thông tin khách hàng!", {
+          toast.success(parsed.isAiParsed ? "✨ Gemini AI: Đã tự động nhận diện và điền thông tin khách hàng!" : "Đã tự động nhận diện và điền thông tin khách hàng!", {
             description: summaryParts.join(" • "),
           });
         }
@@ -531,7 +533,7 @@ function CreateOrderPage() {
         return;
       }
 
-      const parsed = parseProductList(textToParse, books);
+      const parsed = await geminiParseProducts(textToParse, books);
 
       if (parsed.lines.length === 0) {
         toast.warning("Không tìm thấy sản phẩm nào phù hợp trong kho!", {
@@ -560,7 +562,7 @@ function CreateOrderPage() {
           },
         );
       } else {
-        toast.success(`Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
+        toast.success(parsed.isAiParsed ? `✨ Gemini AI: Đã thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!` : `Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
           description: matchedNames.join(" • "),
         });
       }
@@ -583,7 +585,7 @@ function CreateOrderPage() {
       }));
       setAutoInputText(`${contact.name}, ${contact.phone}, ${contact.address}`);
 
-      const parsed = await parseCustomerAndAddress(
+      const parsed = await geminiParseCustomerAndAddress(
         contact.address,
         provinces,
         ghnApi.getDistricts,
@@ -807,7 +809,7 @@ function CreateOrderPage() {
                         </>
                       ) : (
                         <>
-                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán và nhập tự động
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Dán & Nhập
                         </>
                       )}
                     </Button>
@@ -1196,7 +1198,7 @@ function CreateOrderPage() {
                         </>
                       ) : (
                         <>
-                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán & Thêm sản phẩm
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Dán & Thêm (Gemini AI)
                         </>
                       )}
                     </Button>
@@ -1225,11 +1227,10 @@ function CreateOrderPage() {
                   <button
                     type="button"
                     onClick={() => setCarrierType("GHN")}
-                    className={`rounded-lg border p-3 text-left transition-all ${
-                      carrierType === "GHN"
+                    className={`rounded-lg border p-3 text-left transition-all ${carrierType === "GHN"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/50"
-                    }`}
+                      }`}
                   >
                     <div className="font-semibold text-sm flex items-center gap-1.5">
                       <Truck className="h-4 w-4 text-primary" /> Giao Hàng Nhanh
@@ -1242,11 +1243,10 @@ function CreateOrderPage() {
                   <button
                     type="button"
                     onClick={() => setCarrierType("STORE")}
-                    className={`rounded-lg border p-3 text-left transition-all ${
-                      carrierType === "STORE"
+                    className={`rounded-lg border p-3 text-left transition-all ${carrierType === "STORE"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/50"
-                    }`}
+                      }`}
                   >
                     <div className="font-semibold text-sm">Nhận tại cửa hàng</div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -1257,11 +1257,10 @@ function CreateOrderPage() {
                   <button
                     type="button"
                     onClick={() => setCarrierType("OTHER")}
-                    className={`rounded-lg border p-3 text-left transition-all ${
-                      carrierType === "OTHER"
+                    className={`rounded-lg border p-3 text-left transition-all ${carrierType === "OTHER"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/50"
-                    }`}
+                      }`}
                   >
                     <div className="font-semibold text-sm">Đơn vị khác</div>
                     <p className="text-xs text-muted-foreground mt-1">Tự nhập phí vận chuyển</p>
