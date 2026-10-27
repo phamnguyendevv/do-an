@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 
 import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
-import { PaymentStatusEnum } from '@domain/entities/order-enums.entity'
+import {
+  PaymentStatusEnum,
+  isValidPaymentStatusTransition,
+} from '@domain/entities/order-enums.entity'
 import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
@@ -48,6 +51,12 @@ export class UpdateBookstoreOrderPaymentUseCase {
     }
 
     const previousPayment = String(order.payment)
+    if (!isValidPaymentStatusTransition(previousPayment, String(payment))) {
+      throw this.exceptionsService.badRequestException({
+        type: 'InvalidPaymentStatusTransitionException',
+        message: `Không thể chuyển thanh toán từ ${previousPayment} sang ${String(payment)}`,
+      })
+    }
     await this.orderRepository.updateOrder({ id }, { payment })
     await this.redisService.delPattern('orders:*')
 

@@ -7,6 +7,7 @@ import {
   BookStatusEnum,
   OrderStatusEnum,
   PaymentStatusEnum,
+  isValidOrderStatusTransition,
 } from '@domain/entities/order-enums.entity'
 import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
@@ -77,6 +78,12 @@ export class UpdateBookstoreOrderStatusUseCase {
       const previousStatus = String(order.status)
       const previousPayment = String(order.payment)
       const targetStatus = String(nextStatus)
+      if (!isValidOrderStatusTransition(previousStatus, targetStatus)) {
+        throw this.exceptionsService.badRequestException({
+          type: 'InvalidOrderStatusTransitionException',
+          message: `Không thể chuyển trạng thái đơn hàng từ ${previousStatus} sang ${targetStatus}`,
+        })
+      }
       const shouldRestock =
         RESTOCK_STATUSES.includes(targetStatus) &&
         !RESTOCK_STATUSES.includes(previousStatus)

@@ -16,14 +16,22 @@ import type {
   Order,
   OrderStatus,
   PaymentStatus,
+  BookStatus,
 } from "@/types";
+import { BOOK_STATUSES } from "@/types";
 
 const mapApiBook = (book: BookApiItem): Book => {
   const stock = Number(book?.stock ?? 0);
   const minStock = Number(book?.minStock ?? 0);
-  const rawStatus =
-    (book?.status as string | undefined) ||
-    (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
+  const apiStatus = book?.status;
+  const rawStatus: BookStatus =
+    typeof apiStatus === "string" && (BOOK_STATUSES as readonly string[]).includes(apiStatus)
+      ? (apiStatus as BookStatus)
+      : stock === 0
+        ? "OUT_OF_STOCK"
+        : stock <= minStock
+          ? "LOW_STOCK"
+          : "IN_STOCK";
 
   return {
     id: String(book?.id ?? ""),
@@ -99,11 +107,7 @@ function useAppState(): AppState {
 export function useBooks(): Book[] {
   const stateBooks = useAppState().books;
 
-  const {
-    data: apiBooks,
-    isError,
-    isSuccess,
-  } = useQuery({
+  const { data: apiBooks, isSuccess } = useQuery({
     queryKey: ["books", "live-list"],
     queryFn: async () => {
       const res = await bookApi.list({ size: 500 });
@@ -120,8 +124,6 @@ export function useBooks(): Book[] {
   }, [apiBooks, isSuccess]);
 
   if (isSuccess) return apiBooks ?? [];
-  if (isError) return [];
-
   return stateBooks;
 }
 
@@ -133,23 +135,34 @@ export function useCategories(): Array<{ id: string; name: string }> {
       try {
         const res: unknown = await categoryApi.list({ size: 100 });
         const resAsRecord = res as Record<string, unknown>;
-        let items: Record<string, unknown>[] = [];
+        let items: unknown[] = [];
         if (Array.isArray(res)) {
-          items = res as Record<string, unknown>[];
-        } else if (Array.isArray(resAsRecord?.data)) {
-          items = resAsRecord.data as Record<string, unknown>[];
-        } else if (Array.isArray((resAsRecord?.data as Record<string, unknown>)?.data)) {
-          items = (resAsRecord.data as Record<string, unknown>).data as Record<string, unknown>[];
+          items = res;
+        } else if (Array.isArray(resAsRecord?.["data"])) {
+          items = resAsRecord["data"];
+        } else if (
+          typeof resAsRecord?.["data"] === "object" &&
+          resAsRecord["data"] !== null &&
+          Array.isArray((resAsRecord["data"] as Record<string, unknown>)["data"])
+        ) {
+          items = (resAsRecord["data"] as Record<string, unknown>)["data"] as unknown[];
         }
 
         const mapped = items
-          .map((c: Record<string, unknown>) => {
-            if (typeof c === "string") return { id: c, name: c.trim() };
-            const name = String(c?.name || c?.title || c?.categoryName || c?.category || "").trim();
-            const id = String(c?.id || name || "");
+          .map((item) => {
+            if (typeof item === "string") {
+              const name = item.trim();
+              return name ? { id: name, name } : null;
+            }
+            if (typeof item !== "object" || item === null) return null;
+            const c = item as Record<string, unknown>;
+            const name = String(
+              c["name"] || c["title"] || c["categoryName"] || c["category"] || "",
+            ).trim();
+            const id = String(c["id"] || name || "");
             return { id, name };
           })
-          .filter((c) => Boolean(c.name && c.name.length > 0));
+          .filter((c): c is { id: string; name: string } => Boolean(c?.name));
 
         return mapped;
       } catch {
@@ -177,11 +190,7 @@ export function useCategories(): Array<{ id: string; name: string }> {
 export function useOrders(): Order[] {
   const stateOrders = useAppState().orders;
 
-  const {
-    data: apiOrders,
-    isError,
-    isSuccess,
-  } = useQuery({
+  const { data: apiOrders, isSuccess } = useQuery({
     queryKey: ["orders", "live-list"],
     queryFn: async () => {
       const res = await orderApi.list({ size: 500 });
@@ -198,19 +207,13 @@ export function useOrders(): Order[] {
   }, [apiOrders, isSuccess]);
 
   if (isSuccess) return apiOrders ?? [];
-  if (isError) return [];
-
   return stateOrders;
 }
 
 export function useImportReceipts(): ImportReceipt[] {
   const stateImports = useAppState().imports;
 
-  const {
-    data: apiImports,
-    isError,
-    isSuccess,
-  } = useQuery({
+  const { data: apiImports, isSuccess } = useQuery({
     queryKey: ["inventory", "imports-list"],
     queryFn: async () => {
       const res = await inventoryApi.listImports({ size: 200 });
@@ -227,19 +230,13 @@ export function useImportReceipts(): ImportReceipt[] {
   }, [apiImports, isSuccess]);
 
   if (isSuccess) return apiImports ?? [];
-  if (isError) return [];
-
   return stateImports;
 }
 
 export function useExportReceipts(): ExportReceipt[] {
   const stateExports = useAppState().exports;
 
-  const {
-    data: apiExports,
-    isError,
-    isSuccess,
-  } = useQuery({
+  const { data: apiExports, isSuccess } = useQuery({
     queryKey: ["inventory", "exports-list"],
     queryFn: async () => {
       const res = await inventoryApi.listExports({ size: 200 });
@@ -256,8 +253,6 @@ export function useExportReceipts(): ExportReceipt[] {
   }, [apiExports, isSuccess]);
 
   if (isSuccess) return apiExports ?? [];
-  if (isError) return [];
-
   return stateExports;
 }
 

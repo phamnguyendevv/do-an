@@ -132,10 +132,11 @@ function OrdersPage() {
         },
       });
     if (dateRange?.from) {
-      const d = dateRange;
-      const label = d.to
-        ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
-        : d.from.toLocaleDateString("vi");
+      const from = dateRange.from;
+      const to = dateRange.to;
+      const label = to
+        ? `${from.toLocaleDateString("vi")} – ${to.toLocaleDateString("vi")}`
+        : from.toLocaleDateString("vi");
       chips.push({
         key: "date",
         label: `Ngày tạo: ${label}`,

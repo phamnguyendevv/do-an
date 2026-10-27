@@ -35,7 +35,7 @@ export function SepayPaymentDialog({
   const [isChecking, setIsChecking] = useState(false);
 
   const sepayConfig = storeSettingsService.getSepayConfig();
-  const orderCode = order?.id || (order as Record<string, unknown>)?.orderCode?.toString() || "";
+  const orderCode = order?.orderCode || order?.id || "";
   const total = Number(order?.total || 0);
 
   const qrUrl = storeSettingsService.getSepayQrUrl(total, orderCode);

@@ -49,6 +49,15 @@ describe("order workflow", () => {
     expect(orderTransitions.PENDING).toContain("CONFIRMED");
   });
 
+  it("không cho phép hoàn trả một đơn đã hủy", async () => {
+    store.setState({
+      orders: [{ ...order, status: "CANCELLED" }],
+    });
+
+    const invalid = await orderService.updateStatus(order.id, "RETURNED");
+    expect(invalid.ok).toBe(false);
+  });
+
   it("hủy đơn thì hoàn lại tồn kho", async () => {
     const before = store.getSnapshot().books.find((b) => b.id === book.id)!.stock;
     vi.spyOn(orderApi, "updateStatus").mockResolvedValue({

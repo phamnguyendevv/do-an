@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { bookApi, type BookApiItem } from "@/lib/book-api";
-import type { Book } from "@/types";
+import { BOOK_STATUSES, type Book, type BookStatus } from "@/types";
 
 export interface UsePaginatedBooksParams {
   page?: number;
@@ -25,9 +25,15 @@ export const mapApiBook = (book: BookApiItem): Book => {
   const sellingPrice = Number(
     book?.sellingPrice ?? (book as BookApiItem & { price?: number })?.price ?? 0,
   );
-  const rawStatus =
-    (book?.status as string | undefined) ||
-    (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
+  const apiStatus = book?.status;
+  const rawStatus: BookStatus =
+    typeof apiStatus === "string" && (BOOK_STATUSES as readonly string[]).includes(apiStatus)
+      ? (apiStatus as BookStatus)
+      : stock === 0
+        ? "OUT_OF_STOCK"
+        : stock <= minStock
+          ? "LOW_STOCK"
+          : "IN_STOCK";
 
   return {
     id: String(book?.id ?? ""),

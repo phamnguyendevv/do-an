@@ -32,10 +32,11 @@ function saveState(s: AppState) {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
+        books: s.books,
         orders: s.orders,
         imports: s.imports,
         exports: s.exports,
-        // shipments are auto-generated from orders via useShipments hook, no need to persist
+        shipments: s.shipments,
       }),
     );
   } catch (e) {
@@ -46,11 +47,11 @@ function saveState(s: AppState) {
 const saved = loadSavedState();
 
 const initialState: AppState = {
-  books: mockBooks,
-  orders: saved.orders ?? [],
-  imports: saved.imports ?? [],
-  exports: saved.exports ?? [],
-  shipments: [], // auto-generated from DB orders via useShipments hook
+  books: saved.books ?? mockBooks,
+  orders: saved.orders ?? mockOrders,
+  imports: saved.imports ?? mockImportReceipts,
+  exports: saved.exports ?? mockExportReceipts,
+  shipments: saved.shipments ?? mockShipments,
 };
 
 let state: AppState = initialState;

@@ -35,7 +35,6 @@ import {
   RevenueAreaChart,
   StockMovementChart,
 } from "@/components/analytics/charts";
-import { stockMovement as mockStockMovement } from "@/mock/inventory";
 import { useBooks, useExportReceipts, useImportReceipts, useOrders } from "@/hooks/use-store";
 import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import {
@@ -405,8 +404,7 @@ function DashboardPage() {
       });
     }
 
-    const hasData = result.some((r) => r.nhap > 0 || r.xuat > 0);
-    return hasData ? result : mockStockMovement;
+    return result;
   }, [imports, exports, orders]);
 
   // Resolve preset label for current dateRange

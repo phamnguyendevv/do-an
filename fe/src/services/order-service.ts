@@ -1,4 +1,11 @@
-import type { Order, OrderItem, OrderStatus, PaymentStatus } from "@/types";
+import {
+  ORDER_STATUS_TRANSITIONS,
+  PAYMENT_STATUS_TRANSITIONS,
+  type Order,
+  type OrderItem,
+  type OrderStatus,
+  type PaymentStatus,
+} from "@/types";
 import { applyStockDeltas, store } from "./store";
 import { checkAvailability, validateLines, type Result, type StockLine } from "./inventory-service";
 import { orderApi, type OrderApiItem } from "@/lib/order-api";
@@ -34,16 +41,7 @@ function mapApiOrder(o: OrderApiItem): Order {
 }
 
 /** Allowed order status transitions (warehouse workflow). */
-export const orderTransitions: Record<OrderStatus, OrderStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["PREPARING", "CANCELLED"],
-  PREPARING: ["SHIPPING", "CANCELLED"],
-  SHIPPING: ["DELIVERED", "FAILED"],
-  DELIVERED: ["RETURNED"],
-  FAILED: ["RETURNED", "SHIPPING"],
-  CANCELLED: [],
-  RETURNED: [],
-};
+export const orderTransitions = ORDER_STATUS_TRANSITIONS;
 
 /** Statuses that release the reserved stock back into the warehouse. */
 const RESTOCK_STATUSES: OrderStatus[] = ["CANCELLED", "RETURNED"];
@@ -155,7 +153,7 @@ export const orderService = {
     const { orders } = store.getSnapshot();
     const order = orders.find((o) => o.id === orderId);
     if (!order) return { ok: false, error: "Không tìm thấy đơn hàng." };
-    if (!orderTransitions[order.status].includes(next))
+    if (order.status !== next && !orderTransitions[order.status].includes(next))
       return { ok: false, error: "Không thể chuyển sang trạng thái này." };
 
     // Persist the status transition before changing local state.
@@ -195,6 +193,8 @@ export const orderService = {
     const { orders } = store.getSnapshot();
     const order = orders.find((o) => o.id === orderId);
     if (!order) return { ok: false, error: "Không tìm thấy đơn hàng." };
+    if (order.payment !== payment && !PAYMENT_STATUS_TRANSITIONS[order.payment].includes(payment))
+      return { ok: false, error: "Không thể chuyển sang trạng thái thanh toán này." };
 
     try {
       const idNum = parseInt(orderId, 10);
