@@ -40,159 +40,234 @@ export class CleanupAndRefactorSchema1751800000000 implements MigrationInterface
     // 3. Thêm books.category_id BIGINT (FK tới categories)
     //    Giữ nguyên cột category string để backward compatibility
     // ================================================================
-    await queryRunner.query(`
-      ALTER TABLE "books"
-      ADD COLUMN IF NOT EXISTS "category_id" bigint
-    `)
+    if (await queryRunner.hasTable('books')) {
+      await queryRunner.query(`
+        ALTER TABLE "books"
+        ADD COLUMN IF NOT EXISTS "category_id" bigint
+      `)
 
-    // Populate category_id từ categories theo tên category hiện tại
-    await queryRunner.query(`
-      UPDATE "books" b
-      SET "category_id" = c.id
-      FROM "categories" c
-      WHERE c.name = b.category
-        AND c.is_deleted = false
-        AND b.category_id IS NULL
-    `)
+      if (await queryRunner.hasTable('categories')) {
+        await queryRunner.query(`
+          UPDATE "books" b
+          SET "category_id" = c.id
+          FROM "categories" c
+          WHERE c.name = b.category
+            AND c.is_deleted = false
+            AND b.category_id IS NULL
+        `)
+      }
 
-    // Index cho category_id
-    await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_books_category_id"
-      ON "books" ("category_id")
-    `)
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_books_category_id"
+        ON "books" ("category_id")
+      `)
 
-    // ================================================================
-    // 4a. FK: books.category_id → categories(id) ON DELETE SET NULL
-    // ================================================================
-    await queryRunner.query(`
-      ALTER TABLE "books"
-      ADD CONSTRAINT "FK_books_category_id"
-      FOREIGN KEY ("category_id") REFERENCES "categories"("id")
-      ON DELETE SET NULL
-    `)
-
-    // ================================================================
-    // 4b. FK: bookstore_orders.customer_id → customers(id) ON DELETE SET NULL
-    //     Clear orphan records trước khi thêm constraint
-    // ================================================================
-    await queryRunner.query(`
-      UPDATE "bookstore_orders" bo
-      SET "customer_id" = NULL
-      WHERE "customer_id" IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM "customers" c WHERE c.id = bo.customer_id
-        )
-    `)
-    await queryRunner.query(`
-      ALTER TABLE "bookstore_orders"
-      ADD CONSTRAINT "FK_bookstore_orders_customer_id"
-      FOREIGN KEY ("customer_id") REFERENCES "customers"("id")
-      ON DELETE SET NULL
-    `)
+      if (await queryRunner.hasTable('categories')) {
+        await queryRunner.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints
+              WHERE constraint_name = 'FK_books_category_id' AND table_name = 'books'
+            ) THEN
+              ALTER TABLE "books"
+              ADD CONSTRAINT "FK_books_category_id"
+              FOREIGN KEY ("category_id") REFERENCES "categories"("id")
+              ON DELETE SET NULL;
+            END IF;
+          END $$;
+        `)
+      }
+    }
 
     // ================================================================
-    // 4c. FK: bookstore_orders.promotion_id → promotions(id) ON DELETE SET NULL
+    // 4b, 4c, 5. FK & Indexes cho bookstore_orders
     // ================================================================
-    await queryRunner.query(`
-      UPDATE "bookstore_orders" bo
-      SET "promotion_id" = NULL
-      WHERE "promotion_id" IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM "promotions" p WHERE p.id = bo.promotion_id
-        )
-    `)
-    await queryRunner.query(`
-      ALTER TABLE "bookstore_orders"
-      ADD CONSTRAINT "FK_bookstore_orders_promotion_id"
-      FOREIGN KEY ("promotion_id") REFERENCES "promotions"("id")
-      ON DELETE SET NULL
-    `)
+    if (await queryRunner.hasTable('bookstore_orders')) {
+      if (await queryRunner.hasTable('customers')) {
+        await queryRunner.query(`
+          UPDATE "bookstore_orders" bo
+          SET "customer_id" = NULL
+          WHERE "customer_id" IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM "customers" c WHERE c.id = bo.customer_id
+            )
+        `)
+        await queryRunner.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints
+              WHERE constraint_name = 'FK_bookstore_orders_customer_id' AND table_name = 'bookstore_orders'
+            ) THEN
+              ALTER TABLE "bookstore_orders"
+              ADD CONSTRAINT "FK_bookstore_orders_customer_id"
+              FOREIGN KEY ("customer_id") REFERENCES "customers"("id")
+              ON DELETE SET NULL;
+            END IF;
+          END $$;
+        `)
+      }
+
+      if (await queryRunner.hasTable('promotions')) {
+        await queryRunner.query(`
+          UPDATE "bookstore_orders" bo
+          SET "promotion_id" = NULL
+          WHERE "promotion_id" IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM "promotions" p WHERE p.id = bo.promotion_id
+            )
+        `)
+        await queryRunner.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints
+              WHERE constraint_name = 'FK_bookstore_orders_promotion_id' AND table_name = 'bookstore_orders'
+            ) THEN
+              ALTER TABLE "bookstore_orders"
+              ADD CONSTRAINT "FK_bookstore_orders_promotion_id"
+              FOREIGN KEY ("promotion_id") REFERENCES "promotions"("id")
+              ON DELETE SET NULL;
+            END IF;
+          END $$;
+        `)
+      }
+
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_bookstore_orders_customer_id"
+        ON "bookstore_orders" ("customer_id")
+      `)
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_bookstore_orders_customer_phone"
+        ON "bookstore_orders" ("customer_phone")
+      `)
+    }
 
     // ================================================================
     // 4d. FK: order_histories.order_id → bookstore_orders(id) ON DELETE CASCADE
-    //     Xóa orphan histories trước
     // ================================================================
-    await queryRunner.query(`
-      DELETE FROM "order_histories"
-      WHERE NOT EXISTS (
-        SELECT 1 FROM "bookstore_orders" bo
-        WHERE bo.id = order_histories.order_id
-      )
-    `)
-    await queryRunner.query(`
-      ALTER TABLE "order_histories"
-      ADD CONSTRAINT "FK_order_histories_order_id"
-      FOREIGN KEY ("order_id") REFERENCES "bookstore_orders"("id")
-      ON DELETE CASCADE
-    `)
+    if (
+      (await queryRunner.hasTable('order_histories')) &&
+      (await queryRunner.hasTable('bookstore_orders'))
+    ) {
+      await queryRunner.query(`
+        DELETE FROM "order_histories"
+        WHERE NOT EXISTS (
+          SELECT 1 FROM "bookstore_orders" bo
+          WHERE bo.id = order_histories.order_id
+        )
+      `)
+      await queryRunner.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'FK_order_histories_order_id' AND table_name = 'order_histories'
+          ) THEN
+            ALTER TABLE "order_histories"
+            ADD CONSTRAINT "FK_order_histories_order_id"
+            FOREIGN KEY ("order_id") REFERENCES "bookstore_orders"("id")
+            ON DELETE CASCADE;
+          END IF;
+        END $$;
+      `)
+    }
 
     // ================================================================
     // 4e. FK: import_receipts.supplier_id → suppliers(id) ON DELETE SET NULL
     // ================================================================
-    await queryRunner.query(`
-      UPDATE "import_receipts" ir
-      SET "supplier_id" = NULL
-      WHERE "supplier_id" IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM "suppliers" s WHERE s.id = ir.supplier_id
-        )
-    `)
-    await queryRunner.query(`
-      ALTER TABLE "import_receipts"
-      ADD CONSTRAINT "FK_import_receipts_supplier_id"
-      FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("id")
-      ON DELETE SET NULL
-    `)
+    if (
+      (await queryRunner.hasTable('import_receipts')) &&
+      (await queryRunner.hasTable('suppliers'))
+    ) {
+      await queryRunner.query(`
+        UPDATE "import_receipts" ir
+        SET "supplier_id" = NULL
+        WHERE "supplier_id" IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM "suppliers" s WHERE s.id = ir.supplier_id
+          )
+      `)
+      await queryRunner.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'FK_import_receipts_supplier_id' AND table_name = 'import_receipts'
+          ) THEN
+            ALTER TABLE "import_receipts"
+            ADD CONSTRAINT "FK_import_receipts_supplier_id"
+            FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("id")
+            ON DELETE SET NULL;
+          END IF;
+        END $$;
+      `)
+    }
 
     // ================================================================
     // 4f. FK: stock_movements.book_id → books(id) ON DELETE RESTRICT
-    //     Không cho xóa sách khi còn lịch sử biến động tồn kho
     // ================================================================
-    await queryRunner.query(`
-      ALTER TABLE "stock_movements"
-      ADD CONSTRAINT "FK_stock_movements_book_id"
-      FOREIGN KEY ("book_id") REFERENCES "books"("id")
-      ON DELETE RESTRICT
-    `)
+    if (
+      (await queryRunner.hasTable('stock_movements')) &&
+      (await queryRunner.hasTable('books'))
+    ) {
+      await queryRunner.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'FK_stock_movements_book_id' AND table_name = 'stock_movements'
+          ) THEN
+            ALTER TABLE "stock_movements"
+            ADD CONSTRAINT "FK_stock_movements_book_id"
+            FOREIGN KEY ("book_id") REFERENCES "books"("id")
+            ON DELETE RESTRICT;
+          END IF;
+        END $$;
+      `)
+    }
 
     // ================================================================
     // 4g. FK: activity_logs.actor_id → users(id) ON DELETE SET NULL
-    //     Giữ log kể cả khi user bị xóa (audit trail)
     // ================================================================
-    await queryRunner.query(`
-      UPDATE "activity_logs" al
-      SET "actor_id" = NULL
-      WHERE "actor_id" IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM "users" u WHERE u.id = al.actor_id
-        )
-    `)
-    await queryRunner.query(`
-      ALTER TABLE "activity_logs"
-      ADD CONSTRAINT "FK_activity_logs_actor_id"
-      FOREIGN KEY ("actor_id") REFERENCES "users"("id")
-      ON DELETE SET NULL
-    `)
+    if (
+      (await queryRunner.hasTable('activity_logs')) &&
+      (await queryRunner.hasTable('users'))
+    ) {
+      await queryRunner.query(`
+        UPDATE "activity_logs" al
+        SET "actor_id" = NULL
+        WHERE "actor_id" IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM "users" u WHERE u.id = al.actor_id
+          )
+      `)
+      await queryRunner.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'FK_activity_logs_actor_id' AND table_name = 'activity_logs'
+          ) THEN
+            ALTER TABLE "activity_logs"
+            ADD CONSTRAINT "FK_activity_logs_actor_id"
+            FOREIGN KEY ("actor_id") REFERENCES "users"("id")
+            ON DELETE SET NULL;
+          END IF;
+        END $$;
+      `)
+    }
 
     // ================================================================
-    // 5. Index bổ sung cho bookstore_orders
+    // 6. Composite index cho promotions
     // ================================================================
-    await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_bookstore_orders_customer_id"
-      ON "bookstore_orders" ("customer_id")
-    `)
-    await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_bookstore_orders_customer_phone"
-      ON "bookstore_orders" ("customer_phone")
-    `)
-
-    // ================================================================
-    // 6. Composite index cho promotions (tìm nhanh promotion đang hiệu lực)
-    // ================================================================
-    await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_promotions_active_dates"
-      ON "promotions" ("is_active", "starts_at", "ends_at")
-    `)
+    if (await queryRunner.hasTable('promotions')) {
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_promotions_active_dates"
+        ON "promotions" ("is_active", "starts_at", "ends_at")
+      `)
+    }
 
     // ================================================================
     // 7. Tạo bảng payment_transactions (idempotency cho SePay Webhook)
@@ -243,51 +318,66 @@ export class CleanupAndRefactorSchema1751800000000 implements MigrationInterface
     // 6. DROP composite index promotions
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_promotions_active_dates"`)
 
-    // 5. DROP index bookstore_orders
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_bookstore_orders_customer_phone"`)
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_bookstore_orders_customer_id"`)
-
     // 4g
-    await queryRunner.query(
-      `ALTER TABLE "activity_logs" DROP CONSTRAINT IF EXISTS "FK_activity_logs_actor_id"`,
-    )
+    if (await queryRunner.hasTable('activity_logs')) {
+      await queryRunner.query(
+        `ALTER TABLE "activity_logs" DROP CONSTRAINT IF EXISTS "FK_activity_logs_actor_id"`,
+      )
+    }
     // 4f
-    await queryRunner.query(
-      `ALTER TABLE "stock_movements" DROP CONSTRAINT IF EXISTS "FK_stock_movements_book_id"`,
-    )
+    if (await queryRunner.hasTable('stock_movements')) {
+      await queryRunner.query(
+        `ALTER TABLE "stock_movements" DROP CONSTRAINT IF EXISTS "FK_stock_movements_book_id"`,
+      )
+    }
     // 4e
-    await queryRunner.query(
-      `ALTER TABLE "import_receipts" DROP CONSTRAINT IF EXISTS "FK_import_receipts_supplier_id"`,
-    )
+    if (await queryRunner.hasTable('import_receipts')) {
+      await queryRunner.query(
+        `ALTER TABLE "import_receipts" DROP CONSTRAINT IF EXISTS "FK_import_receipts_supplier_id"`,
+      )
+    }
     // 4d
-    await queryRunner.query(
-      `ALTER TABLE "order_histories" DROP CONSTRAINT IF EXISTS "FK_order_histories_order_id"`,
-    )
-    // 4c
-    await queryRunner.query(
-      `ALTER TABLE "bookstore_orders" DROP CONSTRAINT IF EXISTS "FK_bookstore_orders_promotion_id"`,
-    )
-    // 4b
-    await queryRunner.query(
-      `ALTER TABLE "bookstore_orders" DROP CONSTRAINT IF EXISTS "FK_bookstore_orders_customer_id"`,
-    )
-    // 4a
-    await queryRunner.query(
-      `ALTER TABLE "books" DROP CONSTRAINT IF EXISTS "FK_books_category_id"`,
-    )
-
-    // 3. DROP books.category_id column + index
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_books_category_id"`)
-    await queryRunner.query(`ALTER TABLE "books" DROP COLUMN IF EXISTS "category_id"`)
+    if (await queryRunner.hasTable('order_histories')) {
+      await queryRunner.query(
+        `ALTER TABLE "order_histories" DROP CONSTRAINT IF EXISTS "FK_order_histories_order_id"`,
+      )
+    }
+    // 4c, 4b, 5
+    if (await queryRunner.hasTable('bookstore_orders')) {
+      await queryRunner.query(
+        `ALTER TABLE "bookstore_orders" DROP CONSTRAINT IF EXISTS "FK_bookstore_orders_promotion_id"`,
+      )
+      await queryRunner.query(
+        `ALTER TABLE "bookstore_orders" DROP CONSTRAINT IF EXISTS "FK_bookstore_orders_customer_id"`,
+      )
+      await queryRunner.query(
+        `DROP INDEX IF EXISTS "IDX_bookstore_orders_customer_phone"`,
+      )
+      await queryRunner.query(
+        `DROP INDEX IF EXISTS "IDX_bookstore_orders_customer_id"`,
+      )
+    }
+    // 4a, 3
+    if (await queryRunner.hasTable('books')) {
+      await queryRunner.query(
+        `ALTER TABLE "books" DROP CONSTRAINT IF EXISTS "FK_books_category_id"`,
+      )
+      await queryRunner.query(`DROP INDEX IF EXISTS "IDX_books_category_id"`)
+      await queryRunner.query(
+        `ALTER TABLE "books" DROP COLUMN IF EXISTS "category_id"`,
+      )
+    }
 
     // 2. Revert export_receipts.order_id back to VARCHAR(100)
-    await queryRunner.query(`
-      ALTER TABLE "export_receipts"
-      ALTER COLUMN "order_id" TYPE character varying(100)
-      USING CASE
-        WHEN "order_id" IS NOT NULL THEN "order_id"::text
-        ELSE NULL
-      END
-    `)
+    if (await queryRunner.hasTable('export_receipts')) {
+      await queryRunner.query(`
+        ALTER TABLE "export_receipts"
+        ALTER COLUMN "order_id" TYPE character varying(100)
+        USING CASE
+          WHEN "order_id" IS NOT NULL THEN "order_id"::text
+          ELSE NULL
+        END
+      `)
+    }
   }
 }
