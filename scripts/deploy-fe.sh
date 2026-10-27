@@ -99,11 +99,37 @@ fi
 # 3. Pull image và khởi chạy container frontend
 # ============================================================
 cd "$APP_DIR"
-log "Pull Docker image Frontend moi nhat..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull frontend || error "Không thể pull image frontend"
+log "Dung lượng ổ đĩa hiện tại:"
+df -h / | awk 'NR==2 {print "  - Đã dùng: "$3"/"$2" ("$5") | Còn trống: "$4}'
 
-log "Khởi chạy Frontend container..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d frontend
+log "Pull Docker image Frontend mới nhất..."
+pull_frontend() {
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull frontend 2>/dev/null || \
+    docker pull enestars/do-an-frontend:latest
+}
+
+if ! pull_frontend; then
+    warn "Pull image thất bại. Dừng container cũ, dọn dẹp cache containerd & ổ đĩa để thử lại..."
+    # Dừng và xóa container cũ để giải phóng tài nguyên
+    docker stop app-frontend 2>/dev/null || true
+    docker rm -f app-frontend 2>/dev/null || true
+    # 1. Dọn dẹp thư mục ingest bị lỗi của containerd
+    rm -rf /var/lib/containerd/io.containerd.content.v1.content/ingest/* 2>/dev/null || true
+    # 2. Xóa các image cũ để giải phóng ổ đĩa
+    docker image prune -af --filter "until=1h" 2>/dev/null || docker image prune -f 2>/dev/null || true
+    # 3. Khởi động lại containerd nếu có
+    systemctl restart containerd 2>/dev/null || true
+    sleep 3
+    log "Thử pull lại Frontend sau khi dọn dẹp..."
+    pull_frontend || error "Không thể pull image frontend sau khi đã dọn dẹp cache containerd"
+fi
+
+log "Dừng và xóa container Frontend cũ..."
+docker stop app-frontend 2>/dev/null || true
+docker rm -f app-frontend 2>/dev/null || true
+
+log "Khởi chạy Frontend container mới..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --force-recreate frontend
 
 # ============================================================
 # 4. Kiểm tra sức khỏe Frontend Container

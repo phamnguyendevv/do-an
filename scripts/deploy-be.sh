@@ -76,8 +76,30 @@ fi
 # 2. Pull image Backend moi nhat
 # ============================================================
 cd "$APP_DIR"
-log "Pull Docker image moi nhat..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend || docker pull "$IMAGE" || error "Khong the pull image $IMAGE"
+log "Dung lượng ổ đĩa hiện tại:"
+df -h / | awk 'NR==2 {print "  - Đã dùng: "$3"/"$2" ("$5") | Còn trống: "$4}'
+
+log "Pull Docker image mới nhất..."
+pull_backend() {
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend 2>/dev/null || \
+    docker pull "$IMAGE"
+}
+
+if ! pull_backend; then
+    warn "Pull image backend thất bại. Dừng container cũ, dọn dẹp cache containerd & ổ đĩa để thử lại..."
+    # Dừng và xóa container cũ để giải phóng tài nguyên
+    docker stop app-backend 2>/dev/null || true
+    docker rm -f app-backend 2>/dev/null || true
+    # 1. Dọn dẹp thư mục ingest bị lỗi của containerd
+    rm -rf /var/lib/containerd/io.containerd.content.v1.content/ingest/* 2>/dev/null || true
+    # 2. Xóa các image cũ để giải phóng ổ đĩa
+    docker image prune -af --filter "until=1h" 2>/dev/null || docker image prune -f 2>/dev/null || true
+    # 3. Khởi động lại containerd nếu có
+    systemctl restart containerd 2>/dev/null || true
+    sleep 3
+    log "Thử pull lại Backend sau khi dọn dẹp..."
+    pull_backend || error "Không thể pull image $IMAGE sau khi đã dọn dẹp cache containerd"
+fi
 
 # ============================================================
 # 3. Đảm bảo Postgres sẵn sàng và đồng bộ mật khẩu DB
@@ -117,8 +139,12 @@ fi
 # ============================================================
 # 4. Khởi động/cập nhật container Backend
 # ============================================================
-log "Khởi chạy container Backend..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d backend
+log "Dừng và xóa container Backend cũ..."
+docker stop app-backend 2>/dev/null || true
+docker rm -f app-backend 2>/dev/null || true
+
+log "Khởi chạy container Backend mới..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --force-recreate backend
 
 # ============================================================
 # 4. Health check

@@ -176,7 +176,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/pos': typeof PosRouteWithChildren
+  '/pos': typeof PosRoute
   '/profile': typeof ProfileRoute
   '/promotions': typeof PromotionsRoute
   '/register': typeof RegisterRoute
@@ -348,7 +348,7 @@ export interface RootRouteChildren {
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
-  PosRoute: typeof PosRouteWithChildren
+  PosRoute: typeof PosRoute
   ProfileRoute: typeof ProfileRoute
   PromotionsRoute: typeof PromotionsRoute
   RegisterRoute: typeof RegisterRoute
