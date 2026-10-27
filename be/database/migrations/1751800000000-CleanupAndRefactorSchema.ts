@@ -25,14 +25,16 @@ export class CleanupAndRefactorSchema1751800000000 implements MigrationInterface
     // 2. Sửa export_receipts.order_id: VARCHAR(100) → BIGINT
     //    USING: chuyển string số → bigint, giá trị không hợp lệ → NULL
     // ================================================================
-    await queryRunner.query(`
-      ALTER TABLE "export_receipts"
-      ALTER COLUMN "order_id" TYPE bigint
-      USING CASE
-        WHEN "order_id" ~ '^[0-9]+$' THEN "order_id"::bigint
-        ELSE NULL
-      END
-    `)
+    if (await queryRunner.hasTable('export_receipts')) {
+      await queryRunner.query(`
+        ALTER TABLE "export_receipts"
+        ALTER COLUMN "order_id" TYPE bigint
+        USING CASE
+          WHEN "order_id" ~ '^[0-9]+$' THEN "order_id"::bigint
+          ELSE NULL
+        END
+      `)
+    }
 
     // ================================================================
     // 3. Thêm books.category_id BIGINT (FK tới categories)
