@@ -1,8 +1,7 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { authStore } from "@/services/auth-service";
 
-const API_BASE = import.meta.env["VITE_API_BASE"] || "http://localhost:3000";
-const API_PREFIX = import.meta.env["VITE_API_PREFIX"] || "/api/v1";
+import { API_BASE, API_PREFIX } from "@/lib/api-config";
 
 export const ACCESS_TOKEN_KEY = "bookstock.token";
 export const REFRESH_TOKEN_KEY = "bookstock.refresh_token";

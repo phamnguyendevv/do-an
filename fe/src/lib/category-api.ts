@@ -11,7 +11,6 @@ export type CategoryListApiResponse = {
   pagination: { total: number; page: number; size: number };
 };
 
-const API_BASE = import.meta.env["VITE_API_BASE"] || "http://localhost:3000";
 import { apiRequest } from "./api-client";
 
 export const categoryApi = {
