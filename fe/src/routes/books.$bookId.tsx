@@ -11,49 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useBooks } from "@/hooks/use-store";
-import { bookApi, type BookApiItem } from "@/lib/book-api";
+import { booksService } from "@/services/books-service";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
 import { Can } from "@/lib/ability";
-import type { Book } from "@/types";
-
-const mapApiBook = (book: BookApiItem): Book => {
-  const stock = Number(book?.stock ?? 0);
-  const minStock = Number(book?.minStock ?? 0);
-  const purchasePrice = Number(book?.purchasePrice ?? (book as any)?.importPrice ?? 0);
-  const sellingPrice = Number(book?.sellingPrice ?? (book as any)?.price ?? 0);
-  const rawStatus =
-    (book?.status as any) ||
-    (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
-
-  return {
-    id: String(book?.id ?? ""),
-    title: String(book?.title ?? ""),
-    author: String(book?.author ?? ""),
-    category: String(book?.category ?? ""),
-    purchasePrice,
-    sellingPrice,
-    price: sellingPrice,
-    importPrice: purchasePrice,
-    stock,
-    minStock,
-    status: rawStatus,
-    createdAt:
-      typeof book?.createdAt === "string"
-        ? book.createdAt
-        : new Date(book?.createdAt ?? Date.now()).toISOString(),
-  };
-};
 
 export const Route = createFileRoute("/books/$bookId")({
   loader: async ({ params }) => {
-    try {
-      const book = await bookApi.get(params.bookId);
-      if (!book) throw notFound();
-      return { book: mapApiBook(book) };
-    } catch {
-      throw notFound();
-    }
+    const result = booksService.get(params.bookId);
+    if (!result.ok || !result.data) throw notFound();
+    return { book: result.data };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {

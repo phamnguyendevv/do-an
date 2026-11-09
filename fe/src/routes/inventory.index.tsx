@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -23,22 +22,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StockMovementChart } from "@/components/analytics/charts";
-import { stockMovement } from "@/mock/inventory";
 import {
   useBooks,
   useExportReceipts,
   useImportReceipts,
   useInventorySummary,
+  useStockMovements,
 } from "@/hooks/use-store";
-import {
-  inventoryApi,
-  type StockMovementApiItem,
-  type StockAuditApiItem,
-} from "@/lib/inventory-api";
+import type { StockMovement } from "@/types";
 import { exportBooksToExcel, exportMovementsToExcel } from "@/lib/excel-service";
 import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
-import { reorderSuggestions } from "@/services/report-service";
+import { reorderSuggestions, selectStockMovementSeries } from "@/services/report-service";
 import { Can } from "@/lib/ability";
 import type { Book, ExportReceipt, ImportReceipt } from "@/types";
 
@@ -185,7 +180,7 @@ const movementTypeMap: Record<
   ADJUST: { label: "Kiểm kê/Cân bằng", tone: "neutral" },
 };
 
-const movementColumns: DataTableColumn<StockMovementApiItem>[] = [
+const movementColumns: DataTableColumn<StockMovement>[] = [
   {
     key: "createdAt",
     header: "Thời gian",
@@ -255,24 +250,10 @@ function InventoryPage() {
   const books = useBooks();
   const imports = useImportReceipts();
   const exports = useExportReceipts();
+  const movements = useStockMovements();
   const inventorySummary = useInventorySummary();
   const reorders = useMemo(() => reorderSuggestions(books), [books]);
-
-  // Query live stock movements from Backend API
-  const { data: movementsData } = useQuery({
-    queryKey: ["inventory", "movements"],
-    queryFn: async () => {
-      try {
-        const res = await inventoryApi.listMovements({ size: 100 });
-        return res?.data || [];
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 10_000,
-  });
-
-  const movements = movementsData || [];
+  const movementSeries = selectStockMovementSeries();
 
   return (
     <AppShell crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Kho hàng" }]}>
@@ -285,11 +266,7 @@ function InventoryPage() {
               <Button size="sm" variant="outline" onClick={() => exportBooksToExcel(books)}>
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Excel Tồn kho
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => exportMovementsToExcel(movements as any)}
-              >
+              <Button size="sm" variant="outline" onClick={() => exportMovementsToExcel(movements)}>
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Sổ kho
               </Button>
               <Can I="create" a="StockMovement">
@@ -392,7 +369,7 @@ function InventoryPage() {
             <CardTitle className="text-base">Biến động nhập / xuất kho</CardTitle>
           </CardHeader>
           <CardContent>
-            <StockMovementChart data={stockMovement} />
+            <StockMovementChart data={movementSeries} />
           </CardContent>
         </Card>
 

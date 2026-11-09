@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { bookApi, type BookApiItem } from "@/lib/book-api";
-import { BOOK_STATUSES, type Book, type BookStatus } from "@/types";
+import { useMemo, useSyncExternalStore } from "react";
+import type { Book } from "@/types";
+import { store } from "@/services/store";
 
 export interface UsePaginatedBooksParams {
   page?: number;
@@ -16,44 +16,6 @@ export interface UsePaginatedBooksParams {
   sortOrder?: "ASC" | "DESC";
 }
 
-export const mapApiBook = (book: BookApiItem): Book => {
-  const stock = Number(book?.stock ?? 0);
-  const minStock = Number(book?.minStock ?? 0);
-  const purchasePrice = Number(
-    book?.purchasePrice ?? (book as BookApiItem & { importPrice?: number })?.importPrice ?? 0,
-  );
-  const sellingPrice = Number(
-    book?.sellingPrice ?? (book as BookApiItem & { price?: number })?.price ?? 0,
-  );
-  const apiStatus = book?.status;
-  const rawStatus: BookStatus =
-    typeof apiStatus === "string" && (BOOK_STATUSES as readonly string[]).includes(apiStatus)
-      ? (apiStatus as BookStatus)
-      : stock === 0
-        ? "OUT_OF_STOCK"
-        : stock <= minStock
-          ? "LOW_STOCK"
-          : "IN_STOCK";
-
-  return {
-    id: String(book?.id ?? ""),
-    title: String(book?.title ?? ""),
-    author: String(book?.author ?? ""),
-    category: String(book?.category ?? ""),
-    purchasePrice,
-    sellingPrice,
-    price: sellingPrice,
-    importPrice: purchasePrice,
-    stock,
-    minStock,
-    status: rawStatus,
-    createdAt:
-      typeof book?.createdAt === "string"
-        ? book.createdAt
-        : new Date(book?.createdAt ?? Date.now()).toISOString(),
-  };
-};
-
 export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
   const {
     page = 1,
@@ -66,73 +28,69 @@ export function usePaginatedBooks(params: UsePaginatedBooksParams = {}) {
     startDate,
     endDate,
     sortBy,
-    sortOrder,
+    sortOrder = "ASC",
   } = params;
+  const books = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot).books;
 
-  const query = useQuery({
-    queryKey: [
-      "books",
-      "paginated",
-      {
-        page,
-        size,
-        search,
-        category,
-        status,
-        minPrice,
-        maxPrice,
-        startDate,
-        endDate,
-        sortBy,
-        sortOrder,
-      },
-    ],
-    queryFn: async () => {
-      // Build params without undefined values to satisfy exactOptionalPropertyTypes
+  const result = useMemo(() => {
+    const query = search?.trim().toLocaleLowerCase();
+    const from = startDate ? Date.parse(startDate) : undefined;
+    const to = endDate ? Date.parse(endDate) + 24 * 60 * 60 * 1000 : undefined;
+    const filtered = books.filter((book) => {
+      const sellingPrice = book.sellingPrice ?? book.price ?? 0;
+      const created = Date.parse(book.createdAt);
+      return (
+        (!query ||
+          book.title.toLocaleLowerCase().includes(query) ||
+          book.author.toLocaleLowerCase().includes(query)) &&
+        (!category || category === "all" || book.category === category) &&
+        (!status || status === "all" || book.status === status) &&
+        (minPrice === undefined || sellingPrice >= minPrice) &&
+        (maxPrice === undefined || sellingPrice <= maxPrice) &&
+        (from === undefined || created >= from) &&
+        (to === undefined || created < to)
+      );
+    });
 
-      const p: any = { page, size };
-      if (search?.trim()) p["search"] = search.trim();
-      if (category && category !== "all") p["category"] = category;
-      if (status && status !== "all") p["status"] = status;
-      if (minPrice !== undefined) p["minPrice"] = minPrice;
-      if (maxPrice !== undefined) p["maxPrice"] = maxPrice;
-      if (startDate) p["startDate"] = startDate;
-      if (endDate) p["endDate"] = endDate;
-      if (sortBy) p["sortBy"] = sortBy;
-      if (sortOrder) p["sortOrder"] = sortOrder;
+    if (sortBy) {
+      const direction = sortOrder === "DESC" ? -1 : 1;
+      filtered.sort((left, right) => {
+        const leftValue = left[sortBy as keyof Book];
+        const rightValue = right[sortBy as keyof Book];
+        if (typeof leftValue === "number" && typeof rightValue === "number") {
+          return (leftValue - rightValue) * direction;
+        }
+        return String(leftValue ?? "").localeCompare(String(rightValue ?? "")) * direction;
+      });
+    }
 
-      const res: any = await bookApi.list(p);
-
-      let items: BookApiItem[] = [];
-      let total = 0;
-
-      if (Array.isArray(res?.data)) {
-        items = res.data;
-        total = res.pagination?.total ?? res.data.length;
-      } else if (Array.isArray(res)) {
-        items = res;
-        total = res.length;
-      }
-
-      return {
-        items: items.map(mapApiBook),
-        pagination: {
-          total,
-          page: res?.pagination?.page ?? page,
-          size: res?.pagination?.size ?? size,
-        },
-      };
-    },
-    placeholderData: (prev) => prev,
-    staleTime: 15_000,
-  });
+    const safePage = Math.max(1, Math.floor(page));
+    const safeSize = Math.max(1, Math.floor(size));
+    return {
+      items: filtered.slice((safePage - 1) * safeSize, safePage * safeSize),
+      pagination: { total: filtered.length, page: safePage, size: safeSize },
+    };
+  }, [
+    books,
+    category,
+    endDate,
+    maxPrice,
+    minPrice,
+    page,
+    search,
+    size,
+    sortBy,
+    sortOrder,
+    startDate,
+    status,
+  ]);
 
   return {
-    books: query.data?.items ?? [],
-    pagination: query.data?.pagination ?? { total: 0, page, size },
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    error: query.error ? (query.error as Error).message : null,
-    refetch: query.refetch,
+    books: result.items,
+    pagination: result.pagination,
+    isLoading: false,
+    isFetching: false,
+    error: null,
+    refetch: () => Promise.resolve({ data: result }),
   };
 }

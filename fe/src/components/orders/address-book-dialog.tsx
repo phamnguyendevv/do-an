@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { BookUser, Check, MapPin, Phone, Search, User } from "lucide-react";
 import {
   Dialog,
@@ -9,8 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { store } from "@/services/store";
-import { customersApi, type CustomerApiItem } from "@/lib/customer-api";
+import { useCustomers, useOrders } from "@/hooks/use-store";
 
 export interface AddressBookContact {
   id: string;
@@ -21,48 +20,6 @@ export interface AddressBookContact {
   lastUsed?: string;
 }
 
-const DEFAULT_SAMPLE_CONTACTS: AddressBookContact[] = [
-  {
-    id: "cnt-1",
-    name: "Trần Thị Mai",
-    phone: "0901234567",
-    address: "12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
-    orderCount: 5,
-    lastUsed: "Gần đây",
-  },
-  {
-    id: "cnt-2",
-    name: "Nguyễn Văn Hùng",
-    phone: "0912345678",
-    address: "45 Lê Lợi, Phường Thạch Thang, Quận Hải Châu, Đà Nẵng",
-    orderCount: 3,
-    lastUsed: "3 ngày trước",
-  },
-  {
-    id: "cnt-3",
-    name: "Phạm Thu Trang",
-    phone: "0987654321",
-    address: "88 Trần Phú, Phường Điện Biên, Quận Ba Đình, Hà Nội",
-    orderCount: 8,
-    lastUsed: "Hôm qua",
-  },
-  {
-    id: "cnt-4",
-    name: "Lê Quốc Anh",
-    phone: "0933221100",
-    address: "27 Hai Bà Trưng, Phường Võ Thị Sáu, Quận 3, TP. Hồ Chí Minh",
-    orderCount: 2,
-    lastUsed: "Tuần trước",
-  },
-  {
-    id: "cnt-5",
-    name: "Đỗ Minh Châu",
-    phone: "0977889900",
-    address: "5 Nguyễn Trãi, Phường Khương Trung, Quận Thanh Xuân, Hà Nội",
-    orderCount: 4,
-  },
-];
-
 interface AddressBookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,110 +28,51 @@ interface AddressBookDialogProps {
 
 export function AddressBookDialog({ open, onOpenChange, onSelectContact }: AddressBookDialogProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [serverContacts, setServerContacts] = useState<CustomerApiItem[] | null>(null);
-  const [loadingServer, setLoadingServer] = useState(false);
+  const customers = useCustomers();
+  const orders = useOrders();
 
-  // Extract unique contacts from previous orders in the store + sample contacts
   const contacts = useMemo(() => {
-    const { orders } = store.getSnapshot();
     const contactMap = new Map<string, AddressBookContact>();
 
-    // 1. Add samples first
-    DEFAULT_SAMPLE_CONTACTS.forEach((c) => {
-      contactMap.set(c.phone, c);
+    customers.forEach((customer) => {
+      contactMap.set(`customer:${customer.id}`, {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        address: customer.address ?? "",
+      });
     });
-
-    // 2. Add from orders
     orders.forEach((o) => {
       if (!o.customerPhone) return;
-      const existing = contactMap.get(o.customerPhone);
+      const key = o.customerId ? `customer:${o.customerId}` : `phone:${o.customerPhone}`;
+      const existing = contactMap.get(key);
       if (existing) {
-        existing.orderCount = (existing.orderCount || 1) + 1;
-        existing.name = o.customerName || existing.name;
-        existing.address = o.customerAddress || existing.address;
+        existing.orderCount = (existing.orderCount ?? 0) + 1;
       } else {
-        contactMap.set(o.customerPhone, {
+        contactMap.set(key, {
           id: `ord-cnt-${o.id}`,
           name: o.customerName || "Khách hàng",
           phone: o.customerPhone,
           address: o.customerAddress || "",
           orderCount: 1,
-          lastUsed: "Đã từng mua",
+          lastUsed: new Date(o.createdAt).toLocaleDateString("vi-VN"),
         });
       }
     });
 
     return Array.from(contactMap.values());
-  }, [open]);
-
-  // Merge local contacts with server results when searching
-  useEffect(() => {
-    let mounted = true;
-    const term = searchTerm.trim();
-    if (!term || term.length < 3) {
-      setServerContacts(null);
-      setLoadingServer(false);
-      return;
-    }
-
-    setLoadingServer(true);
-    const t = setTimeout(async () => {
-      try {
-        const res = await customersApi.list(term as string);
-        if (!mounted) return;
-        setServerContacts(Array.isArray(res?.data) ? res.data : []);
-      } catch (e) {
-        console.error("Failed to fetch customers:", e);
-        if (mounted) setServerContacts([]);
-      } finally {
-        if (mounted) setLoadingServer(false);
-      }
-    }, 300);
-
-    return () => {
-      mounted = false;
-      clearTimeout(t);
-    };
-  }, [searchTerm]);
+  }, [customers, orders]);
 
   const filteredContacts = useMemo(() => {
     const q = searchTerm.toLowerCase().trim();
     if (!q) return contacts;
-
-    // If server results exist, merge them with local contacts (dedup by phone)
-    const map = new Map<string, AddressBookContact>();
-
-    if (serverContacts && serverContacts.length > 0) {
-      serverContacts.forEach((s) => {
-        map.set(s.phone, {
-          id: `srv-${s.id}`,
-          name: s.name,
-          phone: s.phone,
-          address: s.address || "",
-        });
-      });
-    }
-
-    // Overlay local contacts (giving them priority for orderCount/address)
-    contacts.forEach((c) => {
-      const existing = map.get(c.phone);
-      if (existing) {
-        existing.name = c.name || existing.name;
-        existing.address = c.address || existing.address;
-        existing.orderCount = (c.orderCount || 0) + (existing.orderCount || 0);
-      } else {
-        map.set(c.phone, c);
-      }
-    });
-
-    const all = Array.from(map.values());
-    return all.filter(
+    return contacts.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.phone.includes(q) ||
         c.address.toLowerCase().includes(q),
     );
-  }, [contacts, serverContacts, searchTerm]);
+  }, [contacts, searchTerm]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

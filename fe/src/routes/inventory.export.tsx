@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
@@ -50,18 +50,29 @@ function ExportPage() {
   const [lines, setLines] = useState<ProductLine[]>([{ bookId: "", quantity: 1, price: 0 }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const idempotencyKey = useRef<string | null>(null);
 
   const totalItems = lines.reduce((s, l) => s + (l.quantity || 0), 0);
 
   const submit = async () => {
+    if (submitting) return;
     setError(null);
     setSubmitting(true);
-    const res = await inventoryService.createExport({ orderId, reason, note, lines });
-    setSubmitting(false);
+    idempotencyKey.current ??= crypto.randomUUID();
+    const res = await inventoryService.createExport({
+      orderId,
+      reason,
+      note,
+      lines,
+      idempotencyKey: idempotencyKey.current,
+    });
     if (!res.ok) {
       setError(res.error ?? "Không thể tạo phiếu xuất.");
+      setSubmitting(false);
       return;
     }
+    idempotencyKey.current = null;
+    setSubmitting(false);
     toast.success(`Đã xuất kho ${res.data!.totalItems} sản phẩm — tồn kho đã cập nhật`);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),

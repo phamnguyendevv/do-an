@@ -1,58 +1,176 @@
 import {
   ORDER_STATUS_TRANSITIONS,
   PAYMENT_STATUS_TRANSITIONS,
+  SHIPPING_STATUS_TRANSITIONS,
   type Order,
-  type OrderItem,
   type OrderStatus,
   type PaymentStatus,
+  type ShippingStatus,
+  type StockMovement,
+  type Book,
+  type Customer,
 } from "@/types";
-import { applyStockDeltas, store } from "./store";
 import { checkAvailability, validateLines, type Result, type StockLine } from "./inventory-service";
-import { orderApi, type OrderApiItem } from "@/lib/order-api";
+import { bookStatusOf, nextId, store } from "./store";
+import { serviceFailure, serviceSuccess, type ServiceErrorCode } from "./service-result";
 
-/** Map API response to local Order type */
-function mapApiOrder(o: OrderApiItem): Order {
-  return {
-    id: String(o.id),
-    orderCode: o.orderCode,
-    customerName: o.customerName,
-    customerPhone: o.customerPhone,
-    customerAddress: o.customerAddress,
-    provinceId: o.provinceId,
-    districtId: o.districtId,
-    wardCode: o.wardCode,
-    items: (o.items || []).map((it) => ({
-      bookId: String(it.bookId),
-      title: it.title,
-      quantity: it.quantity,
-      price: Number(it.price),
-    })),
-    subtotal: Number(o.subtotal),
-    discount: Number(o.discount),
-    shippingFee: Number(o.shippingFee),
-    total: Number(o.total),
-    payment: o.payment as PaymentStatus,
-    shippingMethod: o.shippingMethod,
-    trackingCode: o.trackingCode,
-    note: o.note,
-    status: o.status as OrderStatus,
-    createdAt: o.createdAt,
-  };
-}
-
-/** Allowed order status transitions (warehouse workflow). */
 export const orderTransitions = ORDER_STATUS_TRANSITIONS;
-
-/** Statuses that release the reserved stock back into the warehouse. */
 const RESTOCK_STATUSES: OrderStatus[] = ["CANCELLED", "RETURNED"];
 
+function failure<T>(code: ServiceErrorCode, message: string): Result<T> {
+  return serviceFailure(code, message);
+}
+
+function buildStockChanges(
+  lines: StockLine[],
+  sign: 1 | -1,
+  date: string,
+  referenceCode: string,
+  type: StockMovement["type"],
+) {
+  const { books, movements } = store.getSnapshot();
+  const quantities = lines.reduce<Record<string, number>>((acc, line) => {
+    acc[line.bookId] = (acc[line.bookId] ?? 0) + line.quantity;
+    return acc;
+  }, {});
+  const updatedBooks: Book[] = books.map((book) => {
+    const quantity = quantities[book.id] ?? 0;
+    if (!quantity) return book;
+    const stock = book.stock + sign * quantity;
+    const status: Book["status"] =
+      book.status === "DISCONTINUED" ? "DISCONTINUED" : bookStatusOf(stock, book.minStock);
+    return {
+      ...book,
+      stock,
+      status,
+    };
+  });
+  let sequence = movements;
+  const addedMovements = Object.entries(quantities).map(([bookId, quantity]) => {
+    const book = books.find((item) => item.id === bookId)!;
+    const beforeStock = book.stock;
+    const afterStock = beforeStock + sign * quantity;
+    const movement: StockMovement = {
+      id: nextId("MOV", sequence),
+      bookId,
+      bookTitle: book.title,
+      type,
+      quantity,
+      beforeStock,
+      afterStock,
+      referenceCode,
+      createdBy: "DEMO",
+      createdAt: date,
+    };
+    sequence = [...sequence, movement];
+    return movement;
+  });
+  return { books: updatedBooks, movements: [...movements, ...addedMovements] };
+}
+
+function updateOrderAndShipment(
+  orderId: string,
+  next: OrderStatus,
+  shipmentOverride?: ShippingStatus,
+): Result<Order> {
+  const current = store.getSnapshot();
+  const order = current.orders.find((item) => item.id === orderId || item.orderCode === orderId);
+  if (!order) return failure("NOT_FOUND", "Không tìm thấy đơn hàng.");
+  const orderChanged = order.status !== next;
+  if (orderChanged && !orderTransitions[order.status].includes(next)) {
+    return failure("INVALID_TRANSITION", "Không thể chuyển sang trạng thái này.");
+  }
+
+  const targetShipmentStatus =
+    shipmentOverride ??
+    (next === "DELIVERED"
+      ? "DELIVERED"
+      : next === "FAILED"
+        ? "FAILED"
+        : next === "RETURNED"
+          ? "RETURNED"
+          : next === "CANCELLED"
+            ? "CANCELLED"
+            : null);
+  const linkedShipments = current.shipments.filter((shipment) => shipment.orderId === order.id);
+  for (const shipment of linkedShipments) {
+    if (
+      targetShipmentStatus &&
+      shipment.status !== targetShipmentStatus &&
+      !SHIPPING_STATUS_TRANSITIONS[shipment.status].includes(targetShipmentStatus)
+    ) {
+      return failure(
+        "INVALID_TRANSITION",
+        "Trạng thái vận đơn không cho phép chuyển cùng với đơn hàng.",
+      );
+    }
+  }
+  if (
+    !orderChanged &&
+    linkedShipments.every(
+      (shipment) => !targetShipmentStatus || shipment.status === targetShipmentStatus,
+    )
+  ) {
+    return serviceSuccess(order);
+  }
+
+  const shouldRestock =
+    orderChanged && RESTOCK_STATUSES.includes(next) && !RESTOCK_STATUSES.includes(order.status);
+  const date = new Date().toISOString();
+  let updatedBooks = current.books;
+  let movements = current.movements;
+  if (shouldRestock) {
+    const stock = buildStockChanges(
+      order.items.map((item) => ({
+        bookId: item.bookId,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      1,
+      date,
+      order.orderCode ?? order.id,
+      "RESTOCK",
+    );
+    updatedBooks = stock.books;
+    movements = stock.movements;
+  }
+
+  const payment =
+    next === "DELIVERED" && order.payment === "UNPAID"
+      ? "PAID"
+      : next === "RETURNED" && order.payment === "PAID"
+        ? "REFUNDED"
+        : order.payment;
+  if (payment !== order.payment && !PAYMENT_STATUS_TRANSITIONS[order.payment].includes(payment)) {
+    return failure("INVALID_TRANSITION", "Không thể chuyển trạng thái thanh toán này.");
+  }
+  const updatedOrder: Order = { ...order, status: next, payment };
+  const updatedShipments = current.shipments.map((shipment) =>
+    shipment.orderId === order.id && targetShipmentStatus
+      ? { ...shipment, status: targetShipmentStatus }
+      : shipment,
+  );
+  try {
+    store.setState({
+      books: updatedBooks,
+      orders: current.orders.map((item) => (item.id === order.id ? updatedOrder : item)),
+      shipments: updatedShipments,
+      movements,
+    });
+    return serviceSuccess(updatedOrder);
+  } catch (error) {
+    return failure(
+      "PERSISTENCE_ERROR",
+      error instanceof Error ? error.message : "Không thể lưu trạng thái đơn hàng.",
+    );
+  }
+}
+
 export const orderService = {
-  /** Create an order; stock is reserved (decreased) right away. */
   async createOrder(input: {
     orderCode?: string;
     customerName: string;
     customerPhone: string;
-    customerId?: number;
     customerAddress: string;
     shippingMethod: string;
     shippingFee: number;
@@ -67,172 +185,181 @@ export const orderService = {
     wardCode?: string;
     status?: OrderStatus;
     payment?: PaymentStatus;
+    idempotencyKey?: string;
   }): Promise<Result<Order>> {
-    if (!input.customerName || !input.customerPhone)
-      return { ok: false, error: "Vui lòng nhập tên và số điện thoại khách hàng." };
+    if (!input.customerName.trim() || !/^[+()\d\s.-]{6,20}$/.test(input.customerPhone.trim())) {
+      return failure("VALIDATION_ERROR", "Vui lòng nhập tên và số điện thoại khách hàng.");
+    }
+    if (!input.customerAddress.trim() || !input.shippingMethod.trim()) {
+      return failure("VALIDATION_ERROR", "Vui lòng nhập địa chỉ và phương thức giao hàng.");
+    }
+    if (
+      !Number.isFinite(input.shippingFee) ||
+      input.shippingFee < 0 ||
+      !Number.isFinite(input.discount) ||
+      input.discount < 0
+    ) {
+      return failure("VALIDATION_ERROR", "Phí giao hàng và giảm giá phải là số không âm.");
+    }
     const invalid = validateLines(input.lines, true);
-    if (invalid) return { ok: false, error: invalid };
+    if (invalid) return failure("VALIDATION_ERROR", invalid);
     const shortage = checkAvailability(input.lines);
-    if (shortage) return { ok: false, error: shortage };
-
-    const isPos =
-      input.shippingMethod?.includes("POS") ||
-      input.shippingMethod?.includes("quầy") ||
-      input.status === "DELIVERED";
-
-    const defaultStatus: OrderStatus = input.status || (isPos ? "DELIVERED" : "PENDING");
-    const defaultPayment: PaymentStatus = input.payment || (isPos ? "PAID" : "UNPAID");
-
-    const { books } = store.getSnapshot();
-    const items: Array<{ bookId: string; title: string; quantity: number; price: number }> =
-      input.lines.map((l) => ({
-        bookId: String(l.bookId),
-        title: books.find((b) => b.id === l.bookId)?.title ?? String(l.bookId),
-        quantity: l.quantity,
-        price: l.price,
-      }));
-
-    // Try to save to backend DB first
-    try {
-      const created = await orderApi.create({
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-        customerAddress: input.customerAddress,
-        ...(input.orderCode !== undefined ? { orderCode: input.orderCode } : {}),
-        ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
-        ...(input.provinceId !== undefined ? { provinceId: input.provinceId } : {}),
-        ...(input.districtId !== undefined ? { districtId: input.districtId } : {}),
-        ...(input.wardCode !== undefined ? { wardCode: input.wardCode } : {}),
-        items,
-        shippingFee: input.shippingFee,
-        discount: input.discount,
-        ...(input.promotionCode !== undefined ? { promotionCode: input.promotionCode } : {}),
-        shippingMethod: input.shippingMethod,
-        ...(input.trackingCode !== undefined ? { trackingCode: input.trackingCode } : {}),
-        ...(input.note !== undefined ? { note: input.note } : {}),
-        status: defaultStatus,
-        payment: defaultPayment,
-      });
-
-      // Sync with local store + localStorage
-      const order = mapApiOrder(created);
-      const { orders, shipments } = store.getSnapshot();
-      const newShipments = [...shipments];
-      newShipments.unshift({
-        id: `SHP-${3000 + shipments.length + 1}`,
-        orderId: order.id,
-        customerName: order.customerName || "Khách lẻ",
-        carrier: order.shippingMethod || "Giao Hàng Nhanh (GHN)",
-        trackingNumber: order.trackingCode || `GHN-${Date.now().toString().slice(-6)}`,
-        shippingFee: order.shippingFee || 0,
-        expectedDelivery: input.expectedDelivery || new Date().toISOString().slice(0, 10),
-        status: order.status === "DELIVERED" ? "DELIVERED" : "WAITING_PICKUP",
-        address: order.customerAddress || "",
-      });
-      store.setState({ orders: [order, ...orders], shipments: newShipments });
-      applyStockDeltas(
-        input.lines.reduce<Record<string, number>>((acc, l) => {
-          acc[l.bookId] = (acc[l.bookId] ?? 0) - l.quantity;
-          return acc;
-        }, {}),
+    if (shortage) {
+      const code = shortage.startsWith("Không đủ số lượng") ? "INSUFFICIENT_STOCK" : "NOT_FOUND";
+      return failure(code, shortage);
+    }
+    if (input.idempotencyKey && store.hasProcessedOperation(`order:${input.idempotencyKey}`)) {
+      return failure("DUPLICATE_OPERATION", "Thao tác tạo đơn này đã được xử lý.");
+    }
+    if (input.status && !["PENDING", "DELIVERED"].includes(input.status)) {
+      return failure("VALIDATION_ERROR", "Không thể tạo đơn trực tiếp ở trạng thái này.");
+    }
+    if (input.payment && !["UNPAID", "PAID"].includes(input.payment)) {
+      return failure(
+        "VALIDATION_ERROR",
+        "Không thể tạo đơn trực tiếp ở trạng thái thanh toán này.",
       );
-      return { ok: true, data: order };
-    } catch (apiError) {
+    }
+
+    const { books, orders, shipments, movements, processedOperationKeys, customers } =
+      store.getSnapshot();
+    const requestedOrderCode = input.orderCode?.trim();
+    if (requestedOrderCode && orders.some((order) => order.orderCode === requestedOrderCode)) {
+      return failure("CONFLICT", "Mã đơn hàng đã được sử dụng.");
+    }
+    const isPos =
+      input.shippingMethod.toLowerCase().includes("pos") ||
+      input.shippingMethod.toLowerCase().includes("quầy") ||
+      input.status === "DELIVERED";
+    const status: OrderStatus = input.status ?? (isPos ? "DELIVERED" : "PENDING");
+    const payment: PaymentStatus = input.payment ?? (isPos ? "PAID" : "UNPAID");
+    const id = nextId("ORD", orders);
+    const orderCode = requestedOrderCode || id;
+    const normalizedPhone = input.customerPhone.replace(/\D/g, "").replace(/^84/, "0");
+    const knownCustomer = customers.find(
+      (customer) => customer.phone.replace(/\D/g, "").replace(/^84/, "0") === normalizedPhone,
+    );
+    const customer: Customer =
+      knownCustomer ??
+      ({
+        id: nextId("CUS", customers),
+        name: input.customerName.trim(),
+        phone: input.customerPhone.trim(),
+        address: input.customerAddress.trim(),
+      } satisfies Customer);
+    const items = input.lines.map((line) => {
+      const book = books.find((item) => item.id === line.bookId)!;
       return {
-        ok: false,
-        error:
-          apiError instanceof Error
-            ? apiError.message
-            : "Không thể lưu đơn hàng vào máy chủ. Tồn kho chưa được thay đổi.",
+        bookId: book.id,
+        title: book.title,
+        quantity: line.quantity,
+        price: line.price,
+        purchasePrice: book.purchasePrice,
       };
+    });
+    const subtotal = items.reduce((total, item) => total + item.quantity * item.price, 0);
+    if (!Number.isFinite(subtotal) || input.discount > subtotal) {
+      return failure("VALIDATION_ERROR", "Giảm giá không được vượt quá tổng tiền sản phẩm.");
+    }
+    const order: Order = {
+      id,
+      orderCode,
+      customerId: customer.id,
+      customerName: input.customerName.trim(),
+      customerPhone: input.customerPhone.trim(),
+      customerAddress: input.customerAddress.trim(),
+      ...(input.provinceId !== undefined ? { provinceId: input.provinceId } : {}),
+      ...(input.districtId !== undefined ? { districtId: input.districtId } : {}),
+      ...(input.wardCode !== undefined ? { wardCode: input.wardCode } : {}),
+      items,
+      subtotal,
+      discount: input.discount,
+      shippingFee: input.shippingFee,
+      total: subtotal - input.discount + input.shippingFee,
+      payment,
+      shippingMethod: input.shippingMethod,
+      ...(input.trackingCode !== undefined ? { trackingCode: input.trackingCode } : {}),
+      status,
+      ...(input.note !== undefined ? { note: input.note } : {}),
+      createdAt: new Date().toISOString(),
+    };
+    if (!Number.isFinite(order.total)) {
+      return failure("VALIDATION_ERROR", "Tổng tiền đơn hàng vượt giới hạn cho phép.");
+    }
+    const stock = buildStockChanges(
+      input.lines,
+      -1,
+      order.createdAt,
+      orderCode,
+      isPos ? "SALE" : "EXPORT",
+    );
+    const newShipment = {
+      id: nextId("SHP", shipments, 3000),
+      orderId: order.id,
+      customerName: order.customerName,
+      carrier: order.shippingMethod,
+      trackingNumber: order.trackingCode || `DEMO-${id}`,
+      shippingFee: order.shippingFee,
+      expectedDelivery: input.expectedDelivery ?? order.createdAt,
+      status: status === "DELIVERED" ? ("DELIVERED" as const) : ("WAITING_PICKUP" as const),
+      address: order.customerAddress,
+    };
+    const updatedCustomers: Customer[] = knownCustomer ? customers : [customer, ...customers];
+
+    try {
+      store.setState({
+        books: stock.books,
+        orders: [order, ...orders],
+        shipments: [newShipment, ...shipments],
+        movements: [...movements, ...stock.movements.slice(movements.length)],
+        customers: updatedCustomers,
+        ...(input.idempotencyKey
+          ? { processedOperationKeys: [...processedOperationKeys, `order:${input.idempotencyKey}`] }
+          : {}),
+      });
+      return serviceSuccess(order);
+    } catch (error) {
+      return failure(
+        "PERSISTENCE_ERROR",
+        error instanceof Error ? error.message : "Không thể lưu đơn hàng demo.",
+      );
     }
   },
 
-  /** Move an order through the warehouse workflow, restocking when cancelled/returned. */
   async updateStatus(orderId: string, next: OrderStatus): Promise<Result<Order>> {
-    const { orders } = store.getSnapshot();
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return { ok: false, error: "Không tìm thấy đơn hàng." };
-    if (order.status !== next && !orderTransitions[order.status].includes(next))
-      return { ok: false, error: "Không thể chuyển sang trạng thái này." };
-
-    // Persist the status transition before changing local state.
-    try {
-      const idNum = parseInt(orderId, 10);
-      if (isNaN(idNum)) {
-        return { ok: false, error: "Mã đơn hàng không hợp lệ để cập nhật trên máy chủ." };
-      }
-      const updated = await orderApi.updateStatus(idNum, next);
-      const localOrder = mapApiOrder(updated);
-      store.setState({ orders: orders.map((o) => (o.id === orderId ? localOrder : o)) });
-
-      const shouldRestock =
-        RESTOCK_STATUSES.includes(next) && !RESTOCK_STATUSES.includes(order.status);
-      if (shouldRestock) {
-        applyStockDeltas(
-          order.items.reduce<Record<string, number>>((acc, it) => {
-            acc[it.bookId] = (acc[it.bookId] ?? 0) + it.quantity;
-            return acc;
-          }, {}),
-        );
-      }
-      return { ok: true, data: localOrder };
-    } catch (apiError) {
-      return {
-        ok: false,
-        error:
-          apiError instanceof Error
-            ? apiError.message
-            : "Không thể lưu trạng thái đơn hàng vào máy chủ.",
-      };
-    }
+    return updateOrderAndShipment(orderId, next);
   },
 
-  /** Update payment state manually (e.g. cash collected at the counter). */
+  updateFromShipment(
+    orderId: string,
+    orderStatus: OrderStatus,
+    shipmentStatus: ShippingStatus,
+  ): Result<Order> {
+    return updateOrderAndShipment(orderId, orderStatus, shipmentStatus);
+  },
+
   async updatePayment(orderId: string, payment: PaymentStatus): Promise<Result<Order>> {
-    const { orders } = store.getSnapshot();
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return { ok: false, error: "Không tìm thấy đơn hàng." };
-    if (order.payment !== payment && !PAYMENT_STATUS_TRANSITIONS[order.payment].includes(payment))
-      return { ok: false, error: "Không thể chuyển sang trạng thái thanh toán này." };
-
+    const current = store.getSnapshot();
+    const order = current.orders.find((item) => item.id === orderId || item.orderCode === orderId);
+    if (!order) return failure("NOT_FOUND", "Không tìm thấy đơn hàng.");
+    if (order.payment === payment) return serviceSuccess(order);
+    if (!PAYMENT_STATUS_TRANSITIONS[order.payment].includes(payment)) {
+      return failure("INVALID_TRANSITION", "Không thể chuyển sang trạng thái thanh toán này.");
+    }
+    const updatedOrder = { ...order, payment };
     try {
-      const idNum = parseInt(orderId, 10);
-      if (isNaN(idNum)) {
-        return { ok: false, error: "Mã đơn hàng không hợp lệ để cập nhật trên máy chủ." };
-      }
-      const updated = await orderApi.updatePayment(idNum, payment);
-      const localOrder = mapApiOrder(updated);
-      store.setState({ orders: orders.map((o) => (o.id === orderId ? localOrder : o)) });
-      return { ok: true, data: localOrder };
-    } catch (apiError) {
-      return {
-        ok: false,
-        error:
-          apiError instanceof Error
-            ? apiError.message
-            : "Không thể lưu trạng thái thanh toán vào máy chủ.",
-      };
+      store.setState({
+        orders: current.orders.map((item) => (item.id === order.id ? updatedOrder : item)),
+      });
+      return serviceSuccess(updatedOrder);
+    } catch (error) {
+      return failure(
+        "PERSISTENCE_ERROR",
+        error instanceof Error ? error.message : "Không thể lưu trạng thái thanh toán.",
+      );
     }
   },
 
-  /** Fetch fresh order list from backend and sync to store. */
-  async refreshFromApi(): Promise<void> {
-    try {
-      const res = await orderApi.list({ size: 200 });
-      const items = Array.isArray(res?.data) ? res.data : [];
-      const orders = items.map(mapApiOrder);
-      store.setState({ orders });
-    } catch (e) {
-      console.warn("Cannot fetch orders from backend API:", e);
-    }
-  },
-
-  /**
-   * Cập nhật thông tin đơn hàng PENDING.
-   * - Nếu đơn có trackingCode GHN → gọi GHN Update Order API
-   * - Luôn cập nhật DB nội bộ và local store
-   */
   async updateOrderInfo(
     orderId: string,
     payload: {
@@ -240,7 +367,6 @@ export const orderService = {
       customerPhone?: string;
       customerAddress?: string;
       note?: string;
-      // GHN-specific
       toWardCode?: string;
       toDistrictId?: number;
       codAmount?: number;
@@ -255,76 +381,76 @@ export const orderService = {
     },
     ghnTrackingCode?: string,
   ): Promise<Result<Order>> {
-    const { orders } = store.getSnapshot();
-    const order = orders.find((o) => o.id === orderId || o.orderCode === orderId);
-    if (!order) return { ok: false, error: "Không tìm thấy đơn hàng trong hệ thống." };
-    if (order.status !== "PENDING")
-      return { ok: false, error: "Chỉ được sửa đơn hàng ở trạng thái Chờ xử lý." };
-
-    // 1. Gọi GHN Update Order API nếu có tracking code
-    const trackingCode = ghnTrackingCode || order.trackingCode;
-    if (trackingCode) {
-      const ghnPayload: any = {
-        order_code: trackingCode,
-      };
-      if (payload.customerName) ghnPayload.to_name = payload.customerName;
-      if (payload.customerPhone) ghnPayload.to_phone = payload.customerPhone;
-      if (payload.customerAddress) ghnPayload.to_address = payload.customerAddress;
-      if (payload.toWardCode) ghnPayload.to_ward_code = payload.toWardCode;
-      if (payload.toDistrictId) ghnPayload.to_district_id = Number(payload.toDistrictId);
-      if (payload.content) ghnPayload.content = payload.content;
-      if (payload.weight) ghnPayload.weight = Number(payload.weight);
-      if (payload.length) ghnPayload.length = Number(payload.length);
-      if (payload.width) ghnPayload.width = Number(payload.width);
-      if (payload.height) ghnPayload.height = Number(payload.height);
-      if (payload.insuranceValue !== undefined && payload.insuranceValue > 0) {
-        ghnPayload.insurance_value = Number(payload.insuranceValue);
-      }
-      if (payload.paymentTypeId) ghnPayload.payment_type_id = Number(payload.paymentTypeId);
-      if (payload.note !== undefined) ghnPayload.note = payload.note;
-      if (payload.requiredNote) ghnPayload.required_note = payload.requiredNote;
-
+    const current = store.getSnapshot();
+    const order = current.orders.find((item) => item.id === orderId || item.orderCode === orderId);
+    if (!order) return failure("NOT_FOUND", "Không tìm thấy đơn hàng trong hệ thống.");
+    if (order.status !== "PENDING") {
+      return failure("CONFLICT", "Chỉ được sửa đơn hàng ở trạng thái Chờ xử lý.");
+    }
+    if (
+      (payload.customerName !== undefined && !payload.customerName.trim()) ||
+      (payload.customerPhone !== undefined && !payload.customerPhone.trim()) ||
+      (payload.customerAddress !== undefined && !payload.customerAddress.trim())
+    ) {
+      return failure("VALIDATION_ERROR", "Thông tin khách hàng không được để trống.");
+    }
+    if (ghnTrackingCode) {
       try {
         const { ghnApi } = await import("@/lib/ghn-api");
-        await ghnApi.updateOrder(ghnPayload);
-      } catch (ghnErr: any) {
-        console.error("GHN Update Order failed:", ghnErr);
-        return {
-          ok: false,
-          error: `Đồng bộ GHN thất bại: ${ghnErr?.message || "Không thể cập nhật trên GHN Sandbox"}`,
-        };
+        await ghnApi.updateOrder({
+          order_code: ghnTrackingCode,
+          ...(payload.customerName !== undefined ? { to_name: payload.customerName } : {}),
+          ...(payload.customerPhone !== undefined ? { to_phone: payload.customerPhone } : {}),
+          ...(payload.customerAddress !== undefined ? { to_address: payload.customerAddress } : {}),
+          ...(payload.toWardCode !== undefined ? { to_ward_code: payload.toWardCode } : {}),
+          ...(payload.toDistrictId !== undefined
+            ? { to_district_id: Number(payload.toDistrictId) }
+            : {}),
+          ...(payload.codAmount !== undefined ? { cod_amount: payload.codAmount } : {}),
+          ...(payload.weight !== undefined ? { weight: payload.weight } : {}),
+          ...(payload.length !== undefined ? { length: payload.length } : {}),
+          ...(payload.width !== undefined ? { width: payload.width } : {}),
+          ...(payload.height !== undefined ? { height: payload.height } : {}),
+          ...(payload.insuranceValue !== undefined
+            ? { insurance_value: payload.insuranceValue }
+            : {}),
+          ...(payload.paymentTypeId !== undefined
+            ? { payment_type_id: payload.paymentTypeId }
+            : {}),
+          ...(payload.requiredNote !== undefined ? { required_note: payload.requiredNote } : {}),
+          ...(payload.content !== undefined ? { content: payload.content } : {}),
+          ...(payload.note !== undefined ? { note: payload.note } : {}),
+        });
+      } catch (error) {
+        return failure(
+          "CONFLICT",
+          `Đồng bộ GHN thất bại: ${error instanceof Error ? error.message : "Không thể cập nhật trên GHN Sandbox"}`,
+        );
       }
     }
-
-    // 2. Cập nhật DB nội bộ qua API
-    const dbPayload = {
-      ...(payload.customerName !== undefined ? { customerName: payload.customerName } : {}),
-      ...(payload.customerPhone !== undefined ? { customerPhone: payload.customerPhone } : {}),
-      ...(payload.customerAddress !== undefined
-        ? { customerAddress: payload.customerAddress }
+    const updatedOrder: Order = {
+      ...order,
+      ...(payload.customerName !== undefined ? { customerName: payload.customerName.trim() } : {}),
+      ...(payload.customerPhone !== undefined
+        ? { customerPhone: payload.customerPhone.trim() }
         : {}),
-      ...(payload.toDistrictId !== undefined ? { districtId: payload.toDistrictId } : {}),
-      ...(payload.toWardCode !== undefined ? { wardCode: payload.toWardCode } : {}),
+      ...(payload.customerAddress !== undefined
+        ? { customerAddress: payload.customerAddress.trim() }
+        : {}),
       ...(payload.note !== undefined ? { note: payload.note } : {}),
+      ...(payload.toWardCode !== undefined ? { wardCode: payload.toWardCode } : {}),
+      ...(payload.toDistrictId !== undefined ? { districtId: payload.toDistrictId } : {}),
     };
-
     try {
-      const targetId = order.id || order.orderCode || orderId;
-      const updated = await orderApi.update(targetId, dbPayload);
-      const localOrder = mapApiOrder(updated);
-      const newOrders = orders.map((o) =>
-        o.id === order.id || o.orderCode === order.orderCode ? localOrder : o,
+      store.setState({
+        orders: current.orders.map((item) => (item.id === order.id ? updatedOrder : item)),
+      });
+      return serviceSuccess(updatedOrder);
+    } catch (error) {
+      return failure(
+        "PERSISTENCE_ERROR",
+        error instanceof Error ? error.message : "Không thể lưu thông tin đơn hàng.",
       );
-      store.setState({ orders: newOrders });
-      return { ok: true, data: localOrder };
-    } catch (apiErr) {
-      return {
-        ok: false,
-        error:
-          apiErr instanceof Error
-            ? apiErr.message
-            : "Không thể lưu thông tin đơn hàng vào máy chủ.",
-      };
     }
   },
 };

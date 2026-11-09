@@ -6,6 +6,7 @@ export interface Book {
   title: string;
   author: string;
   category: string;
+  description?: string | undefined;
   categoryId?: string | undefined;
   publisher?: string | undefined;
   publisherId?: string | undefined;
@@ -57,11 +58,13 @@ export interface OrderItem {
   title: string;
   quantity: number;
   price: number;
+  purchasePrice?: number | undefined;
 }
 
 export interface Order {
   id: string;
   orderCode?: string | undefined;
+  customerId?: string | undefined;
   customerName: string;
   customerPhone: string;
   customerAddress: string;
@@ -117,17 +120,19 @@ export const SHIPPING_STATUSES = [
   "DELIVERED",
   "FAILED",
   "RETURNED",
+  "CANCELLED",
 ] as const;
 export type ShippingStatus = (typeof SHIPPING_STATUSES)[number];
 
-export const SHIPPING_STATUS_TRANSITIONS = {
-  WAITING_PICKUP: ["PICKED_UP", "FAILED", "RETURNED"],
+export const SHIPPING_STATUS_TRANSITIONS: Record<ShippingStatus, readonly ShippingStatus[]> = {
+  WAITING_PICKUP: ["PICKED_UP", "FAILED", "RETURNED", "CANCELLED"],
   PICKED_UP: ["IN_TRANSIT", "FAILED", "RETURNED"],
   IN_TRANSIT: ["OUT_FOR_DELIVERY", "FAILED", "RETURNED"],
   OUT_FOR_DELIVERY: ["DELIVERED", "FAILED", "RETURNED"],
   DELIVERED: ["RETURNED"],
   FAILED: ["PICKED_UP", "IN_TRANSIT", "RETURNED"],
   RETURNED: [],
+  CANCELLED: [],
 } as const satisfies Record<ShippingStatus, readonly ShippingStatus[]>;
 
 export interface Shipping {
@@ -175,9 +180,18 @@ export interface Stocktake {
   totalActualStock: number;
   totalDiff: number;
   note?: string | undefined;
+  auditedBy?: string | undefined;
+  balancedAt?: string | undefined;
+  createdAt?: string | undefined;
 }
 
 export interface Category {
+  id: string;
+  name: string;
+  description?: string | undefined;
+}
+
+export interface Publisher {
   id: string;
   name: string;
   description?: string | undefined;

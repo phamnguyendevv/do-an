@@ -21,8 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBooks } from "@/hooks/use-store";
-import { supplierApi, type SupplierApiItem } from "@/lib/supplier-api";
 import { inventoryService } from "@/services/inventory-service";
+import { supplierService } from "@/services/directory-service";
+import type { Supplier } from "@/types";
 import { downloadInventoryImportTemplate, parseInventoryImportFile } from "@/lib/excel-service";
 import { formatCurrency, formatNumber } from "@/utils/format";
 
@@ -59,17 +60,16 @@ function ImportPage() {
   const [error, setError] = useState<string | null>(null);
 
   const excelInputRef = useRef<HTMLInputElement>(null);
+  const idempotencyKey = useRef<string | null>(null);
 
-  const { data: suppliersList = [] } = useQuery({
+  const { data: suppliersList = [] } = useQuery<Supplier[]>({
     queryKey: ["suppliers", "list-all"],
     queryFn: async () => {
-      try {
-        const res = await supplierApi.list({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items as SupplierApiItem[];
-      } catch {
-        return [];
+      const result = supplierService.list();
+      if (!result.ok || !result.data) {
+        throw new Error(result.error ?? "Không thể tải nhà cung cấp.");
       }
+      return result.data;
     },
     staleTime: 60_000,
   });
@@ -110,7 +110,7 @@ function ImportPage() {
           newLines.push({
             bookId: matched.id,
             quantity: row.quantity,
-            price: row.price > 0 ? row.price : matched.purchasePrice || (matched.price ?? 0) * 0.7,
+            price: row.price > 0 ? row.price : matched.purchasePrice,
           });
         }
       }
@@ -135,22 +135,24 @@ function ImportPage() {
     }
 
     setError(null);
+    if (submitting) return;
     setSubmitting(true);
+    idempotencyKey.current ??= crypto.randomUUID();
     const res = await inventoryService.createImport({
       supplier: selectedSupplier.name,
-      supplierId:
-        typeof selectedSupplier.id === "number"
-          ? selectedSupplier.id
-          : parseInt(String(selectedSupplier.id), 10),
+      supplierId: selectedSupplier.id,
       date,
       note,
       lines,
+      idempotencyKey: idempotencyKey.current,
     });
-    setSubmitting(false);
     if (!res.ok) {
       setError(res.error ?? "Không thể tạo phiếu nhập.");
+      setSubmitting(false);
       return;
     }
+    idempotencyKey.current = null;
+    setSubmitting(false);
     toast.success(
       `Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`,
     );
