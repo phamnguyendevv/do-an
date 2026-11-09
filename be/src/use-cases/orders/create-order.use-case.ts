@@ -72,36 +72,26 @@ export class CreateBookstoreOrderUseCase {
     await queryRunner.startTransaction()
 
     try {
-      // 1. Check stock with pessimistic lock and prepare update
+      // 1. Check stock with pessimistic lock and prepare update for catalog books
       for (const item of dto.items) {
         const bookIdNum =
           typeof item.bookId === 'number'
             ? item.bookId
             : parseInt(String(item.bookId), 10)
-        if (isNaN(bookIdNum)) {
-          throw this.exceptionsService.badRequestException({
-            type: 'OrderValidationException',
-            message: `Mã sách không hợp lệ: ${item.bookId}`,
-          })
-        }
 
-        const book = await queryRunner.manager.findOne(Book, {
-          where: { id: bookIdNum },
-          lock: { mode: 'pessimistic_write' },
-        })
-
-        if (!book) {
-          throw this.exceptionsService.notFoundException({
-            type: 'BookNotFoundException',
-            message: `Không tìm thấy sách với ID: ${bookIdNum}`,
+        // Chỉ kiểm tra tồn kho nếu sách có ID hợp lệ trong kho
+        if (!isNaN(bookIdNum) && bookIdNum > 0) {
+          const book = await queryRunner.manager.findOne(Book, {
+            where: { id: bookIdNum },
+            lock: { mode: 'pessimistic_write' },
           })
-        }
 
-        if (Number(book.stock) < item.quantity) {
-          throw this.exceptionsService.badRequestException({
-            type: 'OrderStockShortageException',
-            message: `Sách "${book.title}" chỉ còn ${book.stock} cuốn trong kho, không đủ số lượng ${item.quantity}`,
-          })
+          if (book && Number(book.stock) < item.quantity) {
+            throw this.exceptionsService.badRequestException({
+              type: 'OrderStockShortageException',
+              message: `Sách "${book.title}" chỉ còn ${book.stock} cuốn trong kho, không đủ số lượng ${item.quantity}`,
+            })
+          }
         }
       }
 

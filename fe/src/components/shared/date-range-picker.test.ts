@@ -42,9 +42,9 @@ describe("date-range-picker helpers", () => {
     const from = new Date(2026, 9, 25);
     const norm = normalizeDateRange({ from, to: undefined });
     expect(norm).toBeDefined();
-    expect(norm?.from.getHours()).toBe(0);
-    expect(norm?.to.getHours()).toBe(23);
-    expect(norm?.to.getMilliseconds()).toBe(999);
+    expect(norm?.from?.getHours()).toBe(0);
+    expect(norm?.to?.getHours()).toBe(23);
+    expect(norm?.to?.getMilliseconds()).toBe(999);
   });
 
   it("converts DateRange to API parameters with full day coverage", () => {

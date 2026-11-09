@@ -74,6 +74,10 @@ import { CaslModule } from '@infrastructure/services/casl/casl.module'
     GetListOrderHistoriesUseCase,
     AddOrderHistoryNoteUseCase,
   ],
-  exports: [BOOKSTORE_ORDER_REPOSITORY, ORDER_HISTORY_REPOSITORY],
+  exports: [
+    BOOKSTORE_ORDER_REPOSITORY,
+    ORDER_HISTORY_REPOSITORY,
+    CreateBookstoreOrderUseCase,
+  ],
 })
 export class OrdersModule {}

@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { geminiParseCustomerAndAddress, geminiParseProducts } from "./gemini-order-parser";
 import type { Book } from "@/types";
 import type { GhnProvince } from "./ghn-api";
@@ -40,7 +40,7 @@ describe("Gemini Order Parser (Hybrid)", () => {
   it("gracefully falls back to local product parser when API is unreachable", async () => {
     const res = await geminiParseProducts("2 zhenti", mockBooks);
     expect(res.lines).toHaveLength(1);
-    expect(res.lines[0].bookId).toBe("b1");
-    expect(res.lines[0].quantity).toBe(2);
+    expect(res.lines[0]?.bookId).toBe("b1");
+    expect(res.lines[0]?.quantity).toBe(2);
   });
 });

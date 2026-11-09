@@ -523,17 +523,19 @@ export interface ParsedAddressResult {
   customerName: string;
   customerPhone: string;
   detailAddress: string;
-  provinceId?: number;
-  provinceName?: string;
-  districtId?: number;
-  districtName?: string;
-  wardCode?: string;
-  wardName?: string;
-  unmatchedWardCandidate?: string;
-  warningMessage?: string;
-  is2LevelConverted?: boolean;
+  provinceId?: number | undefined;
+  provinceName?: string | undefined;
+  districtId?: number | undefined;
+  districtName?: string | undefined;
+  wardCode?: string | undefined;
+  wardName?: string | undefined;
+  unmatchedWardCandidate?: string | undefined;
+  warningMessage?: string | undefined;
+  is2LevelConverted?: boolean | undefined;
   confidence: number;
 }
+
+export type ParsedCustomerAddressResult = ParsedAddressResult;
 
 /**
  * Escape special regex characters in string
@@ -1080,10 +1082,10 @@ export function resolve2LevelTo3Level(
   wardCode: string,
   allWardsInProvince: Array<GhnWard & { districtName?: string }>,
 ): {
-  districtId?: number;
+  districtId?: number | undefined;
   wardCode: string;
-  wardName?: string;
-  districtName?: string;
+  wardName?: string | undefined;
+  districtName?: string | undefined;
 } | null {
   const target = allWardsInProvince.find((w) => w.WardCode === wardCode);
   if (!target) return null;

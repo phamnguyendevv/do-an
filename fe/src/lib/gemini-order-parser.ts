@@ -1,4 +1,4 @@
-﻿import { apiRequest } from "./api-client";
+import { apiRequest } from "./api-client";
 import type { GhnDistrict, GhnProvince, GhnWard } from "./ghn-api";
 import {
   normalizeText,
@@ -10,7 +10,7 @@ import {
   type ParsedProductItem,
   type ParsedProductListResult,
 } from "./product-parser";
-import type { Book, OrderLine } from "@/types";
+import type { Book } from "@/types";
 import type { ProductLine } from "@/components/inventory/product-lines";
 
 export interface GeminiParsedAddressApi {
@@ -33,11 +33,11 @@ export interface GeminiParsedProductsApi {
 }
 
 export interface HybridAddressResult extends ParsedCustomerAddressResult {
-  isAiParsed?: boolean;
+  isAiParsed?: boolean | undefined;
 }
 
 export interface HybridProductResult extends ParsedProductListResult {
-  isAiParsed?: boolean;
+  isAiParsed?: boolean | undefined;
 }
 
 /**
@@ -133,15 +133,16 @@ export async function geminiParseCustomerAndAddress(
       }
 
       return {
-        customerName: aiData.customerName || undefined,
-        customerPhone: aiData.phone || undefined,
+        customerName: aiData.customerName || "",
+        customerPhone: aiData.phone || "",
         provinceId: matchedProvince?.ProvinceID,
         provinceName: matchedProvince?.ProvinceName || aiData.province || undefined,
         districtId: matchedDistrict?.DistrictID,
         districtName: matchedDistrict?.DistrictName || aiData.district || undefined,
         wardCode: matchedWard?.WardCode,
         wardName: matchedWard?.WardName || aiData.ward || undefined,
-        detailAddress: aiData.detailAddress || undefined,
+        detailAddress: aiData.detailAddress || "",
+        confidence: 0.95,
         isAiParsed: true,
       };
     }

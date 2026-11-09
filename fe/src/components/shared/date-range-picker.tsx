@@ -233,7 +233,7 @@ export function DateRangePicker({
     }
 
     // Only from is selected so far:
-    const partial = { from: startOf(range.from), to: undefined };
+    const partial = { from: range?.from ? startOf(range.from) : undefined, to: undefined };
     setPendingRange(partial);
   };
 
