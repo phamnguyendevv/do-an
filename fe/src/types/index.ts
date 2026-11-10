@@ -63,6 +63,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  apiBacked?: boolean | undefined;
   orderCode?: string | undefined;
   customerId?: string | undefined;
   customerName: string;

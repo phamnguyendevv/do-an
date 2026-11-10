@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { BookFormDialog } from "@/components/books/book-form-dialog";
+import { BookCover } from "@/components/books/book-cover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -99,20 +100,26 @@ function BookDetailPage() {
           }
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Tồn kho"
-            value={formatNumber(book.stock)}
-            hint={`Tối thiểu ${book.minStock}`}
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <BookCover
+            book={book}
+            className="mx-auto h-64 w-44 shrink-0 rounded-lg shadow-md sm:mx-0"
           />
-          <StatCard label="Giá bán" value={formatCurrency(sellingPrice)} />
-          <StatCard label="Giá nhập" value={formatCurrency(purchasePrice)} />
-          <StatCard
-            label="Lợi nhuận / cuốn"
-            value={formatCurrency(margin)}
-            hint={`${marginPct}% biên lợi nhuận`}
-            trend="up"
-          />
+          <div className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Tồn kho"
+              value={formatNumber(book.stock)}
+              hint={`Tối thiểu ${book.minStock}`}
+            />
+            <StatCard label="Giá bán" value={formatCurrency(sellingPrice)} />
+            <StatCard label="Giá nhập" value={formatCurrency(purchasePrice)} />
+            <StatCard
+              label="Lợi nhuận / cuốn"
+              value={formatCurrency(margin)}
+              hint={`${marginPct}% biên lợi nhuận`}
+              trend="up"
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">

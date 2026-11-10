@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { BookFormDialog } from "@/components/books/book-form-dialog";
+import { BookCover } from "@/components/books/book-cover";
 import { ExcelBookImportDialog } from "@/components/books/excel-book-import-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -178,13 +179,16 @@ function BooksPage() {
       sortable: true,
       value: (b) => b.title ?? "",
       cell: (b) => (
-        <Link
-          to="/books/$bookId"
-          params={{ bookId: b.id }}
-          className="font-medium hover:text-primary"
-        >
-          {b.title || "—"}
-        </Link>
+        <div className="flex items-center gap-3">
+          <BookCover book={b} className="h-13 w-9 shrink-0 rounded shadow-sm" />
+          <Link
+            to="/books/$bookId"
+            params={{ bookId: b.id }}
+            className="font-medium hover:text-primary"
+          >
+            {b.title || "—"}
+          </Link>
+        </div>
       ),
     },
     {

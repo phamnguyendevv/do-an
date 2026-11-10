@@ -223,6 +223,12 @@ export class CreateBookstoreOrderUseCase {
       const payment =
         dto.payment ||
         (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
+      const expiresAt =
+        isPos &&
+        status === OrderStatusEnum.Pending &&
+        payment === PaymentStatusEnum.Unpaid
+          ? new Date(Date.now() + 5 * 60 * 1000)
+          : null
 
       // 6. Save order
       const order = queryRunner.manager.create(BookstoreOrder, {
@@ -246,6 +252,7 @@ export class CreateBookstoreOrderUseCase {
         trackingCode: dto.trackingCode,
         status,
         note: dto.note,
+        expiresAt,
       })
 
       const savedOrder = await queryRunner.manager.save(BookstoreOrder, order)

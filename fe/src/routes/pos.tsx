@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -29,16 +29,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReceiptK80 } from "@/components/pos/receipt-k80";
+import { BookCover } from "@/components/books/book-cover";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
+import { useLiveBooks } from "@/hooks/use-live-books";
 import { usePaymentSocket } from "@/hooks/use-payment-socket";
-import { useBooks, useCategories } from "@/hooks/use-store";
 import { useCustomerLookup } from "@/hooks/use-customer-lookup";
 import { defineAbilityFor } from "@/lib/ability";
 
-import { sepayApi } from "@/lib/order-api";
-import { orderService } from "@/services/order-service";
-import { store } from "@/services/store";
+import { orderApi, mapOrderApiItem } from "@/lib/order-api";
 import { storeSettingsService } from "@/services/store-settings";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import type { Book } from "@/types";
@@ -75,13 +74,22 @@ const getBookSellingPrice = (b: Book): number => {
   return Number(price) || 0;
 };
 
+const CHECKOUT_TIMEOUT_MS = 5 * 60 * 1000;
+
 export function PosPage() {
   const navigate = useNavigate();
   const { user, hydrated } = useAuth();
   const ability = useMemo(() => defineAbilityFor(user), [user]);
-  const books = useBooks();
-  const categories = useCategories();
   const queryClient = useQueryClient();
+  const booksQuery = useLiveBooks(hydrated && !!user);
+  const books = useMemo(() => booksQuery.data ?? [], [booksQuery.data]);
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(books.map((book) => book.category.trim()).filter(Boolean))).map(
+        (name) => ({ id: name, name }),
+      ),
+    [books],
+  );
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -97,6 +105,8 @@ export function PosPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [checkoutDeadline, setCheckoutDeadline] = useState<number | null>(null);
+  const [checkoutSecondsRemaining, setCheckoutSecondsRemaining] = useState(0);
 
   // Customer lookup with suggestions
   const {
@@ -129,6 +139,7 @@ export function PosPage() {
   const [sepayOrderCreated, setSepayOrderCreated] = useState(false);
   const [isCreatingSepayOrder, setIsCreatingSepayOrder] = useState(false);
   const [sepayCreatedOrderId, setSepayCreatedOrderId] = useState<number | string | null>(null);
+  const isSepayOrderLocked = paymentMethod === "SEPAY";
 
   // Success / Print dialog
   const [successOrder, setSuccessOrder] = useState<any | null>(null);
@@ -213,6 +224,10 @@ export function PosPage() {
       return;
     }
 
+    if (cart.length === 0) {
+      setCheckoutDeadline(Date.now() + CHECKOUT_TIMEOUT_MS);
+    }
+
     const unitPrice = getBookSellingPrice(book);
 
     setCart((prev) => {
@@ -263,7 +278,7 @@ export function PosPage() {
   };
 
   // Clear cart
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCart([]);
     setDiscountAmount(0);
     setReceivedCash("");
@@ -275,8 +290,85 @@ export function PosPage() {
     setCustomerName("Khách lẻ");
     setCustomerPhone("");
     setPosOrderCode(`DH-${Date.now().toString().slice(-6)}`);
+    setCheckoutDeadline(null);
+    setCheckoutSecondsRemaining(0);
     setMobileTab("products");
-  };
+  }, [setCustomerName, setCustomerPhone]);
+
+  const cancelSepayReservation = useCallback(async () => {
+    if (sepayCreatedOrderId === null) return true;
+    try {
+      await orderApi.updateStatus(sepayCreatedOrderId, "CANCELLED");
+      setSepayCreatedOrderId(null);
+      setSepayOrderCreated(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
+        queryClient.invalidateQueries({ queryKey: ["orders"] }),
+      ]);
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể hủy đơn SePay đang chờ thanh toán.",
+      );
+      return false;
+    }
+  }, [queryClient, sepayCreatedOrderId]);
+
+  const changePaymentMethod = useCallback(
+    async (value: string) => {
+      if (value !== "CASH" && value !== "SEPAY" && value !== "CARD") return;
+      if (paymentMethod === "SEPAY" && sepayCreatedOrderId !== null) {
+        if (!(await cancelSepayReservation())) return;
+      }
+      setPaymentMethod(value);
+    },
+    [cancelSepayReservation, paymentMethod, sepayCreatedOrderId],
+  );
+
+  const startNewSale = useCallback(async () => {
+    if (sepayCreatedOrderId !== null && !(await cancelSepayReservation())) return;
+    clearCart();
+    toast.info("Đã làm mới giỏ hàng");
+  }, [cancelSepayReservation, clearCart, sepayCreatedOrderId]);
+
+  useEffect(() => {
+    if (cart.length === 0) {
+      setCheckoutSecondsRemaining(0);
+      setCheckoutDeadline(null);
+      return;
+    }
+    if (checkoutDeadline === null) return;
+
+    const updateCountdown = () => {
+      const secondsRemaining = Math.max(0, Math.ceil((checkoutDeadline - Date.now()) / 1000));
+      setCheckoutSecondsRemaining(secondsRemaining);
+      if (secondsRemaining === 0) {
+        const expiredSepayOrderId = sepayCreatedOrderId;
+        clearCart();
+        toast.info("Đã hết 5 phút. Giỏ hàng đã được làm mới, vui lòng chọn sách lại.");
+
+        if (expiredSepayOrderId !== null) {
+          void orderApi
+            .updateStatus(expiredSepayOrderId, "CANCELLED")
+            .then(() => {
+              void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+              void queryClient.invalidateQueries({ queryKey: ["orders"] });
+            })
+            .catch((error: unknown) => {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Không thể hủy đơn SePay đã hết thời gian.",
+              );
+            });
+        }
+      }
+    };
+
+    updateCountdown();
+    const timer = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(timer);
+  }, [cart.length, checkoutDeadline, clearCart, queryClient, sepayCreatedOrderId]);
 
   // Hotkeys: F2 (search), F4 (checkout), F9 (new sale)
   useEffect(() => {
@@ -299,14 +391,13 @@ export function PosPage() {
         }
       } else if (e.key === "F9") {
         e.preventDefault();
-        clearCart();
-        toast.info("Đã làm mới giỏ hàng");
+        void startNewSale();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cart, total, paymentMethod, receivedCash, isCashInsufficient, sepayConfirmed]);
+  }, [cart, total, paymentMethod, receivedCash, isCashInsufficient, sepayConfirmed, startNewSale]);
 
   // SePay QR Url (Dynamic from store settings / .env)
   const sepayConfig = useMemo(() => storeSettingsService.getSepayConfig(), [paymentMethod]);
@@ -317,21 +408,14 @@ export function PosPage() {
 
   const finalizeSepayOrder = async (orderId: number | string): Promise<boolean> => {
     try {
-      const current = store
-        .getSnapshot()
-        .orders.find(
-          (order) => order.id === String(orderId) || order.orderCode === String(orderId),
-        );
-      if (!current) throw new Error("Không tìm thấy đơn SePay trong dữ liệu demo cục bộ.");
-      if (current.status !== "DELIVERED") {
-        const statusResult = await orderService.updateStatus(current.id, "DELIVERED");
-        if (!statusResult.ok) throw new Error(statusResult.error ?? "Không thể hoàn tất đơn hàng.");
+      let current = await orderApi.get(orderId);
+      if (current.status !== "DELIVERED" && current.status !== "CANCELLED") {
+        current = await orderApi.updateStatus(orderId, "DELIVERED");
+      } else if (current.status === "CANCELLED") {
+        throw new Error("Đơn SePay đã bị hủy, không thể ghi nhận thanh toán.");
       }
       if (current.payment !== "PAID") {
-        const paymentResult = await orderService.updatePayment(current.id, "PAID");
-        if (!paymentResult.ok) {
-          throw new Error(paymentResult.error ?? "Không thể ghi nhận thanh toán.");
-        }
+        await orderApi.updatePayment(orderId, "PAID");
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
@@ -359,7 +443,7 @@ export function PosPage() {
     const createSepayOrder = async () => {
       setIsCreatingSepayOrder(true);
       try {
-        const res = await orderService.createOrder({
+        const res = await orderApi.create({
           orderCode: posOrderCode,
           customerName: customerName || "Khách lẻ tại quầy",
           customerPhone: normalizePhone(customerPhone) || "0900000000",
@@ -370,22 +454,29 @@ export function PosPage() {
           note: `Bán lẻ POS • Chờ thanh toán SePay QR`,
           status: "PENDING",
           payment: "UNPAID",
-          lines: cart.map((item) => ({
+          items: cart.map((item) => ({
             bookId: item.book.id,
+            title: item.book.title,
             quantity: item.quantity,
             price: Number(item.price) || 0,
           })),
         });
-        if (res.ok && res.data) {
-          setSepayOrderCreated(true);
-          setSepayCreatedOrderId(res.data.id ?? null);
-          void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
-        } else {
-          toast.error(res.error || "Không thể lưu đơn chờ thanh toán lên máy chủ.");
-          setPaymentMethod("CASH");
+        setSepayOrderCreated(true);
+        setSepayCreatedOrderId(res.id);
+        if (res.expiresAt) {
+          setCheckoutDeadline((deadline) =>
+            deadline === null
+              ? Date.parse(res.expiresAt!)
+              : Math.min(deadline, Date.parse(res.expiresAt!)),
+          );
         }
-      } catch (err: any) {
-        console.error("Lỗi tạo đơn SePay:", err);
+        void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+        void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Không thể lưu đơn chờ thanh toán lên máy chủ.",
+        );
+        setPaymentMethod("CASH");
       } finally {
         setIsCreatingSepayOrder(false);
       }
@@ -403,7 +494,7 @@ export function PosPage() {
       if (completedOrderId) {
         if (!(await finalizeSepayOrder(completedOrderId))) return;
       } else {
-        const result = await orderService.createOrder({
+        const result = await orderApi.create({
           orderCode: posOrderCode,
           customerName: customerName || "Khách lẻ tại quầy",
           customerPhone: normalizePhone(customerPhone) || "0900000000",
@@ -414,18 +505,16 @@ export function PosPage() {
           note: "Bán lẻ POS • Chuyển khoản SePay QR (Real-time WebSocket)",
           status: "DELIVERED",
           payment: "PAID",
-          lines: cart.map((item) => ({
+          items: cart.map((item) => ({
             bookId: item.book.id,
+            title: item.book.title,
             quantity: item.quantity,
             price: Number(item.price) || 0,
           })),
         });
-        if (!result.ok || !result.data) {
-          toast.error(result.error || "Không thể lưu đơn bán SePay.");
-          return;
-        }
-        completedOrderId = result.data.id;
+        completedOrderId = result.id;
         void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+        void queryClient.invalidateQueries({ queryKey: ["orders"] });
       }
 
       setSepayConfirmed(true);
@@ -492,68 +581,74 @@ export function PosPage() {
   const handleManualSepayConfirm = async () => {
     if (cart.length === 0 || total <= 0) return;
 
-    if (sepayCreatedOrderId) {
-      if (!(await finalizeSepayOrder(sepayCreatedOrderId))) return;
-    } else {
-      const res = await orderService.createOrder({
+    try {
+      let confirmedOrderId = sepayCreatedOrderId;
+      if (confirmedOrderId) {
+        if (!(await finalizeSepayOrder(confirmedOrderId))) return;
+      } else {
+        const res = await orderApi.create({
+          orderCode: posOrderCode,
+          customerName: customerName || "Khách lẻ tại quầy",
+          customerPhone: normalizePhone(customerPhone) || "0900000000",
+          customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
+          shippingMethod: "Bán tại quầy (POS)",
+          shippingFee: 0,
+          discount: discountAmount,
+          note: "Bán lẻ POS • Xác nhận SePay QR thủ công",
+          status: "DELIVERED",
+          payment: "PAID",
+          items: cart.map((item) => ({
+            bookId: item.book.id,
+            title: item.book.title,
+            quantity: item.quantity,
+            price: Number(item.price) || 0,
+          })),
+        });
+        confirmedOrderId = res.id;
+        setSepayCreatedOrderId(res.id);
+        setSepayOrderCreated(true);
+        void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+        void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      }
+
+      const orderData = {
+        id: confirmedOrderId || posOrderCode,
         orderCode: posOrderCode,
         customerName: customerName || "Khách lẻ tại quầy",
-        customerPhone: normalizePhone(customerPhone) || "0900000000",
-        customerAddress: "Bán trực tiếp tại quầy POS (SePay QR)",
-        shippingMethod: "Bán tại quầy (POS)",
-        shippingFee: 0,
-        discount: discountAmount,
-        note: `Bán lẻ POS • Xác nhận SePay QR thủ công`,
+        customerPhone: customerPhone || "0900000000",
         status: "DELIVERED",
         payment: "PAID",
-        lines: cart.map((item) => ({
-          bookId: item.book.id,
-          quantity: item.quantity,
-          price: Number(item.price) || 0,
+        items: cart.map((i) => ({
+          bookId: i.book.id,
+          title: i.book.title,
+          quantity: i.quantity,
+          price: Number(i.price) || 0,
         })),
+        subtotal,
+        discount: discountAmount,
+        total,
+        receivedAmount: total,
+        changeAmount: 0,
+        paymentMethod: "Chuyển khoản SePay QR",
+        cashierName: user?.name || user?.email || "Thu ngân BookStock",
+        createdAt: new Date().toISOString(),
+        qrUrl: storeSettingsService.getSepayQrUrl(total, posOrderCode),
+      };
+
+      setSepayConfirmed(true);
+      setPaymentSuccessPopup({
+        open: true,
+        amount: total,
+        orderCode: posOrderCode,
+        orderData,
       });
-      if (!res.ok) {
-        toast.error(res.error || "Không thể lưu đơn bán SePay.");
-        return;
-      }
+
+      queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
+      toast.success("✅ Đã xác nhận thanh toán SePay thành công!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể xác nhận thanh toán SePay.");
     }
-
-    const orderData = {
-      id: sepayCreatedOrderId || posOrderCode,
-      orderCode: posOrderCode,
-      customerName: customerName || "Khách lẻ tại quầy",
-      customerPhone: customerPhone || "0900000000",
-      status: "DELIVERED",
-      payment: "PAID",
-      items: cart.map((i) => ({
-        bookId: i.book.id,
-        title: i.book.title,
-        quantity: i.quantity,
-        price: Number(i.price) || 0,
-      })),
-      subtotal,
-      discount: discountAmount,
-      total,
-      receivedAmount: total,
-      changeAmount: 0,
-      paymentMethod: "Chuyển khoản SePay QR",
-      cashierName: user?.name || user?.email || "Thu ngân BookStock",
-      createdAt: new Date().toISOString(),
-      qrUrl: storeSettingsService.getSepayQrUrl(total, posOrderCode),
-    };
-
-    setSepayConfirmed(true);
-    setPaymentSuccessPopup({
-      open: true,
-      amount: total,
-      orderCode: posOrderCode,
-      orderData,
-    });
-
-    // Refresh customer stats & orders query
-    queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
-    queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
-    toast.success("✅ Đã xác nhận thanh toán SePay thành công!");
   };
 
   // Tự động đóng Popup sau đúng 2 giây (độc lập, chạy chuẩn xác 100%)
@@ -644,7 +739,7 @@ export function PosPage() {
       }
 
       // Tạo đơn mới cho CASH / CARD
-      const res = await orderService.createOrder({
+      const res = await orderApi.create({
         orderCode: posOrderCode,
         customerName: customerName || "Khách lẻ tại quầy",
         customerPhone: normalizePhone(customerPhone) || "0900000000",
@@ -655,46 +750,38 @@ export function PosPage() {
         note: `Bán lẻ POS • Phương thức: ${paymentMethod === "CASH" ? "Tiền mặt" : "Thẻ POS"}`,
         status: "DELIVERED",
         payment: "PAID",
-        lines: cart.map((item) => ({
+        items: cart.map((item) => ({
           bookId: item.book.id,
+          title: item.book.title,
           quantity: item.quantity,
           price: Number(item.price) || 0,
         })),
       });
 
-      if (res.ok && res.data) {
+      if (res) {
+        const savedOrder = mapOrderApiItem(res);
         const orderData = {
-          ...res.data,
+          ...savedOrder,
           status: "DELIVERED",
           payment: "PAID",
-          orderCode: res.data.orderCode || res.data.id || currentOrderCode,
-          items: cart.map((i) => ({
-            bookId: i.book.id,
-            title: i.book.title,
-            quantity: i.quantity,
-            price: Number(i.price) || 0,
-          })),
-          subtotal,
-          discount: discountAmount,
-          total,
           receivedAmount: typeof receivedCash === "number" ? receivedCash : total,
           changeAmount: paymentMethod === "CASH" ? changeCash : 0,
           paymentMethod: paymentMethod === "CASH" ? "Tiền mặt" : "Thẻ POS",
           cashierName: user?.name || user?.email || "Thu ngân BookStock",
-          createdAt: new Date().toISOString(),
         };
 
         // Refresh customer stats & orders query
         queryClient.invalidateQueries({ queryKey: ["customers"], refetchType: "all" });
         queryClient.invalidateQueries({ queryKey: ["customer-orders"], refetchType: "all" });
         void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+        void queryClient.invalidateQueries({ queryKey: ["orders"] });
 
         setSuccessOrder(orderData);
         setPrintDialogOpen(true);
         clearCart();
         toast.success(`Đã thanh toán thành công đơn hàng ${orderData.orderCode}!`);
       } else {
-        toast.error(res.error || "Không thể tạo đơn hàng POS");
+        toast.error("Máy chủ không trả về thông tin đơn hàng POS.");
       }
     } catch (err: any) {
       toast.error(err.message || "Lỗi xử lý thanh toán");
@@ -721,7 +808,7 @@ export function PosPage() {
 
     window.addEventListener("afterprint", handleAfterPrint);
     return () => window.removeEventListener("afterprint", handleAfterPrint);
-  }, []);
+  }, [clearCart]);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden">
@@ -841,12 +928,45 @@ export function PosPage() {
 
           {/* Book Cards Grid - High performance lazy rendered */}
           <div className="flex-1 overflow-y-auto p-2.5 sm:p-3">
-            {filteredBooks.length === 0 ? (
+            {booksQuery.isLoading ? (
+              <div className="flex items-center justify-center h-64 gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang tải danh sách sách từ máy chủ...
+              </div>
+            ) : booksQuery.error ? (
+              <div
+                role="alert"
+                className="flex flex-col items-center justify-center h-64 text-center px-4"
+              >
+                <p className="text-sm font-medium text-destructive">
+                  Không thể tải danh sách sách từ máy chủ.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {booksQuery.error instanceof Error
+                    ? booksQuery.error.message
+                    : "Vui lòng thử lại sau."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void booksQuery.refetch()}
+                >
+                  Thử tải lại
+                </Button>
+              </div>
+            ) : filteredBooks.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-center px-4">
                 <Search className="h-10 w-10 mb-2 opacity-30" />
-                <p className="text-sm font-medium">Không tìm thấy đầu sách nào phù hợp.</p>
+                <p className="text-sm font-medium">
+                  {books.length === 0
+                    ? "Kho chưa có sách nào để bán."
+                    : "Không tìm thấy đầu sách nào phù hợp."}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Thử tìm kiếm với từ khóa khác hoặc chuyển danh mục.
+                  {books.length === 0
+                    ? "Vui lòng thêm sách vào kho trước khi bán tại quầy."
+                    : "Thử tìm kiếm với từ khóa khác hoặc chuyển danh mục."}
                 </p>
               </div>
             ) : (
@@ -860,9 +980,11 @@ export function PosPage() {
                   return (
                     <div
                       key={b.id}
-                      onClick={() => !isOutOfStock && addToCart(b)}
+                      onClick={() => !isOutOfStock && !isSepayOrderLocked && addToCart(b)}
                       className={`relative flex flex-col justify-between rounded-xl border p-2.5 sm:p-3 transition-all cursor-pointer select-none bg-card hover:border-primary hover:shadow-xs active:scale-[0.97] touch-manipulation ${
-                        isOutOfStock ? "opacity-45 cursor-not-allowed bg-muted" : ""
+                        isOutOfStock || isSepayOrderLocked
+                          ? "opacity-45 cursor-not-allowed bg-muted"
+                          : ""
                       }`}
                     >
                       {inCartItem && (
@@ -872,6 +994,10 @@ export function PosPage() {
                       )}
 
                       <div className="space-y-1">
+                        <BookCover
+                          book={b}
+                          className="mx-auto mb-2 h-28 w-[77px] rounded-md shadow-sm"
+                        />
                         <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1">
                           <Badge
                             variant="secondary"
@@ -907,19 +1033,36 @@ export function PosPage() {
                         <span className="font-bold text-xs sm:text-sm text-primary tabular-nums">
                           {formatCurrency(bookPrice)}
                         </span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 sm:h-6 sm:w-6 rounded-full bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary transition-colors active:scale-90"
-                          disabled={isOutOfStock}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isOutOfStock) addToCart(b);
-                          }}
-                          aria-label={`Thêm ${b.title} vào giỏ`}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {inCartItem && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              disabled={isSepayOrderLocked}
+                              className="h-7 w-7 sm:h-6 sm:w-6 rounded-full bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors active:scale-90"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateQuantity(b.id, -1);
+                              }}
+                              aria-label={`Bỏ chọn một cuốn ${b.title}`}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 sm:h-6 sm:w-6 rounded-full bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary transition-colors active:scale-90"
+                            disabled={isOutOfStock || isSepayOrderLocked}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isOutOfStock) addToCart(b);
+                            }}
+                            aria-label={`Thêm ${b.title} vào giỏ`}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1001,7 +1144,7 @@ export function PosPage() {
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={clearCart}
+                onClick={() => void startNewSale()}
               >
                 <Trash2 className="mr-1 h-3.5 w-3.5" /> Xóa tất cả
               </Button>
@@ -1015,6 +1158,7 @@ export function PosPage() {
                 <Input
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
+                  disabled={isSepayOrderLocked}
                   placeholder="Tên khách hàng"
                   className="h-8 text-xs bg-background"
                 />
@@ -1026,6 +1170,7 @@ export function PosPage() {
                     setCustomerPhone(e.target.value);
                     setShowPhoneSuggestions(true);
                   }}
+                  disabled={isSepayOrderLocked}
                   onFocus={() => customerPhone.trim().length >= 8 && setShowPhoneSuggestions(true)}
                   placeholder="SĐT (bắt buộc)"
                   className="h-8 text-xs bg-background border-red-200"
@@ -1041,6 +1186,7 @@ export function PosPage() {
                 {customerSuggestions.map((customer) => (
                   <button
                     key={customer.id}
+                    disabled={isSepayOrderLocked}
                     onClick={() => handleSelectCustomer(customer)}
                     className="w-full text-left px-2.5 py-1.5 hover:bg-muted text-xs border-b last:border-b-0 active:bg-primary/20 transition-colors"
                   >
@@ -1094,6 +1240,7 @@ export function PosPage() {
                       variant="outline"
                       className="h-7 w-7 sm:h-6 sm:w-6 active:scale-95 touch-manipulation"
                       onClick={() => updateQuantity(item.book.id, -1)}
+                      disabled={isSepayOrderLocked}
                       aria-label="Giảm số lượng"
                     >
                       <Minus className="h-3 w-3" />
@@ -1104,6 +1251,7 @@ export function PosPage() {
                       variant="outline"
                       className="h-7 w-7 sm:h-6 sm:w-6 active:scale-95 touch-manipulation"
                       onClick={() => updateQuantity(item.book.id, 1)}
+                      disabled={isSepayOrderLocked}
                       aria-label="Tăng số lượng"
                     >
                       <Plus className="h-3 w-3" />
@@ -1122,6 +1270,24 @@ export function PosPage() {
 
           {/* Checkout & Payment Box */}
           <div className="border-t p-2.5 sm:p-3 bg-muted/20 space-y-2.5 sm:space-y-3">
+            {cart.length > 0 && checkoutDeadline !== null && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={`flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs ${
+                  checkoutSecondsRemaining <= 60
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-border bg-background text-muted-foreground"
+                }`}
+              >
+                <span>Thời gian thanh toán còn lại</span>
+                <span className="font-mono font-bold tabular-nums">
+                  {String(Math.floor(checkoutSecondsRemaining / 60)).padStart(2, "0")}:
+                  {String(checkoutSecondsRemaining % 60).padStart(2, "0")}
+                </span>
+              </div>
+            )}
+
             {/* Calculation summary */}
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-muted-foreground">
@@ -1135,6 +1301,7 @@ export function PosPage() {
                   min="0"
                   value={discountAmount || ""}
                   onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value) || 0))}
+                  disabled={isSepayOrderLocked}
                   placeholder="0"
                   className="h-7 w-28 text-right text-xs bg-background"
                 />
@@ -1148,15 +1315,27 @@ export function PosPage() {
             </div>
 
             {/* Payment Method Tabs */}
-            <Tabs value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
+            <Tabs value={paymentMethod} onValueChange={(value) => void changePaymentMethod(value)}>
               <TabsList className="grid grid-cols-3 h-8 sm:h-8 w-full">
-                <TabsTrigger value="CASH" className="text-[11px] sm:text-xs gap-1">
+                <TabsTrigger
+                  value="CASH"
+                  disabled={isCreatingSepayOrder || sepayConfirmed}
+                  className="text-[11px] sm:text-xs gap-1"
+                >
                   <Banknote className="h-3.5 w-3.5" /> Tiền mặt
                 </TabsTrigger>
-                <TabsTrigger value="SEPAY" className="text-[11px] sm:text-xs gap-1">
+                <TabsTrigger
+                  value="SEPAY"
+                  disabled={isCreatingSepayOrder || sepayConfirmed}
+                  className="text-[11px] sm:text-xs gap-1"
+                >
                   <QrCode className="h-3.5 w-3.5" /> SePay QR
                 </TabsTrigger>
-                <TabsTrigger value="CARD" className="text-[11px] sm:text-xs gap-1">
+                <TabsTrigger
+                  value="CARD"
+                  disabled={isCreatingSepayOrder || sepayConfirmed}
+                  className="text-[11px] sm:text-xs gap-1"
+                >
                   <CreditCard className="h-3.5 w-3.5" /> Thẻ POS
                 </TabsTrigger>
               </TabsList>

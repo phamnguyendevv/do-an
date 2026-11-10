@@ -26,6 +26,7 @@ export class BookstoreOrderEntity {
   public trackingCode?: string
   public status!: OrderStatusEnum | string
   public note?: string
+  public expiresAt?: Date | null
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }

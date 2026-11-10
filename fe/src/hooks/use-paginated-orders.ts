@@ -1,6 +1,5 @@
-import { useMemo, useSyncExternalStore } from "react";
-import type { Order } from "@/types";
-import { store } from "@/services/store";
+import { useQuery } from "@tanstack/react-query";
+import { orderApi, mapOrderApiItem } from "@/lib/order-api";
 
 export interface UsePaginatedOrdersParams {
   page?: number;
@@ -14,39 +13,37 @@ export interface UsePaginatedOrdersParams {
 
 export function usePaginatedOrders(params: UsePaginatedOrdersParams = {}) {
   const { page = 1, size = 10, search, status, payment, startDate, endDate } = params;
-  const orders = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot).orders;
-
-  const result = useMemo(() => {
-    const query = search?.trim().toLocaleLowerCase();
-    const from = startDate ? Date.parse(startDate) : undefined;
-    const to = endDate ? Date.parse(endDate) + 24 * 60 * 60 * 1000 : undefined;
-    const filtered = orders.filter((order) => {
-      const created = Date.parse(order.createdAt);
-      return (
-        (!query ||
-          (order.orderCode ?? order.id).toLocaleLowerCase().includes(query) ||
-          order.customerName.toLocaleLowerCase().includes(query) ||
-          order.customerPhone.toLocaleLowerCase().includes(query)) &&
-        (!status || status === "all" || order.status === status) &&
-        (!payment || payment === "all" || order.payment === payment) &&
-        (from === undefined || created >= from) &&
-        (to === undefined || created < to)
-      );
-    });
-    const safePage = Math.max(1, Math.floor(page));
-    const safeSize = Math.max(1, Math.floor(size));
-    return {
-      items: filtered.slice((safePage - 1) * safeSize, safePage * safeSize),
-      pagination: { total: filtered.length, page: safePage, size: safeSize },
-    };
-  }, [endDate, orders, page, payment, search, size, startDate, status]);
+  const query = useQuery({
+    queryKey: ["orders", page, size, search, status, payment, startDate, endDate],
+    queryFn: async () => {
+      const response = await orderApi.list({
+        page,
+        size,
+        ...(search ? { search } : {}),
+        ...(status && status !== "all" ? { status } : {}),
+        ...(payment && payment !== "all" ? { payment } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+      });
+      return {
+        orders: response.data.map(mapOrderApiItem),
+        pagination: response.pagination,
+      };
+    },
+    refetchInterval: 15_000,
+  });
 
   return {
-    orders: result.items,
-    pagination: result.pagination,
-    isLoading: false,
-    isFetching: false,
-    error: null,
-    refetch: () => Promise.resolve({ data: result }),
+    orders: query.data?.orders ?? [],
+    pagination: query.data?.pagination ?? { total: 0, page, size },
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error:
+      query.error instanceof Error
+        ? query.error.message
+        : query.error
+          ? "Không thể tải đơn hàng."
+          : null,
+    refetch: query.refetch,
   };
 }

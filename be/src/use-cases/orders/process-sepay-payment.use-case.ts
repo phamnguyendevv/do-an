@@ -180,6 +180,23 @@ export class ProcessSepayPaymentUseCase {
         }
       }
 
+      if (
+        order.expiresAt &&
+        (new Date(order.expiresAt).getTime() <= Date.now() ||
+          order.status !== OrderStatusEnum.Pending)
+      ) {
+        await queryRunner.rollbackTransaction()
+        return {
+          success: false,
+          message:
+            'Đơn POS đã hết thời gian hoặc không còn ở trạng thái chờ thanh toán',
+          orderCode: order.orderCode,
+          status: String(order.status),
+          payment: String(order.payment),
+          total: orderTotal,
+        }
+      }
+
       const configuredAccount = (process.env.SEPAY_ACCOUNT || '').trim()
       if (
         payload.accountNumber &&

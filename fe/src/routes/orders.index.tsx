@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,8 +51,9 @@ import {
 } from "@/components/ui/select";
 import { usePaginatedOrders } from "@/hooks/use-paginated-orders";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { orderService, orderTransitions } from "@/services/order-service";
+import { orderTransitions } from "@/services/order-service";
 import { orderApi } from "@/lib/order-api";
+import { store } from "@/services/store";
 import { exportOrdersToExcel, exportOrderHistoriesToExcel } from "@/lib/excel-service";
 import { downloadCsv } from "@/utils/csv";
 import { formatCompactCurrency, formatCurrency, formatDate, formatDateTime } from "@/utils/format";
@@ -191,6 +192,23 @@ function OrdersPage() {
     payment,
     ...toApiDateRange(dateRange),
   });
+
+  useEffect(() => {
+    if (orders.length === 0) return;
+    const currentOrders = store.getSnapshot().orders;
+    const liveOrderIds = new Set(orders.map((order) => order.id));
+    const liveOrderCodes = new Set(orders.map((order) => order.orderCode).filter(Boolean));
+    store.setState({
+      orders: [
+        ...currentOrders.filter(
+          (order) =>
+            !liveOrderIds.has(order.id) &&
+            !(order.orderCode && liveOrderCodes.has(order.orderCode)),
+        ),
+        ...orders,
+      ],
+    });
+  }, [orders]);
 
   // Query paginated order histories
   const {
@@ -641,24 +659,26 @@ function OrderRowActions({
 
   const advance = async () => {
     if (!next) return;
-    const res = await orderService.updateStatus(order.id, next);
-    if (res.ok) {
+    try {
+      await orderApi.updateStatus(order.id, next);
       toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[next]}`);
       void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
       onStatusChanged?.();
-    } else {
-      toast.error(res.error ?? "Không thể cập nhật");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật");
     }
   };
 
   const cancel = async () => {
-    const res = await orderService.updateStatus(order.id, "CANCELLED");
-    if (res.ok) {
+    try {
+      await orderApi.updateStatus(order.id, "CANCELLED");
       toast.success("Đã hủy đơn và hoàn lại tồn kho");
       void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
       onStatusChanged?.();
-    } else {
-      toast.error(res.error ?? "Không thể hủy đơn");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể hủy đơn");
     }
   };
 

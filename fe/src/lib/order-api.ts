@@ -30,9 +30,40 @@ export type OrderApiItem = {
     | "FAILED"
     | "RETURNED";
   note?: string;
+  expiresAt?: string | null;
   createdAt: string;
   updatedAt?: string;
 };
+
+export function mapOrderApiItem(item: OrderApiItem): import("@/types").Order {
+  return {
+    id: String(item.id),
+    apiBacked: true,
+    orderCode: item.orderCode,
+    customerName: item.customerName,
+    customerPhone: item.customerPhone,
+    customerAddress: item.customerAddress ?? "",
+    provinceId: item.provinceId,
+    districtId: item.districtId,
+    wardCode: item.wardCode,
+    items: item.items.map((line) => ({
+      bookId: String(line.bookId),
+      title: line.title,
+      quantity: Number(line.quantity),
+      price: Number(line.price),
+    })),
+    subtotal: Number(item.subtotal),
+    discount: Number(item.discount),
+    shippingFee: Number(item.shippingFee),
+    total: Number(item.total),
+    payment: item.payment,
+    shippingMethod: item.shippingMethod,
+    trackingCode: item.trackingCode,
+    status: item.status,
+    note: item.note,
+    createdAt: item.createdAt,
+  };
+}
 
 export type OrderListApiResponse = {
   data: OrderApiItem[];
@@ -192,6 +223,7 @@ export const sepayApi = {
       status?: string;
       payment?: string;
       total?: number;
+      expiresAt?: string | null;
     }>(`/payment/sepay/status/${encodeURIComponent(orderCode)}`);
   },
 

@@ -30,6 +30,7 @@ export interface BookstoreOrderItem {
 @Index('IDX_bookstore_orders_payment', ['payment'])
 @Index('IDX_bookstore_orders_status_payment', ['status', 'payment'])
 @Index('IDX_bookstore_orders_created_at', ['createdAt'])
+@Index('IDX_bookstore_orders_expires_at', ['expiresAt'])
 export class BookstoreOrder {
   @PrimaryGeneratedColumn({
     type: 'bigint',
@@ -125,6 +126,9 @@ export class BookstoreOrder {
 
   @Column({ type: 'text', nullable: true })
   public note?: string
+
+  @Column({ type: 'timestamptz', name: 'expires_at', nullable: true })
+  public expiresAt?: Date | null
 
   @CreateDateColumn({ name: 'created_at' })
   public readonly createdAt!: Date

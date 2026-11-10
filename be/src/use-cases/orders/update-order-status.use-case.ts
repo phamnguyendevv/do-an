@@ -56,6 +56,8 @@ export class UpdateBookstoreOrderStatusUseCase {
       actor?: string
       actorRole?: string
       note?: string
+      expectedStatus?: OrderStatusEnum | string
+      expectedPayment?: PaymentStatusEnum | string
     },
   ): Promise<BookstoreOrderEntity> {
     const queryRunner = this.dataSource.createQueryRunner()
@@ -78,6 +80,15 @@ export class UpdateBookstoreOrderStatusUseCase {
       const previousStatus = String(order.status)
       const previousPayment = String(order.payment)
       const targetStatus = String(nextStatus)
+      if (
+        (options?.expectedStatus &&
+          previousStatus !== options.expectedStatus) ||
+        (options?.expectedPayment &&
+          previousPayment !== options.expectedPayment)
+      ) {
+        await queryRunner.rollbackTransaction()
+        return order
+      }
       if (!isValidOrderStatusTransition(previousStatus, targetStatus)) {
         throw this.exceptionsService.badRequestException({
           type: 'InvalidOrderStatusTransitionException',
