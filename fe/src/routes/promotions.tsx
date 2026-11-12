@@ -114,6 +114,13 @@ function PromotionsPage() {
           data={query.data?.data || []}
           rowKey={(r) => String(r.id)}
           loading={query.isLoading}
+          error={
+            query.error instanceof Error
+              ? query.error.message
+              : query.error
+                ? "Không thể tải danh sách khuyến mãi từ máy chủ."
+                : null
+          }
         />
         {open && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">

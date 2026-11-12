@@ -1,4 +1,5 @@
 import type { Book } from "@/types";
+import { truncateCoverText, wrapCoverText } from "./book-cover-text";
 
 interface BookCoverProps {
   book: Pick<Book, "title" | "author" | "category">;
@@ -12,30 +13,6 @@ const palettes = {
   general: { background: "#373052", accent: "#c5a6df", detail: "#e7c182", text: "#fbf5ff" },
 };
 
-function wrapText(value: string, maxLength: number): string[] {
-  const words = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .flatMap((word) =>
-      word.length > maxLength
-        ? (word.match(new RegExp(`.{1,${maxLength}}`, "gu")) ?? [word])
-        : [word],
-    );
-  const lines: string[] = [];
-
-  for (const word of words) {
-    const currentLine = lines.at(-1);
-    if (currentLine && `${currentLine} ${word}`.length <= maxLength) {
-      lines[lines.length - 1] = `${currentLine} ${word}`;
-    } else {
-      lines.push(word);
-    }
-  }
-
-  return lines;
-}
-
 function paletteForCategory(category: string) {
   const normalized = category.toLocaleLowerCase();
   if (normalized.includes("văn học")) return palettes.literature;
@@ -47,15 +24,15 @@ function paletteForCategory(category: string) {
 
 export function BookCover({ book, className }: BookCoverProps) {
   const palette = paletteForCategory(book.category);
-  const titleLines = wrapText(book.title, 12).slice(0, 4);
-  const authorLines = wrapText(book.author, 18).slice(0, 2);
-  const titleFontSize = book.title.length > 24 ? 15 : 17;
+  const wrappedTitle = wrapCoverText(book.title, 12);
+  const titleLines =
+    wrappedTitle.length > 4
+      ? [...wrappedTitle.slice(0, 3), truncateCoverText(wrappedTitle.slice(3).join(" "), 12)]
+      : wrappedTitle;
+  const authorLines = wrapCoverText(book.author, 18).slice(0, 2);
+  const titleFontSize = titleLines.some((line) => line.length > 10) ? 15 : 17;
   const category = book.category.trim();
-  const categoryLines = wrapText(category, 24);
-  const categoryLabel =
-    categoryLines.length > 1
-      ? `${categoryLines[0]?.slice(0, 21) ?? ""}...`
-      : (categoryLines[0] ?? "").slice(0, 24);
+  const categoryLabel = truncateCoverText(category, 24);
 
   return (
     <svg
@@ -92,7 +69,7 @@ export function BookCover({ book, className }: BookCoverProps) {
         x="27"
         y={105 - (titleLines.length - 1) * 9}
         fill={palette.text}
-        fontFamily="Georgia, serif"
+        fontFamily="Arial, 'Segoe UI', sans-serif"
         fontSize={titleFontSize}
         fontWeight="700"
       >

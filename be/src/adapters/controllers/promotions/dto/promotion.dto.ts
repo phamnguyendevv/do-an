@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer'
 import {
   IsDateString,
   IsIn,
@@ -104,11 +105,13 @@ export class ListPromotionsDto {
   search?: string
 
   @IsOptional()
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   page?: number
 
   @IsOptional()
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   @Max(500)

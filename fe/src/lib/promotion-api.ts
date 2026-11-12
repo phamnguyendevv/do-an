@@ -17,6 +17,14 @@ export type PromotionApiItem = {
   note?: string;
 };
 
+function notifyPromotion(payload: Parameters<typeof notificationService.push>[0]) {
+  try {
+    notificationService.push(payload);
+  } catch (error) {
+    console.error("Could not save promotion notification:", error);
+  }
+}
+
 export const promotionApi = {
   list(params?: { search?: string; page?: number; size?: number }) {
     const query = new URLSearchParams();
@@ -34,7 +42,7 @@ export const promotionApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }).then((promotion) => {
-      notificationService.push({
+      notifyPromotion({
         title: "Khuyến mãi mới",
         description: `${promotion.name} đã được thêm vào hệ thống.`,
         module: "Khuyến mãi",
@@ -50,7 +58,7 @@ export const promotionApi = {
       method: "PUT",
       body: JSON.stringify(payload),
     }).then((promotion) => {
-      notificationService.push({
+      notifyPromotion({
         title: "Khuyến mãi đã được cập nhật",
         description: `${promotion.name} vừa được chỉnh sửa.`,
         module: "Khuyến mãi",
@@ -63,7 +71,7 @@ export const promotionApi = {
   },
   remove(id: number) {
     return apiRequest<boolean>(`/admin/promotions/${id}`, { method: "DELETE" }).then((removed) => {
-      notificationService.push({
+      notifyPromotion({
         title: "Khuyến mãi đã bị xóa",
         description: "Một chương trình khuyến mãi đã được xóa khỏi hệ thống.",
         module: "Khuyến mãi",
