@@ -39,6 +39,7 @@ export class CaslAbilityFactory implements IAbilityFactory {
       can(['read', 'create', 'update'], 'Payment')
       can(['read', 'create', 'update'], 'Shipping')
       can(['read', 'update'], 'User')
+      can('read', 'SystemSetting')
       cannot('update', 'User', ['role', 'status'])
       cannot('delete', 'User')
       cannot('search', 'User')

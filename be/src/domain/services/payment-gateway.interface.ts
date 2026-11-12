@@ -9,6 +9,22 @@ export interface IPaymentSuccessPayload {
   gateway?: string
 }
 
+export interface IPaymentNotificationPayload {
+  id: string
+  actorId: number
+  title: string
+  description: string
+  module: string
+  tone: string
+  read: boolean
+  route?: string
+  createdAt: Date
+}
+
 export interface IPaymentGateway {
   emitPaymentSuccess(payload: IPaymentSuccessPayload): void
+  emitNotification(
+    actorId: number,
+    notification: IPaymentNotificationPayload,
+  ): void
 }

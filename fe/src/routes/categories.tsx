@@ -42,7 +42,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Can } from "@/lib/ability";
-import { categoryService } from "@/services/directory-service";
+import { categoryApi } from "@/lib/category-api";
+import { fetchAllPages } from "@/lib/paginated-api";
 import type { Category } from "@/types";
 
 export const Route = createFileRoute("/categories")({
@@ -87,18 +88,16 @@ function CategoryFormDialog({
     setSubmitting(true);
     try {
       if (category) {
-        const result = categoryService.update(category.id, {
+        await categoryApi.update(category.id, {
           name: values.name,
           ...(values.description !== undefined ? { description: values.description } : {}),
         });
-        if (!result.ok) throw new Error(result.error ?? "Không thể cập nhật danh mục.");
         toast.success("Cập nhật danh mục thành công");
       } else {
-        const result = categoryService.create({
+        await categoryApi.create({
           name: values.name,
           ...(values.description !== undefined ? { description: values.description } : {}),
         });
-        if (!result.ok) throw new Error(result.error ?? "Không thể tạo danh mục.");
         toast.success("Thêm danh mục mới thành công");
       }
       await queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
@@ -194,8 +193,7 @@ function CategoryRowActions({ category }: { category: Category }) {
 
   const handleDelete = async () => {
     try {
-      const result = categoryService.delete(category.id);
-      if (!result.ok) throw new Error(result.error ?? "Không thể xóa danh mục.");
+      await categoryApi.remove(category.id);
       await queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
       await queryClient.invalidateQueries({ queryKey: ["category-names"] });
       await queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -255,11 +253,8 @@ function CategoriesPage() {
   const { data: rawCategories = [], isLoading } = useQuery({
     queryKey: ["admin-categories"],
     queryFn: async () => {
-      const result = categoryService.list();
-      if (!result.ok || !result.data) {
-        throw new Error(result.error ?? "Không thể tải danh mục.");
-      }
-      return result.data;
+      const categories = await fetchAllPages((page, size) => categoryApi.list({ page, size }));
+      return categories.map((item) => ({ ...item, id: String(item.id) }));
     },
     staleTime: 30_000,
   });

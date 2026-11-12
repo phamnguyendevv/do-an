@@ -35,10 +35,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLiveBooks } from "@/hooks/use-live-books";
 import { usePaymentSocket } from "@/hooks/use-payment-socket";
 import { useCustomerLookup } from "@/hooks/use-customer-lookup";
+import { useSepayConfig } from "@/hooks/use-system-settings";
 import { defineAbilityFor } from "@/lib/ability";
 
 import { orderApi, mapOrderApiItem } from "@/lib/order-api";
-import { storeSettingsService } from "@/services/store-settings";
+import { buildSepayQrUrl } from "@/services/store-settings";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import type { Book } from "@/types";
 
@@ -81,6 +82,7 @@ export function PosPage() {
   const { user, hydrated } = useAuth();
   const ability = useMemo(() => defineAbilityFor(user), [user]);
   const queryClient = useQueryClient();
+  const sepayConfigQuery = useSepayConfig();
   const booksQuery = useLiveBooks(hydrated && !!user);
   const books = useMemo(() => booksQuery.data ?? [], [booksQuery.data]);
   const categories = useMemo(
@@ -399,12 +401,11 @@ export function PosPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [cart, total, paymentMethod, receivedCash, isCashInsufficient, sepayConfirmed, startNewSale]);
 
-  // SePay QR Url (Dynamic from store settings / .env)
-  const sepayConfig = useMemo(() => storeSettingsService.getSepayConfig(), [paymentMethod]);
-  const sepayBank = sepayConfig.bank;
-  const sepayAccount = sepayConfig.accountNumber;
-  const sepayAccountName = sepayConfig.accountName;
-  const sepayQrUrl = storeSettingsService.getSepayQrUrl(total, posOrderCode);
+  const sepayConfig = sepayConfigQuery.data;
+  const sepayBank = sepayConfig?.bank ?? "—";
+  const sepayAccount = sepayConfig?.accountNumber ?? "—";
+  const sepayAccountName = sepayConfig?.accountName ?? "—";
+  const sepayQrUrl = sepayConfig ? buildSepayQrUrl(sepayConfig, total, posOrderCode) : "";
 
   const finalizeSepayOrder = async (orderId: number | string): Promise<boolean> => {
     try {
@@ -432,6 +433,7 @@ export function PosPage() {
   useEffect(() => {
     if (
       paymentMethod !== "SEPAY" ||
+      !sepayConfig ||
       total <= 0 ||
       cart.length === 0 ||
       sepayOrderCreated ||
@@ -483,7 +485,20 @@ export function PosPage() {
     };
 
     createSepayOrder();
-  }, [paymentMethod, total, cart.length, posOrderCode, sepayOrderCreated, isCreatingSepayOrder]);
+  }, [
+    paymentMethod,
+    total,
+    cart.length,
+    posOrderCode,
+    sepayOrderCreated,
+    isCreatingSepayOrder,
+    sepayConfig,
+    cart,
+    customerName,
+    customerPhone,
+    discountAmount,
+    queryClient,
+  ]);
 
   // Real-time WebSocket listener khi chờ SePay chuyển khoản (thay thế polling)
   usePaymentSocket({
@@ -541,7 +556,7 @@ export function PosPage() {
         paymentMethod: "Chuyển khoản SePay QR",
         cashierName: user?.name || user?.email || "Thu ngân BookStock",
         createdAt: new Date().toISOString(),
-        qrUrl: storeSettingsService.getSepayQrUrl(total, posOrderCode),
+        qrUrl: sepayConfig ? buildSepayQrUrl(sepayConfig, total, posOrderCode) : "",
       };
 
       setPaymentSuccessPopup({
@@ -632,7 +647,7 @@ export function PosPage() {
         paymentMethod: "Chuyển khoản SePay QR",
         cashierName: user?.name || user?.email || "Thu ngân BookStock",
         createdAt: new Date().toISOString(),
-        qrUrl: storeSettingsService.getSepayQrUrl(total, posOrderCode),
+        qrUrl: sepayConfig ? buildSepayQrUrl(sepayConfig, total, posOrderCode) : "",
       };
 
       setSepayConfirmed(true);
@@ -996,7 +1011,7 @@ export function PosPage() {
                       <div className="space-y-1">
                         <BookCover
                           book={b}
-                          className="mx-auto mb-2 h-28 w-[77px] rounded-md shadow-sm"
+                          className="mx-auto mb-2 h-32 w-[88px] rounded-md shadow-sm"
                         />
                         <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1">
                           <Badge
@@ -1326,7 +1341,13 @@ export function PosPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="SEPAY"
-                  disabled={isCreatingSepayOrder || sepayConfirmed}
+                  disabled={
+                    isCreatingSepayOrder ||
+                    sepayConfirmed ||
+                    sepayConfigQuery.isLoading ||
+                    sepayConfigQuery.isError ||
+                    !sepayConfig
+                  }
                   className="text-[11px] sm:text-xs gap-1"
                 >
                   <QrCode className="h-3.5 w-3.5" /> SePay QR
@@ -1419,11 +1440,19 @@ export function PosPage() {
                   )}
 
                   <div className="flex justify-center relative">
-                    <img
-                      src={sepayQrUrl}
-                      alt="SePay VietQR"
-                      className="w-36 h-36 sm:w-40 sm:h-40 object-contain rounded-lg border p-1 bg-white shadow-sm"
-                    />
+                    {sepayConfig ? (
+                      <img
+                        src={sepayQrUrl}
+                        alt="SePay VietQR"
+                        className="w-36 h-36 sm:w-40 sm:h-40 object-contain rounded-lg border p-1 bg-white shadow-sm"
+                      />
+                    ) : (
+                      <p role="alert" className="p-3 text-xs text-destructive">
+                        {sepayConfigQuery.isLoading
+                          ? "Đang tải cấu hình thanh toán..."
+                          : "Không tải được cấu hình thanh toán từ backend."}
+                      </p>
+                    )}
                     {isCreatingSepayOrder && (
                       <div className="absolute inset-0 bg-background/80 rounded-lg border flex items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />

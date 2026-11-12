@@ -340,14 +340,14 @@ export function selectInventorySummary(state: AppState = store.getSnapshot()) {
 
 export const selectStockMovements = (state: AppState = store.getSnapshot()) => state.movements;
 
-export function selectStockMovementSeries(
+export function buildStockMovementSeries(
+  movements: StockMovement[],
   months = 6,
   now: Date = new Date(),
-  state: AppState = store.getSnapshot(),
 ): StockMovementPoint[] {
   return Array.from({ length: months }, (_, index) => {
     const date = new Date(now.getFullYear(), now.getMonth() - months + index + 1, 1);
-    const monthMovements = state.movements.filter((movement) => {
+    const monthMovements = movements.filter((movement) => {
       const movedAt = new Date(movement.createdAt);
       return movedAt.getFullYear() === date.getFullYear() && movedAt.getMonth() === date.getMonth();
     });
@@ -375,6 +375,14 @@ export function selectStockMovementSeries(
           .reduce((sum, movement) => sum + movement.quantity, 0),
     };
   });
+}
+
+export function selectStockMovementSeries(
+  months = 6,
+  now: Date = new Date(),
+  state: AppState = store.getSnapshot(),
+): StockMovementPoint[] {
+  return buildStockMovementSeries(state.movements, months, now);
 }
 
 export const reportService = {

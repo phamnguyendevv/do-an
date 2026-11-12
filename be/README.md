@@ -119,6 +119,28 @@ Open http://localhost:3000
 
 Open http://localhost:3000/api
 
+## Notifications
+
+Authenticated notification endpoints are available under `/api/notifications`:
+
+- `GET /notifications` supports `module`, `tone`, `read`, `from`, `to`, `page`, and `size` filters.
+- `POST /notifications` persists an event and delivers it to active users in realtime.
+- Confirmed SePay payments and GHN shipment status changes are persisted and broadcast after their business transactions commit. Notification failures are logged without reversing those transactions.
+- `PATCH /notifications/:id/read` and `PATCH /notifications/read-all` update the current user's read state.
+- `DELETE /notifications/:id` removes one notification; `DELETE /notifications` clears the current user's history.
+
+The Socket.IO gateway uses the access token in the connection `auth.token`. After connecting, emit
+`notifications:subscribe` to receive `notification:created`, `notification:read`,
+`notification:read-all`, `notification:deleted`, and `notification:cleared` events for the signed-in user.
+
+## System Settings
+
+`GET /api/v1/admin/settings` returns shared store branding and SePay QR settings to authenticated
+staff and administrators. Administrators can update either section with
+`PUT /api/v1/admin/settings`; values are persisted in the `system_settings` table. Initial SePay
+values come from the backend environment configuration, and the public
+`GET /api/v1/payment/sepay/config` endpoint returns the active QR configuration.
+
 ## Maintenance Mode
 
 To enable maintenance mode, set the `MAINTENANCE_MODE` environment variable to `true` and set the `MAINTENANCE_MESSAGE` environment variable to the message you want to display.

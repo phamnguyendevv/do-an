@@ -11,17 +11,16 @@ import { BookCover } from "@/components/books/book-cover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useBooks } from "@/hooks/use-store";
-import { booksService } from "@/services/books-service";
+import { bookApi, mapBookApiItem } from "@/lib/book-api";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
 import { Can } from "@/lib/ability";
 
 export const Route = createFileRoute("/books/$bookId")({
   loader: async ({ params }) => {
-    const result = booksService.get(params.bookId);
-    if (!result.ok || !result.data) throw notFound();
-    return { book: result.data };
+    const raw = await bookApi.get(params.bookId);
+    if (!raw) throw notFound();
+    return { book: mapBookApiItem(raw) };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -61,8 +60,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 function BookDetailPage() {
   const { book: loadedBook } = Route.useLoaderData();
-  const books = useBooks();
-  const book = books.find((b) => b.id === loadedBook.id) ?? loadedBook;
+  const book = loadedBook;
   const sellingPrice = book.sellingPrice ?? book.price ?? 0;
   const purchasePrice = book.purchasePrice ?? book.importPrice ?? 0;
   const margin = sellingPrice - purchasePrice;

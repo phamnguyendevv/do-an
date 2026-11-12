@@ -42,12 +42,19 @@ import {
 } from "@/components/analytics/charts";
 import {
   exportFullAnalyticsReport,
+  buildReport,
   growth,
   growthHint,
   reportRanges,
-  selectBusinessReport,
   type RangeKey,
 } from "@/services/report-service";
+import {
+  useBooks,
+  useExportReceipts,
+  useImportReceipts,
+  useOrders,
+  useStockMovements,
+} from "@/hooks/use-store";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "@/utils/format";
 
 export const Route = createFileRoute("/analytics")({
@@ -72,13 +79,23 @@ export const Route = createFileRoute("/analytics")({
 function AnalyticsPage() {
   const [range, setRange] = useState<RangeKey>("30d");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const books = useBooks();
+  const orders = useOrders();
+  const imports = useImportReceipts();
+  const exports = useExportReceipts();
+  const movements = useStockMovements();
 
-  const report = selectBusinessReport(
+  const report = buildReport(
+    orders,
+    books,
     range,
     new Date(),
     dateRange?.from
       ? { from: dateRange.from, ...(dateRange.to ? { to: dateRange.to } : {}) }
       : undefined,
+    imports,
+    exports,
+    movements,
   );
 
   const rangeLabel = dateRange?.from

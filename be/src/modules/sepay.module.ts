@@ -8,6 +8,7 @@ import { PAYMENT_GATEWAY } from '@domain/services/payment-gateway.interface'
 import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-status.use-case'
 import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
 
+import { WsJwtAuthGuard } from '@adapters/controllers/common/guards/jwt-socket.guard'
 import { SePayController } from '@adapters/controllers/payment/sepay.controller'
 import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
 
@@ -16,11 +17,16 @@ import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bo
 import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
 import { BookstoreOrderRepository } from '@infrastructure/databases/postgresql/repositories/bookstore-order.repository'
 import { PaymentTransactionRepository } from '@infrastructure/databases/postgresql/repositories/payment-transaction.repository'
+import { JwtModule } from '@infrastructure/services/jwt/jwt.module'
+
+import { SystemSettingsModule } from './system-settings.module'
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([BookstoreOrder, PaymentTransaction]),
     EnvironmentConfigModule,
+    JwtModule,
+    SystemSettingsModule,
   ],
   controllers: [SePayController],
   providers: [
@@ -39,6 +45,7 @@ import { PaymentTransactionRepository } from '@infrastructure/databases/postgres
     GetSepayOrderStatusUseCase,
     ProcessSepayPaymentUseCase,
     PaymentGateway,
+    WsJwtAuthGuard,
   ],
   exports: [PaymentGateway, PAYMENT_GATEWAY],
 })

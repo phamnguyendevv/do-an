@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { inventoryService } from "@/services/inventory-service";
+import { inventoryApi } from "@/lib/inventory-api";
+import { notificationService } from "@/services/notification-service";
 import { useOrders } from "@/hooks/use-store";
 import { formatNumber } from "@/utils/format";
 
@@ -48,9 +49,9 @@ function ExportPage() {
   const [reason, setReason] = useState(reasons[0]!);
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<ProductLine[]>([{ bookId: "", quantity: 1, price: 0 }]);
+  const requestKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const idempotencyKey = useRef<string | null>(null);
 
   const totalItems = lines.reduce((s, l) => s + (l.quantity || 0), 0);
 
@@ -58,28 +59,51 @@ function ExportPage() {
     if (submitting) return;
     setError(null);
     setSubmitting(true);
-    idempotencyKey.current ??= crypto.randomUUID();
-    const res = await inventoryService.createExport({
-      orderId,
-      reason,
-      note,
-      lines,
-      idempotencyKey: idempotencyKey.current,
-    });
-    if (!res.ok) {
-      setError(res.error ?? "Không thể tạo phiếu xuất.");
+    try {
+      const payload = {
+        ...(orderId ? { orderId: Number(orderId) } : {}),
+        reason,
+        ...(note ? { note } : {}),
+        lines: lines.map((line) => ({
+          bookId: line.bookId,
+          quantity: line.quantity,
+          price: line.price,
+        })),
+      };
+      const fingerprint = JSON.stringify(payload);
+      if (requestKeyRef.current?.fingerprint !== fingerprint) {
+        requestKeyRef.current = { fingerprint, key: crypto.randomUUID() };
+      }
+      const receipt = await inventoryApi.createExport({
+        ...payload,
+        idempotencyKey: requestKeyRef.current.key,
+      });
+      try {
+        notificationService.push({
+          title: "Phiếu xuất kho đã tạo",
+          description: `${receipt.totalItems} cuốn sách đã được xuất kho (${reason}).`,
+          module: "Kho hàng",
+          tone: "warning",
+          route: "/inventory",
+          showToast: false,
+        });
+      } catch (notificationError) {
+        console.error("Could not save export receipt notification:", notificationError);
+        toast.warning("Phiếu xuất đã tạo nhưng thông báo chưa lưu được.");
+      }
+      toast.success(`Đã xuất kho ${receipt.totalItems} sản phẩm — tồn kho đã cập nhật`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books"] }),
+        queryClient.invalidateQueries({ queryKey: ["orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
+      ]);
+      navigate({ to: "/inventory" });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Không thể tạo phiếu xuất.");
+    } finally {
       setSubmitting(false);
-      return;
     }
-    idempotencyKey.current = null;
-    setSubmitting(false);
-    toast.success(`Đã xuất kho ${res.data!.totalItems} sản phẩm — tồn kho đã cập nhật`);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
-      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
-      queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
-    ]);
-    navigate({ to: "/inventory" });
   };
 
   return (

@@ -52,7 +52,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Can } from "@/lib/ability";
-import { supplierService } from "@/services/directory-service";
+import { supplierApi } from "@/lib/supplier-api";
+import { fetchAllPages } from "@/lib/paginated-api";
 import type { Supplier } from "@/types";
 
 export const Route = createFileRoute("/suppliers")({
@@ -113,12 +114,10 @@ function SupplierFormDialog({
         ...(values.note !== undefined ? { note: values.note } : {}),
       };
       if (supplier) {
-        const result = supplierService.update(supplier.id, payload);
-        if (!result.ok) throw new Error(result.error ?? "Không thể cập nhật nhà cung cấp.");
+        await supplierApi.update(supplier.id, payload);
         toast.success("Cập nhật nhà cung cấp thành công");
       } else {
-        const result = supplierService.create(payload);
-        if (!result.ok) throw new Error(result.error ?? "Không thể thêm nhà cung cấp.");
+        await supplierApi.create(payload);
         toast.success("Thêm nhà cung cấp mới thành công");
       }
       await queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
@@ -278,8 +277,7 @@ function SupplierRowActions({ supplier }: { supplier: Supplier }) {
 
   const handleDelete = async () => {
     try {
-      const result = supplierService.delete(supplier.id);
-      if (!result.ok) throw new Error(result.error ?? "Không thể xóa nhà cung cấp.");
+      await supplierApi.remove(supplier.id);
       await queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
       await queryClient.invalidateQueries({ queryKey: ["supplier-names"] });
       await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
@@ -339,11 +337,8 @@ function SuppliersPage() {
   const { data: rawSuppliers = [], isLoading } = useQuery({
     queryKey: ["admin-suppliers"],
     queryFn: async () => {
-      const result = supplierService.list();
-      if (!result.ok || !result.data) {
-        throw new Error(result.error ?? "Không thể tải nhà cung cấp.");
-      }
-      return result.data;
+      const suppliers = await fetchAllPages((page, size) => supplierApi.list({ page, size }));
+      return suppliers.map((item) => ({ ...item, id: String(item.id) }));
     },
     staleTime: 30_000,
   });

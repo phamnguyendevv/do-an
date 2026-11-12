@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,7 +53,6 @@ import { usePaginatedOrders } from "@/hooks/use-paginated-orders";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { orderTransitions } from "@/services/order-service";
 import { orderApi } from "@/lib/order-api";
-import { store } from "@/services/store";
 import { exportOrdersToExcel, exportOrderHistoriesToExcel } from "@/lib/excel-service";
 import { downloadCsv } from "@/utils/csv";
 import { formatCompactCurrency, formatCurrency, formatDate, formatDateTime } from "@/utils/format";
@@ -192,23 +191,6 @@ function OrdersPage() {
     payment,
     ...toApiDateRange(dateRange),
   });
-
-  useEffect(() => {
-    if (orders.length === 0) return;
-    const currentOrders = store.getSnapshot().orders;
-    const liveOrderIds = new Set(orders.map((order) => order.id));
-    const liveOrderCodes = new Set(orders.map((order) => order.orderCode).filter(Boolean));
-    store.setState({
-      orders: [
-        ...currentOrders.filter(
-          (order) =>
-            !liveOrderIds.has(order.id) &&
-            !(order.orderCode && liveOrderCodes.has(order.orderCode)),
-        ),
-        ...orders,
-      ],
-    });
-  }, [orders]);
 
   // Query paginated order histories
   const {

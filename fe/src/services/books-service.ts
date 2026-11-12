@@ -1,6 +1,7 @@
 import type { Book, Category, Publisher, StockMovement } from "@/types";
 import { store, nextId, bookStatusOf } from "./store";
 import { serviceFailure, serviceSuccess, type ServiceResult } from "./service-result";
+import { notificationService } from "./notification-service";
 
 type NewBook = Omit<Book, "id" | "createdAt" | "status" | "stock"> & {
   stock?: number;
@@ -140,6 +141,13 @@ export const booksService = {
         publishers: references.publishers,
         movements,
       });
+      notificationService.push({
+        title: "Sách mới đã được thêm",
+        description: `${book.title} đã được thêm vào hệ thống với tồn kho ${book.stock} cuốn.`,
+        module: "Sách",
+        tone: "success",
+        route: "/books",
+      });
       return serviceSuccess(book);
     } catch (error) {
       return persistFailure(error);
@@ -199,6 +207,13 @@ export const booksService = {
         publishers: references.publishers,
         movements,
       });
+      notificationService.push({
+        title: "Thông tin sách đã cập nhật",
+        description: `${updated.title} đã được cập nhật trên hệ thống.`,
+        module: "Sách",
+        tone: "info",
+        route: "/books",
+      });
       return serviceSuccess(updated);
     } catch (error) {
       return persistFailure(error);
@@ -224,6 +239,13 @@ export const booksService = {
     }
     try {
       store.setState({ books: current.books.filter((item) => item.id !== id) });
+      notificationService.push({
+        title: "Sách đã bị xóa",
+        description: `${book.title} đã được xóa khỏi danh sách hệ thống.`,
+        module: "Sách",
+        tone: "warning",
+        route: "/books",
+      });
       return serviceSuccess(undefined);
     } catch (error) {
       return persistFailure(error);
@@ -322,6 +344,13 @@ export const booksService = {
               ],
             }
           : {}),
+      });
+      notificationService.push({
+        title: "Nạp sách từ file thành công",
+        description: `${importedBooks.length} đầu sách đã được thêm vào hệ thống từ Excel.`,
+        module: "Sách",
+        tone: "success",
+        route: "/books",
       });
       return serviceSuccess(importedBooks);
     } catch (error) {

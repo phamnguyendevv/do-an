@@ -13,7 +13,15 @@ const palettes = {
 };
 
 function wrapText(value: string, maxLength: number): string[] {
-  const words = value.trim().split(/\s+/).filter(Boolean);
+  const words = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((word) =>
+      word.length > maxLength
+        ? (word.match(new RegExp(`.{1,${maxLength}}`, "gu")) ?? [word])
+        : [word],
+    );
   const lines: string[] = [];
 
   for (const word of words) {
@@ -39,9 +47,15 @@ function paletteForCategory(category: string) {
 
 export function BookCover({ book, className }: BookCoverProps) {
   const palette = paletteForCategory(book.category);
-  const titleLines = wrapText(book.title, 17).slice(0, 5);
-  const authorLines = wrapText(book.author, 24).slice(0, 2);
-  const titleFontSize = book.title.length > 35 ? 14 : 16;
+  const titleLines = wrapText(book.title, 12).slice(0, 4);
+  const authorLines = wrapText(book.author, 18).slice(0, 2);
+  const titleFontSize = book.title.length > 24 ? 15 : 17;
+  const category = book.category.trim();
+  const categoryLines = wrapText(category, 24);
+  const categoryLabel =
+    categoryLines.length > 1
+      ? `${categoryLines[0]?.slice(0, 21) ?? ""}...`
+      : (categoryLines[0] ?? "").slice(0, 24);
 
   return (
     <svg
@@ -68,7 +82,7 @@ export function BookCover({ book, className }: BookCoverProps) {
         y="31"
         fill={palette.accent}
         fontFamily="Arial, sans-serif"
-        fontSize="8"
+        fontSize="9"
         fontWeight="700"
         letterSpacing="2"
       >
@@ -94,7 +108,7 @@ export function BookCover({ book, className }: BookCoverProps) {
         y="190"
         fill={palette.accent}
         fontFamily="Arial, sans-serif"
-        fontSize="9"
+        fontSize="10"
         fontWeight="600"
       >
         {authorLines.map((line, index) => (
@@ -112,7 +126,7 @@ export function BookCover({ book, className }: BookCoverProps) {
         fontSize="7"
         opacity=".8"
       >
-        {book.category.slice(0, 30)}
+        {categoryLabel}
       </text>
       <rect
         x=".75"

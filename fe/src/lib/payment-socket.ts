@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
 
+import { getAuthToken } from "@/lib/api-client";
 import { API_BASE } from "@/lib/api-config";
 
 let socket: Socket | null = null;
@@ -10,6 +11,7 @@ export function getPaymentSocket(): Socket {
       transports: ["websocket", "polling"],
       autoConnect: true,
       withCredentials: true,
+      auth: { token: getAuthToken() },
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,

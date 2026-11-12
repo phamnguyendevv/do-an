@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Plus,
@@ -20,7 +21,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { customerService } from "@/services/directory-service";
+import { customerApi } from "@/lib/customer-api";
+import { notificationService } from "@/services/notification-service";
 import { useCustomers, useOrders } from "@/hooks/use-store";
 import type { Customer } from "@/types";
 
@@ -35,6 +37,7 @@ type CustomerRow = Customer & {
 function CustomersPage() {
   const customers = useCustomers();
   const orders = useOrders();
+  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [quickAddName, setQuickAddName] = useState("");
@@ -100,11 +103,19 @@ function CustomersPage() {
     try {
       // Normalize phone before saving
       const normalizedPhone = quickAddPhone.replace(/\D/g, "").replace(/^84/, "0");
-      const result = customerService.create({
+      const customer = await customerApi.create({
         name: quickAddName,
         phone: normalizedPhone,
       });
-      if (!result.ok) throw new Error(result.error ?? "Không thể thêm khách hàng.");
+      notificationService.push({
+        title: "Khách hàng mới",
+        description: `${customer.name} đã được thêm vào danh sách khách hàng.`,
+        module: "Khách hàng",
+        tone: "success",
+        route: "/customers",
+        showToast: false,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success(`Đã thêm khách hàng ${quickAddName}`);
       setQuickAddName("");
       setQuickAddPhone("");
@@ -136,12 +147,27 @@ function CustomersPage() {
   const save = async () => {
     try {
       if (editing) {
-        const result = customerService.update(editing.id, form);
-        if (!result.ok) throw new Error(result.error ?? "Không thể cập nhật khách hàng.");
+        await customerApi.update(Number(editing.id), form);
+        notificationService.push({
+          title: "Thông tin khách hàng đã cập nhật",
+          description: `${form.name} đã được cập nhật.`,
+          module: "Khách hàng",
+          tone: "info",
+          route: "/customers",
+          showToast: false,
+        });
       } else {
-        const result = customerService.create(form);
-        if (!result.ok) throw new Error(result.error ?? "Không thể thêm khách hàng.");
+        const customer = await customerApi.create(form);
+        notificationService.push({
+          title: "Khách hàng mới",
+          description: `${customer.name} đã được thêm vào danh sách khách hàng.`,
+          module: "Khách hàng",
+          tone: "success",
+          route: "/customers",
+          showToast: false,
+        });
       }
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Đã lưu khách hàng");
       setEditing(null);
       setDialogOpen(false);
@@ -152,8 +178,17 @@ function CustomersPage() {
   const remove = async (id: string) => {
     if (!window.confirm("Xóa khách hàng này?")) return;
     try {
-      const result = customerService.delete(id);
-      if (!result.ok) throw new Error(result.error ?? "Không thể xóa khách hàng.");
+      const customer = customers.find((item) => item.id === id);
+      await customerApi.remove(Number(id));
+      notificationService.push({
+        title: "Khách hàng đã bị xóa",
+        description: `${customer?.name ?? "Một khách hàng"} đã được xóa.`,
+        module: "Khách hàng",
+        tone: "warning",
+        route: "/customers",
+        showToast: false,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Đã xóa khách hàng");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Không thể xóa");

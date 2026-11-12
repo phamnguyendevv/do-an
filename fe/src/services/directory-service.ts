@@ -1,6 +1,7 @@
 import type { Category, Customer, Publisher, Supplier, User } from "@/types";
 import { nextId, store } from "./store";
 import { serviceFailure, serviceSuccess, type ServiceResult } from "./service-result";
+import { notificationService } from "./notification-service";
 
 type DirectoryEntity = Category | Publisher | Supplier | Customer | User;
 type DirectoryCollection = "categories" | "publishers" | "suppliers" | "customers" | "users";
@@ -136,6 +137,31 @@ function create<T extends DirectoryEntity>(
   }
   try {
     persistCollection(collectionName, [entity, ...entities]);
+    notificationService.push({
+      title: `${collectionName === "customers" ? "Khách hàng" : collectionName === "suppliers" ? "Nhà cung cấp" : collectionName === "users" ? "Người dùng" : collectionName === "publishers" ? "Nhà xuất bản" : "Danh mục"} đã được thêm`,
+      description: `${"name" in entity ? entity.name : "Mục mới"} đã được cập nhật vào hệ thống.`,
+      module:
+        collectionName === "customers"
+          ? "Khách hàng"
+          : collectionName === "suppliers"
+            ? "Nhà cung cấp"
+            : collectionName === "users"
+              ? "Người dùng"
+              : collectionName === "publishers"
+                ? "Nhà xuất bản"
+                : "Danh mục",
+      tone: "success",
+      route:
+        collectionName === "customers"
+          ? "/customers"
+          : collectionName === "suppliers"
+            ? "/suppliers"
+            : collectionName === "users"
+              ? "/users"
+              : collectionName === "publishers"
+                ? "/publishers"
+                : "/categories",
+    });
     return serviceSuccess(entity);
   } catch (error) {
     return serviceFailure(
@@ -228,6 +254,31 @@ function update<T extends DirectoryEntity>(
     } else {
       persistCollection(collectionName, nextEntities);
     }
+    notificationService.push({
+      title: `${collectionName === "customers" ? "Khách hàng" : collectionName === "suppliers" ? "Nhà cung cấp" : collectionName === "users" ? "Người dùng" : collectionName === "publishers" ? "Nhà xuất bản" : "Danh mục"} đã được cập nhật`,
+      description: `${updated.name} vừa được chỉnh sửa trên hệ thống.`,
+      module:
+        collectionName === "customers"
+          ? "Khách hàng"
+          : collectionName === "suppliers"
+            ? "Nhà cung cấp"
+            : collectionName === "users"
+              ? "Người dùng"
+              : collectionName === "publishers"
+                ? "Nhà xuất bản"
+                : "Danh mục",
+      tone: "info",
+      route:
+        collectionName === "customers"
+          ? "/customers"
+          : collectionName === "suppliers"
+            ? "/suppliers"
+            : collectionName === "users"
+              ? "/users"
+              : collectionName === "publishers"
+                ? "/publishers"
+                : "/categories",
+    });
     return serviceSuccess(updated);
   } catch (error) {
     return serviceFailure(
@@ -246,10 +297,36 @@ function remove(collectionName: DirectoryCollection, id: string): ServiceResult<
     return serviceFailure("CONFLICT", "Không thể xóa dữ liệu đang được nghiệp vụ khác tham chiếu.");
   }
   try {
+    const removed = entities.find((item) => item.id === id);
     persistCollection(
       collectionName,
       entities.filter((item) => item.id !== id),
     );
+    notificationService.push({
+      title: `${collectionName === "customers" ? "Khách hàng" : collectionName === "suppliers" ? "Nhà cung cấp" : collectionName === "users" ? "Người dùng" : collectionName === "publishers" ? "Nhà xuất bản" : "Danh mục"} đã bị xóa`,
+      description: `${removed?.name ?? "Mục"} đã được xóa khỏi hệ thống.`,
+      module:
+        collectionName === "customers"
+          ? "Khách hàng"
+          : collectionName === "suppliers"
+            ? "Nhà cung cấp"
+            : collectionName === "users"
+              ? "Người dùng"
+              : collectionName === "publishers"
+                ? "Nhà xuất bản"
+                : "Danh mục",
+      tone: "warning",
+      route:
+        collectionName === "customers"
+          ? "/customers"
+          : collectionName === "suppliers"
+            ? "/suppliers"
+            : collectionName === "users"
+              ? "/users"
+              : collectionName === "publishers"
+                ? "/publishers"
+                : "/categories",
+    });
     return serviceSuccess(undefined);
   } catch (error) {
     return serviceFailure(

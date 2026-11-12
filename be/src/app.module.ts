@@ -14,11 +14,13 @@ import { CategoriesModule } from '@modules/category.module'
 import { CustomersModule } from '@modules/customers.module'
 import { GhnModule } from '@modules/ghn.module'
 import { InventoryModule } from '@modules/inventory.module'
+import { NotificationsModule } from '@modules/notifications.module'
 import { OrdersModule } from '@modules/orders.module'
 import { PromotionsModule } from '@modules/promotions.module'
 import { RevenueModule } from '@modules/revenue.module'
 import { SePayModule } from '@modules/sepay.module'
 import { SuppliersModule } from '@modules/supplier.module'
+import { SystemSettingsModule } from '@modules/system-settings.module'
 import { UsersModule } from '@modules/user.module'
 
 import { MaintenanceMiddleware } from './infrastructure/common/middlewares/maintenance.middleware'
@@ -72,6 +74,8 @@ import { HealthModule } from './modules/health.module'
     AssistantModule,
     PromotionsModule,
     ActivityLogsModule,
+    NotificationsModule,
+    SystemSettingsModule,
   ],
   providers: [
     UserRepository,

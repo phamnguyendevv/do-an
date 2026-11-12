@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
@@ -30,9 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { store } from "@/services/store";
-import { orderService } from "@/services/order-service";
 import { ghnApi, mapGhnStatus } from "@/lib/ghn-api";
+import { mapOrderApiItem, orderApi } from "@/lib/order-api";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 import {
   shippingStatusLabel,
@@ -41,42 +40,26 @@ import {
   orderStatusTone,
 } from "@/utils/status";
 import { trackingSteps, stepIndexByStatus } from "@/mock/shipping";
-import type { OrderStatus } from "@/types";
+import type { OrderStatus, Shipping, ShippingStatus } from "@/types";
 
 export const Route = createFileRoute("/shipping/$shippingId")({
-  loader: ({ params }) => {
-    const { shipments, orders } = store.getSnapshot();
-    const shipment = shipments.find((s) => s.id === params.shippingId);
-    if (!shipment) {
-      // Try to find auto-generated shipment from orders
-      const orderId = params.shippingId.replace("SHP-auto-", "");
-      const order = orders.find((o) => o.id === orderId || o.orderCode === orderId);
-      if (!order) throw notFound();
-      return {
-        shipment: {
-          id: params.shippingId,
-          orderId: order.id,
-          customerName: order.customerName,
-          carrier: order.shippingMethod || "Giao Hàng Nhanh (GHN)",
-          trackingNumber: order.trackingCode || "",
-          shippingFee: order.shippingFee || 0,
-          expectedDelivery: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-          status: (order.status === "DELIVERED"
-            ? "DELIVERED"
-            : order.status === "CANCELLED"
-              ? "RETURNED"
-              : order.status === "SHIPPING"
-                ? "OUT_FOR_DELIVERY"
-                : order.status === "PREPARING"
-                  ? "PICKED_UP"
-                  : "WAITING_PICKUP") as import("@/types").ShippingStatus,
-          address: order.customerAddress,
-        },
-        order,
-      };
-    }
-    const order = orders.find((o) => o.id === shipment.orderId || o.orderCode === shipment.orderId);
-    return { shipment, order: order ?? null };
+  loader: async ({ params }) => {
+    const orderId = params.shippingId.replace(/^SHP-auto-/, "");
+    const order = mapOrderApiItem(await orderApi.get(orderId));
+    return {
+      shipment: {
+        id: params.shippingId,
+        orderId: order.orderCode || order.id,
+        customerName: order.customerName,
+        carrier: order.shippingMethod || "Giao Hàng Nhanh (GHN)",
+        trackingNumber: order.trackingCode || "",
+        shippingFee: order.shippingFee || 0,
+        expectedDelivery: "",
+        status: shippingStatusFromOrder(order.status),
+        address: order.customerAddress,
+      } satisfies Shipping,
+      order,
+    };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -153,6 +136,26 @@ const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: "RETURNED", label: "Hoàn hàng" },
 ];
 
+function shippingStatusFromOrder(status: OrderStatus): ShippingStatus {
+  switch (status) {
+    case "DELIVERED":
+      return "DELIVERED";
+    case "CANCELLED":
+      return "CANCELLED";
+    case "RETURNED":
+      return "RETURNED";
+    case "FAILED":
+      return "FAILED";
+    case "SHIPPING":
+      return "OUT_FOR_DELIVERY";
+    case "PREPARING":
+    case "CONFIRMED":
+      return "PICKED_UP";
+    default:
+      return "WAITING_PICKUP";
+  }
+}
+
 function ShippingDetailPage() {
   const { shipment, order } = Route.useLoaderData();
   const queryClient = useQueryClient();
@@ -217,20 +220,44 @@ function ShippingDetailPage() {
     if (!order || !nextStatus) return;
     setIsUpdatingStatus(true);
     try {
-      const res = await orderService.updateStatus(order.id, nextStatus);
-      if (!res.ok) {
-        toast.error(res.error ?? "Không thể cập nhật trạng thái đơn hàng");
-      } else {
-        toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[nextStatus]}`, {
-          description:
-            nextStatus === "CANCELLED" || nextStatus === "RETURNED"
-              ? "Số lượng đã được hoàn lại kho."
-              : undefined,
-        });
-        queryClient.invalidateQueries({ queryKey: ["orders", "live-list"] });
-        queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
-        setNextStatus("");
-      }
+      await orderApi.updateStatus(order.id, nextStatus);
+      toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[nextStatus]}`, {
+        description:
+          nextStatus === "CANCELLED" || nextStatus === "RETURNED"
+            ? "Số lượng đã được hoàn lại kho."
+            : undefined,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      setNextStatus("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể cập nhật trạng thái đơn hàng",
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleQuickStatusUpdate = async (
+    status: OrderStatus,
+    successMessage: string,
+  ): Promise<boolean> => {
+    if (!order) return false;
+    setIsUpdatingStatus(true);
+    try {
+      await orderApi.updateStatus(order.id, status);
+      toast.success(successMessage);
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể cập nhật trạng thái đơn hàng",
+      );
+      return false;
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -455,21 +482,12 @@ function ShippingDetailPage() {
                       {order.status === "PENDING" && (
                         <Button
                           size="sm"
-                          onClick={() => {
-                            setNextStatus("CONFIRMED");
-                            setTimeout(() => {
-                              orderService.updateStatus(order.id, "CONFIRMED").then((res) => {
-                                if (res.ok) {
-                                  toast.success(`Đã xác nhận đơn ${order.orderCode || order.id}`);
-                                  queryClient.invalidateQueries({
-                                    queryKey: ["orders", "live-list"],
-                                  });
-                                } else {
-                                  toast.error(res.error ?? "Lỗi cập nhật trạng thái");
-                                }
-                              });
-                            }, 0);
-                          }}
+                          onClick={() =>
+                            void handleQuickStatusUpdate(
+                              "CONFIRMED",
+                              `Đã xác nhận đơn ${order.orderCode || order.id}`,
+                            )
+                          }
                           className="gap-1.5"
                         >
                           <Check className="h-3.5 w-3.5" />
@@ -479,16 +497,9 @@ function ShippingDetailPage() {
                       {order.status === "CONFIRMED" && (
                         <Button
                           size="sm"
-                          onClick={() => {
-                            orderService.updateStatus(order.id, "PREPARING").then((res) => {
-                              if (res.ok) {
-                                toast.success("Bắt đầu chuẩn bị hàng");
-                                queryClient.invalidateQueries({
-                                  queryKey: ["orders", "live-list"],
-                                });
-                              }
-                            });
-                          }}
+                          onClick={() =>
+                            void handleQuickStatusUpdate("PREPARING", "Bắt đầu chuẩn bị hàng")
+                          }
                           className="gap-1.5"
                         >
                           <Clock className="h-3.5 w-3.5" />
@@ -498,16 +509,12 @@ function ShippingDetailPage() {
                       {order.status === "PREPARING" && (
                         <Button
                           size="sm"
-                          onClick={() => {
-                            orderService.updateStatus(order.id, "SHIPPING").then((res) => {
-                              if (res.ok) {
-                                toast.success("Đơn hàng đang được vận chuyển");
-                                queryClient.invalidateQueries({
-                                  queryKey: ["orders", "live-list"],
-                                });
-                              }
-                            });
-                          }}
+                          onClick={() =>
+                            void handleQuickStatusUpdate(
+                              "SHIPPING",
+                              "Đơn hàng đang được vận chuyển",
+                            )
+                          }
                           className="gap-1.5"
                         >
                           <Truck className="h-3.5 w-3.5" />
@@ -517,16 +524,9 @@ function ShippingDetailPage() {
                       {order.status === "SHIPPING" && (
                         <Button
                           size="sm"
-                          onClick={() => {
-                            orderService.updateStatus(order.id, "DELIVERED").then((res) => {
-                              if (res.ok) {
-                                toast.success("Giao hàng thành công!");
-                                queryClient.invalidateQueries({
-                                  queryKey: ["orders", "live-list"],
-                                });
-                              }
-                            });
-                          }}
+                          onClick={() =>
+                            void handleQuickStatusUpdate("DELIVERED", "Giao hàng thành công!")
+                          }
                           className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
                           <PackageCheck className="h-3.5 w-3.5" />
@@ -537,18 +537,22 @@ function ShippingDetailPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            orderService.updateStatus(order.id, "CANCELLED").then((res) => {
-                              if (res.ok) {
-                                toast.success("Đã hủy đơn hàng, tồn kho đã được hoàn lại");
-                                queryClient.invalidateQueries({
-                                  queryKey: ["orders", "live-list"],
-                                });
-                                if (hasTracking) {
-                                  ghnApi.cancelOrder([shipment.trackingNumber!]).catch(() => {});
-                                }
+                          onClick={async () => {
+                            const updated = await handleQuickStatusUpdate(
+                              "CANCELLED",
+                              "Đã hủy đơn hàng, tồn kho đã được hoàn lại",
+                            );
+                            if (updated && hasTracking) {
+                              try {
+                                await ghnApi.cancelOrder([shipment.trackingNumber!]);
+                              } catch (error) {
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Không thể hủy vận đơn trên GHN",
+                                );
                               }
-                            });
+                            }
                           }}
                           className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
                         >
@@ -560,16 +564,12 @@ function ShippingDetailPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            orderService.updateStatus(order.id, "RETURNED").then((res) => {
-                              if (res.ok) {
-                                toast.success("Đã ghi nhận hoàn hàng, tồn kho đã được hoàn lại");
-                                queryClient.invalidateQueries({
-                                  queryKey: ["orders", "live-list"],
-                                });
-                              }
-                            });
-                          }}
+                          onClick={() =>
+                            void handleQuickStatusUpdate(
+                              "RETURNED",
+                              "Đã ghi nhận hoàn hàng, tồn kho đã được hoàn lại",
+                            )
+                          }
                           className="gap-1.5 border-amber-500/50 text-amber-600 hover:bg-amber-50"
                         >
                           <PackageX className="h-3.5 w-3.5" />

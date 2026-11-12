@@ -17,6 +17,10 @@ import { User } from './user.entity'
 @Entity('export_receipts')
 @Index('IDX_export_receipts_order_id', ['orderId'])
 @Index('IDX_export_receipts_created_by_id', ['createdById'])
+@Index('UQ_export_receipts_idempotency', ['createdById', 'idempotencyKey'], {
+  unique: true,
+  where: '"idempotency_key" IS NOT NULL',
+})
 export class ExportReceipt {
   @PrimaryGeneratedColumn({
     type: 'bigint',
@@ -61,6 +65,12 @@ export class ExportReceipt {
 
   @Column({ type: 'bigint', nullable: true, name: 'created_by_id' })
   public createdById?: number
+
+  @Column({ type: 'uuid', nullable: true, name: 'idempotency_key' })
+  public idempotencyKey?: string
+
+  @Column({ type: 'varchar', length: 64, nullable: true, name: 'request_hash' })
+  public requestHash?: string
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'created_by_id' })

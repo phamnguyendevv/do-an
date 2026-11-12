@@ -32,6 +32,8 @@ import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { ExportReceipt } from '@infrastructure/databases/postgresql/entities/export-receipt.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 
+import { hashRequest } from './idempotency.util'
+
 @Injectable()
 export class CreateExportReceiptUseCase {
   constructor(
@@ -77,6 +79,32 @@ export class CreateExportReceiptUseCase {
     await queryRunner.startTransaction()
 
     try {
+      await queryRunner.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        `export:${dto.createdById}:${dto.idempotencyKey}`,
+      ])
+      const requestHash = hashRequest({
+        orderId: dto.orderId ?? null,
+        reason: dto.reason,
+        note: dto.note ?? null,
+        lines: dto.lines,
+      })
+      const existingReceipt = await queryRunner.manager.findOne(ExportReceipt, {
+        where: {
+          createdById: dto.createdById,
+          idempotencyKey: dto.idempotencyKey,
+        },
+      })
+      if (existingReceipt) {
+        if (existingReceipt.requestHash !== requestHash) {
+          throw this.exceptionsService.badRequestException({
+            type: 'IdempotencyKeyConflictException',
+            message: 'Mã yêu cầu đã được sử dụng cho nội dung phiếu xuất khác',
+          })
+        }
+        await queryRunner.commitTransaction()
+        return existingReceipt
+      }
+
       const items: ExportReceiptItem[] = []
       let totalItems = 0
 
@@ -163,6 +191,9 @@ export class CreateExportReceiptUseCase {
         note: dto.note || '',
         items,
         createdBy: dto.createdBy || 'Admin',
+        createdById: dto.createdById,
+        idempotencyKey: dto.idempotencyKey,
+        requestHash,
       })
 
       const savedReceipt = await queryRunner.manager.save(

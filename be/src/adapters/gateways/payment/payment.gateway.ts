@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, UseGuards } from '@nestjs/common'
 import {
   ConnectedSocket,
   MessageBody,
@@ -16,11 +16,16 @@ import {
   IPaymentSuccessPayload,
 } from '@domain/services/payment-gateway.interface'
 
+import { WsJwtAuthGuard } from '@adapters/controllers/common/guards/jwt-socket.guard'
+
+import { Notification } from '@infrastructure/databases/postgresql/entities/notification.entity'
+
 export type PaymentSuccessEventPayload = IPaymentSuccessPayload
+type AuthenticatedSocket = Socket & { userId?: number }
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: true,
     credentials: true,
   },
 })
@@ -65,6 +70,44 @@ export class PaymentGateway
       this.logger.log(`Client ${client.id} left room ${room}`)
       return { status: 'unsubscribed', room }
     }
+  }
+
+  @UseGuards(WsJwtAuthGuard)
+  @SubscribeMessage('notifications:subscribe')
+  async subscribeNotifications(@ConnectedSocket() client: AuthenticatedSocket) {
+    if (!client.userId) return { status: 'unauthorized' }
+    const room = `user_${client.userId}`
+    await client.join(room)
+    return { status: 'subscribed', room }
+  }
+
+  emitNotification(actorId: number, notification: Notification) {
+    if (!this.server) {
+      this.logger.warn('WebSocket server is not initialized yet')
+      return
+    }
+
+    this.server.to(`user_${actorId}`).emit('notification:created', notification)
+  }
+
+  emitNotificationRead(actorId: number, id: string) {
+    if (!this.server) return
+    this.server.to(`user_${actorId}`).emit('notification:read', { id })
+  }
+
+  emitNotificationDeleted(actorId: number, id: string) {
+    if (!this.server) return
+    this.server.to(`user_${actorId}`).emit('notification:deleted', { id })
+  }
+
+  emitNotificationsReadAll(actorId: number) {
+    if (!this.server) return
+    this.server.to(`user_${actorId}`).emit('notification:read-all')
+  }
+
+  emitNotificationsCleared(actorId: number) {
+    if (!this.server) return
+    this.server.to(`user_${actorId}`).emit('notification:cleared')
   }
 
   emitPaymentSuccess(payload: PaymentSuccessEventPayload) {

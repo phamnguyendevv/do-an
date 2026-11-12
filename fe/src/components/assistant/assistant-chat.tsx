@@ -1,14 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Loader2, Send, Sparkles, User as UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  useBooksQuery,
+  useExportReceiptsQuery,
+  useImportReceiptsQuery,
+  useOrdersQuery,
+} from "@/hooks/use-store";
 import { askAssistantApi, type ChatMessage } from "@/lib/ai-assistant.functions";
 import { executeTool, type PendingAction } from "@/services/assistant-tools";
 import { analyzeWarehouse } from "@/services/warehouse-intel";
-import { store } from "@/services/store";
+import type { IntelSnapshot } from "@/services/warehouse-intel";
 import { ActionPreview } from "./action-preview";
 
 interface Bubble {
@@ -28,8 +34,7 @@ const SUGGESTIONS = [
   "Đắc Nhân Tâm còn bao nhiêu cuốn?",
 ];
 
-function systemPrompt() {
-  const snap = store.getSnapshot();
+function systemPrompt(snap: IntelSnapshot) {
   const a = analyzeWarehouse({
     books: snap.books,
     orders: snap.orders,
@@ -51,6 +56,26 @@ Bối cảnh nhanh (ngày ${new Date().toLocaleDateString("vi-VN")}): ${a.totals
 }
 
 export function AssistantChat() {
+  const booksQuery = useBooksQuery();
+  const ordersQuery = useOrdersQuery();
+  const importsQuery = useImportReceiptsQuery();
+  const exportsQuery = useExportReceiptsQuery();
+  const snapshot = useMemo(
+    () => ({
+      books: booksQuery.data ?? [],
+      orders: ordersQuery.data ?? [],
+      imports: importsQuery.data ?? [],
+      exports: exportsQuery.data ?? [],
+    }),
+    [booksQuery.data, ordersQuery.data, importsQuery.data, exportsQuery.data],
+  );
+  const isSnapshotLoading =
+    booksQuery.isLoading ||
+    ordersQuery.isLoading ||
+    importsQuery.isLoading ||
+    exportsQuery.isLoading;
+  const snapshotError =
+    booksQuery.error ?? ordersQuery.error ?? importsQuery.error ?? exportsQuery.error;
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -66,10 +91,22 @@ export function AssistantChat() {
     if (!question || loading) return;
     setInput("");
     setBubbles((b) => [...b, { id: crypto.randomUUID(), role: "user", content: question }]);
+    if (isSnapshotLoading || snapshotError) {
+      const errorMessage = isSnapshotLoading
+        ? "Đang tải dữ liệu từ hệ thống. Vui lòng gửi lại câu hỏi sau giây lát."
+        : snapshotError instanceof Error
+          ? `Không thể tải dữ liệu hệ thống: ${snapshotError.message}`
+          : "Không thể tải dữ liệu hệ thống. Vui lòng thử lại.";
+      setBubbles((b) => [
+        ...b,
+        { id: crypto.randomUUID(), role: "assistant", content: errorMessage, error: true },
+      ]);
+      return;
+    }
     setLoading(true);
 
     if (history.current.length === 0)
-      history.current.push({ role: "system", content: systemPrompt() });
+      history.current.push({ role: "system", content: systemPrompt(snapshot) });
     history.current.push({ role: "user", content: question });
 
     const actions: PendingAction[] = [];
@@ -114,7 +151,7 @@ export function AssistantChat() {
           })),
         });
         for (const call of calls) {
-          const outcome = executeTool(call.name, call.args);
+          const outcome = executeTool(call.name, call.args, snapshot);
           if (outcome.action) actions.push(outcome.action);
           history.current.push({
             role: "tool",

@@ -36,9 +36,9 @@ import {
   RevenueAreaChart,
   StockMovementChart,
 } from "@/components/analytics/charts";
-import { useBooks, useInventorySummary, useOrders } from "@/hooks/use-store";
+import { useBooks, useInventorySummary, useOrders, useStockMovements } from "@/hooks/use-store";
 import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
-import { selectOrderTotals, selectStockMovementSeries } from "@/services/report-service";
+import { buildStockMovementSeries, selectOrderTotals } from "@/services/report-service";
 import {
   bookStatusLabel,
   bookStatusTone,
@@ -218,6 +218,7 @@ const lowStockColumns: DataTableColumn<Book>[] = [
 function DashboardPage() {
   const books = useBooks();
   const orders = useOrders();
+  const movements = useStockMovements();
   const inventorySummary = useInventorySummary();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
@@ -331,7 +332,7 @@ function DashboardPage() {
     return sorted;
   }, [periodOrders, books]);
 
-  const stockMovementData = selectStockMovementSeries();
+  const stockMovementData = buildStockMovementSeries(movements);
 
   // Resolve preset or formatted label for current dateRange
   const activePeriodLabel = useMemo(() => {

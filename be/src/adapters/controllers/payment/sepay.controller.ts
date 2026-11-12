@@ -29,6 +29,7 @@ import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-st
 import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
 
 import { EnvironmentConfigService } from '@infrastructure/config/environment/environment-config.service'
+import { SystemSettingsService } from '@infrastructure/services/settings/system-settings.service'
 
 import { SePayWebhookDto } from './dto/sepay-webhook.dto'
 
@@ -54,18 +55,18 @@ export class SePayController {
     private readonly getSepayOrderStatusUseCase: GetSepayOrderStatusUseCase,
     private readonly processSepayPaymentUseCase: ProcessSepayPaymentUseCase,
     private readonly configService: EnvironmentConfigService,
+    private readonly settingsService: SystemSettingsService,
   ) {}
 
   @Get('config')
   @ApiOperation({
     summary: 'Lấy thông tin cấu hình SePay mặc định của hệ thống',
   })
-  getConfig() {
+  async getConfig() {
+    const config = await this.settingsService.getSepaySettings()
     return {
       success: true,
-      bank: this.configService.getSepayBank(),
-      accountNumber: this.configService.getSepayAccount(),
-      accountName: this.configService.getSepayAccountName(),
+      ...config,
       webhookUrl: '/api/v1/payment/sepay/webhook',
     }
   }

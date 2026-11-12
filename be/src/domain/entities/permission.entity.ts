@@ -35,3 +35,4 @@ export type TSubject =
   | 'Shipping'
   | 'Customer'
   | 'ActivityLog'
+  | 'SystemSetting'

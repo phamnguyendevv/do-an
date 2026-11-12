@@ -12,7 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { orderApi } from "@/lib/order-api";
-import { storeSettingsService } from "@/services/store-settings";
+import { buildSepayQrUrl } from "@/services/store-settings";
+import { useSepayConfig } from "@/hooks/use-system-settings";
 import { formatCurrency } from "@/utils/format";
 import type { Order } from "@/types";
 
@@ -33,12 +34,12 @@ export function SepayPaymentDialog({
 }: SepayPaymentDialogProps) {
   const [isPaid, setIsPaid] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-
-  const sepayConfig = storeSettingsService.getSepayConfig();
+  const sepayConfigQuery = useSepayConfig();
+  const sepayConfig = sepayConfigQuery.data;
   const orderCode = order?.orderCode || order?.id || "";
   const total = Number(order?.total || 0);
 
-  const qrUrl = storeSettingsService.getSepayQrUrl(total, orderCode);
+  const qrUrl = sepayConfig ? buildSepayQrUrl(sepayConfig, total, orderCode) : "";
 
   const copyToClipboard = (text: string, label: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -96,11 +97,19 @@ export function SepayPaymentDialog({
         <div className="space-y-4 py-2 text-center">
           {/* QR Code Container */}
           <div className="relative mx-auto inline-block bg-white p-2.5 rounded-xl border border-gray-200 shadow-sm">
-            <img
-              src={qrUrl}
-              alt={`Mã VietQR ${orderCode}`}
-              className="w-52 h-52 object-contain mx-auto rounded"
-            />
+            {sepayConfig ? (
+              <img
+                src={qrUrl}
+                alt={`Mã VietQR ${orderCode}`}
+                className="w-52 h-52 object-contain mx-auto rounded"
+              />
+            ) : (
+              <p role="alert" className="p-3 text-sm text-destructive">
+                {sepayConfigQuery.isLoading
+                  ? "Đang tải cấu hình thanh toán..."
+                  : "Không tải được cấu hình thanh toán từ backend."}
+              </p>
+            )}
             {isPaid && (
               <div className="absolute inset-0 bg-emerald-600/95 rounded-xl flex flex-col items-center justify-center text-white font-bold p-4 animate-in fade-in zoom-in-95">
                 <Check className="h-12 w-12 text-white stroke-[3] mb-1" />
@@ -117,12 +126,15 @@ export function SepayPaymentDialog({
             <div className="flex justify-between items-center border-b pb-1.5">
               <span className="text-muted-foreground">Ngân hàng:</span>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-foreground">{sepayConfig.bank}</span>
+                <span className="font-bold text-foreground">{sepayConfig?.bank ?? "—"}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-5 w-5 p-0"
-                  onClick={() => copyToClipboard(sepayConfig.bank, "Tên ngân hàng")}
+                  disabled={!sepayConfig}
+                  onClick={() => {
+                    if (sepayConfig) copyToClipboard(sepayConfig.bank, "Tên ngân hàng");
+                  }}
                 >
                   <Copy className="h-3 w-3 text-muted-foreground" />
                 </Button>
@@ -133,13 +145,16 @@ export function SepayPaymentDialog({
               <span className="text-muted-foreground">Số tài khoản (STK):</span>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono font-bold text-foreground text-sm">
-                  {sepayConfig.accountNumber}
+                  {sepayConfig?.accountNumber ?? "—"}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-5 w-5 p-0"
-                  onClick={() => copyToClipboard(sepayConfig.accountNumber, "Số tài khoản")}
+                  disabled={!sepayConfig}
+                  onClick={() => {
+                    if (sepayConfig) copyToClipboard(sepayConfig.accountNumber, "Số tài khoản");
+                  }}
                 >
                   <Copy className="h-3 w-3 text-muted-foreground" />
                 </Button>
@@ -148,7 +163,7 @@ export function SepayPaymentDialog({
 
             <div className="flex justify-between items-center border-b pb-1.5">
               <span className="text-muted-foreground">Chủ tài khoản:</span>
-              <span className="font-bold text-primary">{sepayConfig.accountName}</span>
+              <span className="font-bold text-primary">{sepayConfig?.accountName ?? "—"}</span>
             </div>
 
             <div className="flex justify-between items-center border-b pb-1.5">

@@ -1,6 +1,7 @@
 import type { Book, ExportReceipt, ImportReceipt, StockMovement } from "@/types";
 import { bookStatusOf, nextId, store } from "./store";
 import { serviceFailure, serviceSuccess, type ServiceResult } from "./service-result";
+import { notificationService } from "./notification-service";
 
 export interface StockLine {
   bookId: string;
@@ -191,6 +192,13 @@ export const inventoryService = {
             }
           : {}),
       });
+      notificationService.push({
+        title: "Phiếu nhập kho đã tạo",
+        description: `Nhà cung cấp ${input.supplier} đã được nhập kho ${totalItems} sản phẩm với tổng giá trị ${totalValue.toLocaleString("vi-VN")}đ.`,
+        module: "Kho hàng",
+        tone: "success",
+        route: "/inventory",
+      });
       return serviceSuccess(receipt);
     } catch (error) {
       return serviceFailure(
@@ -283,6 +291,13 @@ export const inventoryService = {
               ],
             }
           : {}),
+      });
+      notificationService.push({
+        title: "Phiếu xuất kho đã tạo",
+        description: `Đã xử lý ${totalItems} sản phẩm cho ${linkedOrder ? `đơn hàng ${linkedOrder.orderCode ?? linkedOrder.id}` : input.reason}.`,
+        module: "Kho hàng",
+        tone: linkedOrder ? "success" : "warning",
+        route: "/inventory",
       });
       return serviceSuccess(receipt);
     } catch (error) {

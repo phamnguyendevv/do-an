@@ -113,6 +113,7 @@ export const inventoryApi = {
   },
 
   async createImport(payload: {
+    idempotencyKey: string;
     supplierId?: number;
     supplierName: string;
     importDate?: string;
@@ -155,7 +156,8 @@ export const inventoryApi = {
   },
 
   async createExport(payload: {
-    orderId?: string;
+    idempotencyKey: string;
+    orderId?: number;
     reason: string;
     note?: string;
     lines: Array<{ bookId: number | string; quantity: number; price?: number }>;
@@ -219,7 +221,13 @@ export const inventoryApi = {
   async createAudit(payload: {
     title: string;
     note?: string;
-    items: Array<{ bookId: number; actualStock: number; reason?: string }>;
+    items: Array<{
+      bookId: number;
+      title: string;
+      systemStock: number;
+      actualStock: number;
+      reason?: string;
+    }>;
   }) {
     return apiRequest<StockAuditApiItem>(`/admin/inventory/audit`, {
       method: "POST",

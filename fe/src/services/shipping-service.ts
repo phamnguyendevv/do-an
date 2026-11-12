@@ -3,6 +3,7 @@ import { SHIPPING_STATUS_TRANSITIONS } from "@/types";
 import { nextId, store } from "./store";
 import { serviceFailure, serviceSuccess, type ServiceResult } from "./service-result";
 import { orderService } from "./order-service";
+import { notificationService } from "./notification-service";
 
 export const shippingService = {
   list(): ServiceResult<Shipping[]> {
@@ -45,6 +46,13 @@ export const shippingService = {
     const shipment: Shipping = { ...input, id: nextId("SHP", state.shipments, 3000) };
     try {
       store.setState({ shipments: [shipment, ...state.shipments] });
+      notificationService.push({
+        title: "Vận chuyển đã được tạo",
+        description: `Đơn ${input.orderId} đang được giao bởi ${input.carrier} với mã ${input.trackingNumber}.`,
+        module: "Vận chuyển",
+        tone: "info",
+        route: "/orders",
+      });
       return serviceSuccess(shipment);
     } catch (error) {
       return serviceFailure(
@@ -96,6 +104,18 @@ export const shippingService = {
     try {
       store.setState({
         shipments: state.shipments.map((item) => (item.id === id ? updated : item)),
+      });
+      notificationService.push({
+        title: "Vận chuyển đã cập nhật",
+        description: `Trạng thái vận đơn ${shipment.trackingNumber} đã chuyển sang ${status}.`,
+        module: "Vận chuyển",
+        tone:
+          status === "DELIVERED"
+            ? "success"
+            : status === "FAILED" || status === "RETURNED"
+              ? "warning"
+              : "info",
+        route: "/orders",
       });
       return serviceSuccess(updated);
     } catch (error) {

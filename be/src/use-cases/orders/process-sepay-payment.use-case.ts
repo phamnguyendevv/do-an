@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 
+import { randomUUID } from 'crypto'
 import { DataSource, ILike } from 'typeorm'
 
 import { ISePayWebhookInput } from '@domain/entities/bookstore-order.entity'
@@ -8,6 +9,7 @@ import {
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
 import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
+import { UserStatusEnum } from '@domain/entities/status.entity'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
   IBookstoreOrderRepositoryInterface,
@@ -22,8 +24,11 @@ import {
 } from '@domain/services/redis.interface'
 
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
+import { Notification } from '@infrastructure/databases/postgresql/entities/notification.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
+import { User } from '@infrastructure/databases/postgresql/entities/user.entity'
+import { SystemSettingsService } from '@infrastructure/services/settings/system-settings.service'
 
 export interface ProcessSepayResult {
   success: boolean
@@ -43,6 +48,7 @@ export class ProcessSepayPaymentUseCase {
     @Inject(BOOKSTORE_ORDER_REPOSITORY)
     private readonly orderRepository: IBookstoreOrderRepositoryInterface,
     private readonly dataSource: DataSource,
+    private readonly settingsService: SystemSettingsService,
     @Optional()
     @Inject(REDIS_SERVICE)
     private readonly redisService?: IRedisCacheService,
@@ -94,6 +100,9 @@ export class ProcessSepayPaymentUseCase {
       payload.referenceCode || payload.code || payload.id || '',
     ).trim()
 
+    const configuredAccount = (
+      await this.settingsService.getSepaySettings()
+    ).accountNumber.trim()
     const queryRunner = this.dataSource.createQueryRunner()
     await queryRunner.connect()
     await queryRunner.startTransaction()
@@ -197,7 +206,6 @@ export class ProcessSepayPaymentUseCase {
         }
       }
 
-      const configuredAccount = (process.env.SEPAY_ACCOUNT || '').trim()
       if (
         payload.accountNumber &&
         configuredAccount &&
@@ -284,6 +292,11 @@ export class ProcessSepayPaymentUseCase {
 
       await this.redisService?.delPattern('orders:*')
 
+      await this.publishPaymentNotification(
+        updatedOrder.orderCode,
+        Number(updatedOrder.total),
+      )
+
       // Push real-time payment update via WebSocket
       this.paymentGateway?.emitPaymentSuccess({
         orderCode: updatedOrder.orderCode,
@@ -312,6 +325,46 @@ export class ProcessSepayPaymentUseCase {
       }
     } finally {
       await queryRunner.release()
+    }
+  }
+
+  private async publishPaymentNotification(
+    orderCode: string,
+    amount: number,
+  ): Promise<void> {
+    try {
+      const users = await this.dataSource.getRepository(User).find({
+        select: { id: true },
+        where: { status: UserStatusEnum.Active },
+      })
+      if (users.length === 0) return
+
+      const id = randomUUID()
+      const notificationRepository = this.dataSource.getRepository(Notification)
+      const notifications = users.map((user) =>
+        notificationRepository.create({
+          id,
+          actorId: user.id,
+          title: 'Đã nhận thanh toán đơn hàng',
+          description: `Đơn ${orderCode} đã được thanh toán thành công với số tiền ${amount.toLocaleString('vi-VN')}đ.`,
+          module: 'Đơn hàng',
+          tone: 'success',
+          read: false,
+          route: '/orders',
+        }),
+      )
+      const saved = await notificationRepository.save(notifications)
+      saved.forEach((notification) =>
+        this.paymentGateway?.emitNotification(
+          Number(notification.actorId),
+          notification,
+        ),
+      )
+    } catch (error) {
+      this.logger.error(
+        'Payment was confirmed, but its notification could not be persisted or broadcast',
+        error instanceof Error ? error.stack : String(error),
+      )
     }
   }
 }

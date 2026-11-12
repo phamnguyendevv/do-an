@@ -21,8 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBooks } from "@/hooks/use-store";
-import { inventoryService } from "@/services/inventory-service";
-import { supplierService } from "@/services/directory-service";
+import { inventoryApi } from "@/lib/inventory-api";
+import { supplierApi } from "@/lib/supplier-api";
+import { notificationService } from "@/services/notification-service";
 import type { Supplier } from "@/types";
 import { downloadInventoryImportTemplate, parseInventoryImportFile } from "@/lib/excel-service";
 import { formatCurrency, formatNumber } from "@/utils/format";
@@ -56,20 +57,17 @@ function ImportPage() {
   });
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<ProductLine[]>([{ bookId: "", quantity: 1, price: 0 }]);
+  const requestKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const excelInputRef = useRef<HTMLInputElement>(null);
-  const idempotencyKey = useRef<string | null>(null);
 
   const { data: suppliersList = [] } = useQuery<Supplier[]>({
     queryKey: ["suppliers", "list-all"],
     queryFn: async () => {
-      const result = supplierService.list();
-      if (!result.ok || !result.data) {
-        throw new Error(result.error ?? "Không thể tải nhà cung cấp.");
-      }
-      return result.data;
+      const response = await supplierApi.list({ size: 100 });
+      return response.data.map((item) => ({ ...item, id: String(item.id) }));
     },
     staleTime: 60_000,
   });
@@ -137,31 +135,55 @@ function ImportPage() {
     setError(null);
     if (submitting) return;
     setSubmitting(true);
-    idempotencyKey.current ??= crypto.randomUUID();
-    const res = await inventoryService.createImport({
-      supplier: selectedSupplier.name,
-      supplierId: selectedSupplier.id,
-      date,
-      note,
-      lines,
-      idempotencyKey: idempotencyKey.current,
-    });
-    if (!res.ok) {
-      setError(res.error ?? "Không thể tạo phiếu nhập.");
+    try {
+      const payload = {
+        supplierId: Number(selectedSupplier.id),
+        supplierName: selectedSupplier.name,
+        importDate: date,
+        ...(note ? { note } : {}),
+        lines: lines.map((line) => ({
+          bookId: line.bookId,
+          quantity: line.quantity,
+          price: line.price,
+        })),
+      };
+      const fingerprint = JSON.stringify(payload);
+      if (requestKeyRef.current?.fingerprint !== fingerprint) {
+        requestKeyRef.current = { fingerprint, key: crypto.randomUUID() };
+      }
+      const receipt = await inventoryApi.createImport({
+        ...payload,
+        idempotencyKey: requestKeyRef.current.key,
+      });
+      try {
+        notificationService.push({
+          title: "Phiếu nhập kho đã tạo",
+          description: `Nhà cung cấp ${selectedSupplier.name} đã nhập ${receipt.totalItems} cuốn sách.`,
+          module: "Kho hàng",
+          tone: "success",
+          route: "/inventory",
+          showToast: false,
+        });
+      } catch (notificationError) {
+        console.error("Could not save import receipt notification:", notificationError);
+        toast.warning("Phiếu nhập đã tạo nhưng thông báo chưa lưu được.");
+      }
+      toast.success(
+        `Đã tạo phiếu nhập ${receipt.receiptCode} (${receipt.totalItems} cuốn) — tồn kho đã cập nhật!`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory", "imports"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory", "movements"] }),
+      ]);
+      navigate({ to: "/inventory" });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Không thể tạo phiếu nhập.");
+    } finally {
       setSubmitting(false);
-      return;
     }
-    idempotencyKey.current = null;
-    setSubmitting(false);
-    toast.success(
-      `Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`,
-    );
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
-      queryClient.invalidateQueries({ queryKey: ["inventory"] }),
-      queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
-    ]);
-    navigate({ to: "/inventory" });
   };
 
   return (

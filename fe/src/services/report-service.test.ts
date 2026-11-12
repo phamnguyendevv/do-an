@@ -120,6 +120,8 @@ describe("report-service", () => {
           createdAt: new Date(2026, 9, 16).toISOString(),
         },
       ],
+      notifications: [],
+      notificationsUnreadCount: 0,
       processedOperationKeys: [],
     };
     const summary = selectInventorySummary(state);

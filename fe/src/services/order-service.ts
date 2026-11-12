@@ -13,6 +13,7 @@ import {
 import { checkAvailability, validateLines, type Result, type StockLine } from "./inventory-service";
 import { bookStatusOf, nextId, store } from "./store";
 import { serviceFailure, serviceSuccess, type ServiceErrorCode } from "./service-result";
+import { notificationService } from "./notification-service";
 
 export const orderTransitions = ORDER_STATUS_TRANSITIONS;
 const RESTOCK_STATUSES: OrderStatus[] = ["CANCELLED", "RETURNED"];
@@ -156,6 +157,13 @@ function updateOrderAndShipment(
       orders: current.orders.map((item) => (item.id === order.id ? updatedOrder : item)),
       shipments: updatedShipments,
       movements,
+    });
+    notificationService.push({
+      title: "Trạng thái đơn hàng đã thay đổi",
+      description: `Đơn ${order.orderCode ?? order.id} đã chuyển sang ${next}.`,
+      module: "Đơn hàng",
+      tone: next === "CANCELLED" || next === "FAILED" ? "warning" : "info",
+      route: "/orders",
     });
     return serviceSuccess(updatedOrder);
   } catch (error) {
@@ -317,6 +325,13 @@ export const orderService = {
           ? { processedOperationKeys: [...processedOperationKeys, `order:${input.idempotencyKey}`] }
           : {}),
       });
+      notificationService.push({
+        title: `${status === "DELIVERED" ? "Bán tại quầy" : "Đơn hàng mới"} đã được tạo`,
+        description: `${order.orderCode} cho khách ${order.customerName} với tổng ${order.total.toLocaleString("vi-VN")}đ đã được ghi nhận.`,
+        module: status === "DELIVERED" ? "Bán tại quầy (POS)" : "Đơn hàng",
+        tone: "success",
+        route: "/orders",
+      });
       return serviceSuccess(order);
     } catch (error) {
       return failure(
@@ -350,6 +365,13 @@ export const orderService = {
     try {
       store.setState({
         orders: current.orders.map((item) => (item.id === order.id ? updatedOrder : item)),
+      });
+      notificationService.push({
+        title: "Thanh toán đã được cập nhật",
+        description: `Đơn ${order.orderCode ?? order.id} được cập nhật sang trạng thái thanh toán ${payment}.`,
+        module: "Đơn hàng",
+        tone: payment === "PAID" ? "success" : "warning",
+        route: "/orders",
       });
       return serviceSuccess(updatedOrder);
     } catch (error) {

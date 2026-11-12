@@ -70,8 +70,14 @@ export class InventoryController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Tạo phiếu nhập kho (tăng tồn kho & ghi sổ kho)' })
   @CheckPolicies({ action: 'create', subject: 'ImportReceipt' })
-  async createImport(@Body() dto: CreateImportReceiptDto) {
-    return await this.createImportReceiptUseCase.execute(dto)
+  async createImport(
+    @Body() dto: CreateImportReceiptDto,
+    @User('id') createdById: number,
+  ) {
+    return await this.createImportReceiptUseCase.execute({
+      ...dto,
+      createdById,
+    })
   }
 
   @Get('import')
@@ -99,8 +105,14 @@ export class InventoryController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Tạo phiếu xuất kho (giảm tồn kho & ghi sổ kho)' })
   @CheckPolicies({ action: 'create', subject: 'ExportReceipt' })
-  async createExport(@Body() dto: CreateExportReceiptDto) {
-    return await this.createExportReceiptUseCase.execute(dto)
+  async createExport(
+    @Body() dto: CreateExportReceiptDto,
+    @User('id') createdById: number,
+  ) {
+    return await this.createExportReceiptUseCase.execute({
+      ...dto,
+      createdById,
+    })
   }
 
   @Get('export')

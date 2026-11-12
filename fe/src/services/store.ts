@@ -1,4 +1,5 @@
 import type {
+  AppNotification,
   Book,
   Category,
   Customer,
@@ -36,6 +37,8 @@ export interface AppState {
   users: User[];
   movements: StockMovement[];
   stocktakes: Stocktake[];
+  notifications: AppNotification[];
+  notificationsUnreadCount: number;
   processedOperationKeys: string[];
 }
 
@@ -290,6 +293,43 @@ function normalizeState(value: unknown): AppState {
   assertCollection(merged.movements, "biến động tồn kho", isMovement);
   assertCollection(merged.stocktakes, "phiếu kiểm kê", isStocktake);
   if (
+    !Array.isArray(merged.notifications) ||
+    !merged.notifications.every(
+      (notification) =>
+        isRecord(notification) &&
+        typeof notification["id"] === "string" &&
+        typeof notification["title"] === "string" &&
+        typeof notification["description"] === "string" &&
+        typeof notification["module"] === "string" &&
+        ["info", "success", "warning", "error"].includes(String(notification["tone"])) &&
+        typeof notification["read"] === "boolean" &&
+        typeof notification["createdAt"] === "string",
+    )
+  ) {
+    throw new Error("Danh sách thông báo không hợp lệ.");
+  }
+  const placeholderNotificationIds = new Set([
+    "notification-dashboard-ready",
+    "notification-pos-ready",
+    "notification-order-flow",
+    "notification-inventory-sync",
+    "notification-ai-alert",
+    "notification-activity-log",
+  ]);
+  merged.notifications = (merged.notifications as AppNotification[]).filter(
+    (notification) => !placeholderNotificationIds.has(notification.id),
+  );
+  if (
+    !("notificationsUnreadCount" in value) ||
+    typeof merged.notificationsUnreadCount !== "number" ||
+    !Number.isSafeInteger(merged.notificationsUnreadCount) ||
+    merged.notificationsUnreadCount < 0
+  ) {
+    merged.notificationsUnreadCount = merged.notifications.filter(
+      (notification) => !notification.read,
+    ).length;
+  }
+  if (
     !Array.isArray(merged.processedOperationKeys) ||
     !merged.processedOperationKeys.every((key) => typeof key === "string")
   ) {
@@ -337,6 +377,8 @@ function createSeedState(): AppState {
     users: mockUsers,
     movements: [],
     stocktakes: [],
+    notifications: [],
+    notificationsUnreadCount: 0,
     processedOperationKeys: [],
   });
 }

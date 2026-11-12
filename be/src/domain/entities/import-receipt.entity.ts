@@ -16,6 +16,8 @@ export class ImportReceiptEntity {
   public note?: string
   public items!: ImportReceiptItem[]
   public createdBy?: string
+  public idempotencyKey?: string
+  public requestHash?: string
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
@@ -27,6 +29,8 @@ export interface ImportReceiptLineInput {
 }
 
 export interface CreateImportReceiptInput {
+  idempotencyKey: string
+  createdById: number
   supplierId?: number
   supplierName: string
   importDate?: string

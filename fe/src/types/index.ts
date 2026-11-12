@@ -237,6 +237,19 @@ export interface User {
   updatedAt?: string | undefined;
 }
 
+export type NotificationTone = "info" | "success" | "warning" | "error";
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  description: string;
+  module: string;
+  tone: NotificationTone;
+  read: boolean;
+  createdAt: string;
+  route?: string | undefined;
+}
+
 export type OrderHistoryAction =
   | "CREATED"
   | "STATUS_CHANGE"

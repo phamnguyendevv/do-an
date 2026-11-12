@@ -16,6 +16,8 @@ export class ExportReceiptEntity {
   public note?: string
   public items!: ExportReceiptItem[]
   public createdBy?: string
+  public idempotencyKey?: string
+  public requestHash?: string
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
@@ -27,6 +29,8 @@ export interface ExportReceiptLineInput {
 }
 
 export interface CreateExportReceiptInput {
+  idempotencyKey: string
+  createdById: number
   /** ID đơn hàng liên kết (bigint). Trước đây là string, giờ là number. */
   orderId?: number
   reason: string

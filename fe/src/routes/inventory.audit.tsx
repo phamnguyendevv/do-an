@@ -32,12 +32,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/use-auth";
 import { useBooks } from "@/hooks/use-store";
 import { exportBooksToExcel } from "@/lib/excel-service";
+import { inventoryApi } from "@/lib/inventory-api";
 import { formatDateTime, formatNumber } from "@/utils/format";
 import { Can } from "@/lib/ability";
-import { stocktakeService } from "@/services/stocktake-service";
+import { mapStockAudit } from "@/hooks/use-store";
+import { notificationService } from "@/services/notification-service";
 import type { Stocktake } from "@/types";
 
 export const Route = createFileRoute("/inventory/audit")({
@@ -62,7 +63,6 @@ interface AuditDraftLine {
 }
 
 function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
-  const { user } = useAuth();
   const books = useBooks();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(
@@ -104,22 +104,28 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const result = stocktakeService.create({
+      const result = await inventoryApi.createAudit({
         title,
-        auditedBy: user?.name ?? "DEMO",
         ...(note ? { note } : {}),
         items: draftLines.map((l) => ({
-          bookId: l.bookId,
+          bookId: Number(l.bookId),
+          title: l.title,
+          systemStock: l.systemStock,
           actualStock: l.actualStock,
           ...(l.reason ? { reason: l.reason } : {}),
         })),
       });
-      if (!result.ok || !result.data) {
-        throw new Error(result.error ?? "Không thể tạo phiếu kiểm kê.");
-      }
-      return result.data;
+      return mapStockAudit(result);
     },
     onSuccess: () => {
+      notificationService.push({
+        title: "Phiếu kiểm kê đã tạo",
+        description: `${title} đã được lưu thành công.`,
+        module: "Kho hàng",
+        tone: "info",
+        route: "/inventory/audit",
+        showToast: false,
+      });
       toast.success("Tạo phiếu kiểm kê kho thành công!");
       queryClient.invalidateQueries({ queryKey: ["inventory", "audits"] });
       setOpen(false);
@@ -295,13 +301,18 @@ function DetailAuditDialog({ audit, trigger }: { audit: Stocktake; trigger: Reac
 
   const balanceMutation = useMutation({
     mutationFn: async () => {
-      const result = stocktakeService.balance(audit.id);
-      if (!result.ok || !result.data) {
-        throw new Error(result.error ?? "Không thể cân bằng kho.");
-      }
-      return result.data;
+      const result = await inventoryApi.balanceAudit(audit.id);
+      return mapStockAudit(result);
     },
     onSuccess: () => {
+      notificationService.push({
+        title: "Đã cân bằng tồn kho",
+        description: `Tồn kho đã được cập nhật theo phiếu ${audit.id}.`,
+        module: "Kho hàng",
+        tone: "success",
+        route: "/inventory",
+        showToast: false,
+      });
       toast.success(
         `Đã cân bằng kho thành công theo phiếu ${audit.id}! Tồn kho và Sổ kho đã cập nhật.`,
       );
@@ -452,11 +463,8 @@ function StockAuditPage() {
   } = useQuery({
     queryKey: ["inventory", "audits"],
     queryFn: async () => {
-      const result = stocktakeService.list();
-      if (!result.ok || !result.data) {
-        throw new Error(result.error ?? "Không thể tải phiếu kiểm kê.");
-      }
-      return result.data;
+      const result = await inventoryApi.listAudits({ page: 1, size: 100 });
+      return result.data.map(mapStockAudit);
     },
     staleTime: 10_000,
   });

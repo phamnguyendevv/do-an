@@ -211,6 +211,7 @@ export const sepayApi = {
       bank: string;
       accountNumber: string;
       accountName: string;
+      qrTemplate: "compact" | "compact2" | "qr_only" | "default";
       webhookUrl: string;
     }>(`/payment/sepay/config`);
   },

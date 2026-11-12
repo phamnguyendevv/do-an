@@ -38,7 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { store } from "@/services/store";
 import { useOrders, useShipments } from "@/hooks/use-store";
 import { orderTransitions } from "@/services/order-service";
 import { mapOrderApiItem, orderApi } from "@/lib/order-api";
@@ -49,12 +48,8 @@ import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/
 
 export const Route = createFileRoute("/orders/$orderId")({
   loader: async ({ params }) => {
-    const { orders, shipments } = store.getSnapshot();
-    const order = orders.find((o) => o.id === params.orderId || o.orderCode === params.orderId);
-    const shipment = order
-      ? (shipments.find((s) => s.orderId === order.id || s.orderId === order.orderCode) ?? null)
-      : null;
-    return { order, shipment };
+    const order = mapOrderApiItem(await orderApi.get(params.orderId));
+    return { order, shipment: null };
   },
   head: ({ loaderData }) => {
     if (!loaderData?.order) {
@@ -92,16 +87,15 @@ function OrderDetailPage() {
     retry: false,
   });
   const fetchedOrder = orderQuery.data ? mapOrderApiItem(orderQuery.data) : undefined;
-  const cachedOrder =
-    orders.find(
-      (o) =>
-        o.id === orderId ||
+  const cachedOrder = orders.find(
+    (o) =>
+      o.apiBacked &&
+      (o.id === orderId ||
         o.orderCode === orderId ||
         o.id === loaded.order?.id ||
-        o.orderCode === loaded.order?.orderCode,
-    ) ?? loaded.order;
-  const order =
-    fetchedOrder ?? (orderQuery.isError && cachedOrder?.apiBacked ? undefined : cachedOrder);
+        o.orderCode === loaded.order?.orderCode),
+  );
+  const order = fetchedOrder ?? cachedOrder ?? loaded.order;
 
   const [editOpen, setEditOpen] = useState(false);
 
@@ -445,12 +439,6 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
         ...(form.provinceId ? { provinceId: Number(form.provinceId) } : {}),
         ...(form.districtId ? { districtId: Number(form.districtId) } : {}),
         ...(form.wardCode ? { wardCode: form.wardCode } : {}),
-      });
-      const mappedOrder = mapOrderApiItem(updated);
-      store.setState({
-        orders: store
-          .getSnapshot()
-          .orders.map((item) => (item.id === mappedOrder.id ? mappedOrder : item)),
       });
       queryClient.setQueryData(["order", order.id], updated);
 
@@ -909,13 +897,7 @@ function OrderWorkflow({ order }: { order: Order }) {
     setPending(next);
     try {
       const updated = await orderApi.updateStatus(order.id, next);
-      const mappedOrder = mapOrderApiItem(updated);
       queryClient.setQueryData(["order", order.id], updated);
-      store.setState({
-        orders: store
-          .getSnapshot()
-          .orders.map((item) => (item.id === mappedOrder.id ? mappedOrder : item)),
-      });
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
       await queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
       toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[next]}`, {
@@ -934,13 +916,7 @@ function OrderWorkflow({ order }: { order: Order }) {
   const markPaid = async () => {
     try {
       const updated = await orderApi.updatePayment(order.id, "PAID");
-      const mappedOrder = mapOrderApiItem(updated);
       queryClient.setQueryData(["order", order.id], updated);
-      store.setState({
-        orders: store
-          .getSnapshot()
-          .orders.map((item) => (item.id === mappedOrder.id ? mappedOrder : item)),
-      });
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast.success("Đã ghi nhận thanh toán");
     } catch (error) {

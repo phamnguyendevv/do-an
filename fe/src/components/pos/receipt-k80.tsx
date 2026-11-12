@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { formatCurrency, formatDateTime } from "@/utils/format";
-import { storeSettingsService } from "@/services/store-settings";
+import { useSystemSettings } from "@/hooks/use-system-settings";
+import { defaultStoreBranding } from "@/services/store-settings";
 import type { OrderItem } from "@/types";
 
 export interface ReceiptK80Props {
@@ -38,7 +39,8 @@ export const ReceiptK80 = forwardRef<HTMLDivElement, ReceiptK80Props>(
     },
     ref,
   ) => {
-    const branding = storeSettingsService.getStoreBranding();
+    const settingsQuery = useSystemSettings();
+    const branding = settingsQuery.data?.branding ?? defaultStoreBranding;
 
     return (
       <div

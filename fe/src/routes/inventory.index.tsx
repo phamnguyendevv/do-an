@@ -33,7 +33,7 @@ import type { StockMovement } from "@/types";
 import { exportBooksToExcel, exportMovementsToExcel } from "@/lib/excel-service";
 import { formatCompactCurrency, formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
-import { reorderSuggestions, selectStockMovementSeries } from "@/services/report-service";
+import { buildStockMovementSeries, reorderSuggestions } from "@/services/report-service";
 import { Can } from "@/lib/ability";
 import type { Book, ExportReceipt, ImportReceipt } from "@/types";
 
@@ -253,7 +253,7 @@ function InventoryPage() {
   const movements = useStockMovements();
   const inventorySummary = useInventorySummary();
   const reorders = useMemo(() => reorderSuggestions(books), [books]);
-  const movementSeries = selectStockMovementSeries();
+  const movementSeries = buildStockMovementSeries(movements);
 
   return (
     <AppShell crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Kho hàng" }]}>

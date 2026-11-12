@@ -1,6 +1,7 @@
 import type { Book, StockMovement, Stocktake, StocktakeItem } from "@/types";
 import { store, nextId, bookStatusOf } from "./store";
 import { serviceFailure, serviceSuccess, type ServiceResult } from "./service-result";
+import { notificationService } from "./notification-service";
 
 type StocktakeInput = {
   title: string;
@@ -97,6 +98,13 @@ export const stocktakeService = {
     };
     try {
       store.setState({ stocktakes: [stocktake, ...state.stocktakes] });
+      notificationService.push({
+        title: "Phiếu kiểm kê đã tạo",
+        description: `Phiếu ${stocktake.title} đã được ghi nhận để đối chiếu tồn kho thực tế.`,
+        module: "Kho hàng",
+        tone: "info",
+        route: "/inventory",
+      });
       return serviceSuccess(stocktake);
     } catch (error) {
       return persistError(error);
@@ -153,6 +161,13 @@ export const stocktakeService = {
         books: updatedBooks,
         movements,
         stocktakes: state.stocktakes.map((item) => (item.id === id ? balanced : item)),
+      });
+      notificationService.push({
+        title: "Kiểm kê kho đã được cân bằng",
+        description: `Phiếu ${stocktake.title} đã cập nhật tồn kho và đồng bộ số liệu thực tế.`,
+        module: "Kho hàng",
+        tone: "success",
+        route: "/inventory",
       });
       return serviceSuccess(balanced);
     } catch (error) {

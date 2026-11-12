@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eye, FileSpreadsheet, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +41,8 @@ import { exportBooksToExcel } from "@/lib/excel-service";
 import { usePaginatedBooks } from "@/hooks/use-paginated-books";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCategories } from "@/hooks/use-store";
-import { booksService } from "@/services/books-service";
+import { bookApi } from "@/lib/book-api";
+import { notificationService } from "@/services/notification-service";
 import { formatCompactCurrency, formatCurrency } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
 import { Can } from "@/lib/ability";
@@ -180,7 +182,10 @@ function BooksPage() {
       value: (b) => b.title ?? "",
       cell: (b) => (
         <div className="flex items-center gap-3">
-          <BookCover book={b} className="h-13 w-9 shrink-0 rounded shadow-sm" />
+          <BookCover
+            book={b}
+            className="h-24 w-[68px] shrink-0 rounded-md shadow-sm ring-1 ring-border/60"
+          />
           <Link
             to="/books/$bookId"
             params={{ bookId: b.id }}
@@ -366,6 +371,7 @@ function BooksPage() {
 
 function BookRowActions({ book }: { book: Book }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   return (
     <>
@@ -410,8 +416,16 @@ function BookRowActions({ book }: { book: Book }) {
           confirmLabel="Xóa"
           onConfirm={async () => {
             try {
-              const result = booksService.delete(book.id);
-              if (!result.ok) throw new Error(result.error ?? "Xóa sách thất bại.");
+              await bookApi.remove(book.id);
+              notificationService.push({
+                title: "Sách đã bị xóa",
+                description: `${book.title} đã được xóa khỏi danh mục sách.`,
+                module: "Sách",
+                tone: "warning",
+                route: "/books",
+                showToast: false,
+              });
+              await queryClient.invalidateQueries({ queryKey: ["books"] });
               toast.success("Đã xóa sách");
             } catch (error) {
               toast.error(error instanceof Error ? error.message : "Xóa sách thất bại");
