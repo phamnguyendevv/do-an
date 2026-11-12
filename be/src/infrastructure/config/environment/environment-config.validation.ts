@@ -77,6 +77,22 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_REFRESH_EXPIRATION_TIME!: string
+
+  @IsString()
+  @IsOptional()
+  SEPAY_BANK?: string
+
+  @IsString()
+  @IsOptional()
+  SEPAY_ACCOUNT?: string
+
+  @IsString()
+  @IsOptional()
+  SEPAY_ACCOUNT_NAME?: string
+
+  @IsString()
+  @IsOptional()
+  SEPAY_WEBHOOK_SECRET?: string
 }
 
 export function validate(config: Record<string, unknown>) {

@@ -56,13 +56,10 @@ export const VIETNAM_BANKS: BankOption[] = [
   { code: "SeABank", name: "Ngân hàng TMCP Đông Nam Á", shortName: "SeABank" },
 ];
 
-const SEPAY_STORAGE_KEY = "bookstock_sepay_settings";
-const STORE_STORAGE_KEY = "bookstock_store_branding";
-
 export const defaultSepayConfig: SepayConfig = {
-  bank: import.meta.env.VITE_SEPAY_BANK || "MBBank",
-  accountNumber: import.meta.env.VITE_SEPAY_ACCOUNT || "00977512982",
-  accountName: import.meta.env.VITE_SEPAY_ACCOUNT_NAME || "PHAM TRUNG NGUYEN",
+  bank: import.meta.env["VITE_SEPAY_BANK"] || "MBBank",
+  accountNumber: import.meta.env["VITE_SEPAY_ACCOUNT"] || "00977512982",
+  accountName: import.meta.env["VITE_SEPAY_ACCOUNT_NAME"] || "PHAM TRUNG NGUYEN",
   qrTemplate: "compact",
 };
 
@@ -74,59 +71,11 @@ export const defaultStoreBranding: StoreBranding = {
   footerNote: "Xin cảm ơn Quý khách & Hẹn gặp lại!",
 };
 
-export const storeSettingsService = {
-  getSepayConfig(): SepayConfig {
-    if (typeof window === "undefined") return defaultSepayConfig;
-    try {
-      const raw = localStorage.getItem(SEPAY_STORAGE_KEY);
-      if (!raw) return defaultSepayConfig;
-      return { ...defaultSepayConfig, ...JSON.parse(raw) };
-    } catch {
-      return defaultSepayConfig;
-    }
-  },
-
-  saveSepayConfig(cfg: SepayConfig) {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(SEPAY_STORAGE_KEY, JSON.stringify(cfg));
-    } catch (e) {
-      console.error("Lỗi lưu cấu hình SePay vào localStorage:", e);
-    }
-  },
-
-  getStoreBranding(): StoreBranding {
-    if (typeof window === "undefined") return defaultStoreBranding;
-    try {
-      const raw = localStorage.getItem(STORE_STORAGE_KEY);
-      if (!raw) return defaultStoreBranding;
-      return { ...defaultStoreBranding, ...JSON.parse(raw) };
-    } catch {
-      return defaultStoreBranding;
-    }
-  },
-
-  saveStoreBranding(branding: StoreBranding) {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(STORE_STORAGE_KEY, JSON.stringify(branding));
-    } catch (e) {
-      console.error("Lỗi lưu thông tin cửa hàng vào localStorage:", e);
-    }
-  },
-
-  /**
-   * Tạo URL ảnh mã VietQR SePay động
-   * Format: https://qr.sepay.vn/img?bank={bank}&acc={acc}&template={template}&amount={amount}&des={des}
-   */
-  getSepayQrUrl(amount: number, orderCode: string, templateOverride?: string): string {
-    const config = this.getSepayConfig();
-    const tpl = templateOverride || config.qrTemplate || "compact";
-    const cleanOrderCode = orderCode.trim();
-    return `https://qr.sepay.vn/img?bank=${encodeURIComponent(config.bank)}&acc=${encodeURIComponent(
-      config.accountNumber,
-    )}&template=${encodeURIComponent(tpl)}&amount=${Math.max(0, Math.round(amount))}&des=${encodeURIComponent(
-      cleanOrderCode,
-    )}`;
-  },
-};
+export function buildSepayQrUrl(config: SepayConfig, amount: number, orderCode: string): string {
+  const cleanOrderCode = orderCode.trim();
+  return `https://qr.sepay.vn/img?bank=${encodeURIComponent(config.bank)}&acc=${encodeURIComponent(
+    config.accountNumber,
+  )}&template=${encodeURIComponent(config.qrTemplate)}&amount=${Math.max(0, Math.round(amount))}&des=${encodeURIComponent(
+    cleanOrderCode,
+  )}`;
+}

@@ -67,6 +67,38 @@ describe('SePay Webhook Signature Verification', () => {
     expect(isValid).toBe(true)
   })
 
+  it('should verify valid SePay HMAC-SHA256 with timestamp and sha256= prefix in x-sepay-signature', () => {
+    const timestamp = '1730012345'
+    const hmac = crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex')
+    const isValid = verifySepayWebhookSignature({
+      secret,
+      rawBody,
+      payload,
+      timestamp,
+      signature: `sha256=${hmac}`,
+    })
+    expect(isValid).toBe(true)
+  })
+
+  it('should verify valid SePay HMAC even if secret has whitespace or quotes', () => {
+    const timestamp = '1730012345'
+    const hmac = crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex')
+    const isValid = verifySepayWebhookSignature({
+      secret: `  "${secret}"  `,
+      rawBody,
+      payload,
+      timestamp,
+      signature: `sha256=${hmac}`,
+    })
+    expect(isValid).toBe(true)
+  })
+
   it('should reject invalid signature', () => {
     const isValid = verifySepayWebhookSignature({
       secret,

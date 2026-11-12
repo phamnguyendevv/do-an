@@ -2,7 +2,12 @@ import { Inject, Injectable } from '@nestjs/common'
 
 import { DataSource } from 'typeorm'
 
-import { StockAuditEntity } from '@domain/entities/stock-audit.entity'
+import { BookStatusEnum } from '@domain/entities/order-enums.entity'
+import {
+  StockAuditEntity,
+  StockAuditStatusEnum,
+} from '@domain/entities/stock-audit.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
 import {
   IRedisCacheService,
   REDIS_SERVICE,
@@ -38,7 +43,7 @@ export class BalanceStockAuditUseCase {
         throw new Error(`Không tìm thấy phiếu kiểm kê có ID = ${auditId}`)
       }
 
-      if (audit.status === 'BALANCED') {
+      if (audit.status === StockAuditStatusEnum.Balanced) {
         throw new Error('Phiếu kiểm kê này đã được cân bằng kho trước đó!')
       }
 
@@ -59,10 +64,10 @@ export class BalanceStockAuditUseCase {
 
         const newStatus =
           afterStock === 0
-            ? 'OUT_OF_STOCK'
+            ? BookStatusEnum.OutOfStock
             : afterStock <= (book.minStock || 10)
-              ? 'LOW_STOCK'
-              : 'IN_STOCK'
+              ? BookStatusEnum.LowStock
+              : BookStatusEnum.InStock
 
         book.stock = afterStock
         book.status = newStatus
@@ -73,7 +78,7 @@ export class BalanceStockAuditUseCase {
           const movement = queryRunner.manager.create(StockMovement, {
             bookId: book.id,
             bookTitle: book.title,
-            type: 'ADJUST',
+            type: StockMovementTypeEnum.Adjust,
             quantity: Math.abs(diff),
             beforeStock,
             afterStock,
@@ -85,7 +90,7 @@ export class BalanceStockAuditUseCase {
         }
       }
 
-      audit.status = 'BALANCED'
+      audit.status = StockAuditStatusEnum.Balanced
       audit.balancedAt = new Date()
       audit.auditedBy = balancedBy || audit.auditedBy
       const savedAudit = await queryRunner.manager.save(StockAudit, audit)

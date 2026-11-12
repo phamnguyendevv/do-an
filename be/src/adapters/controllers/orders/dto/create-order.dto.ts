@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import {
   IsArray,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -10,6 +11,11 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator'
+
+import {
+  OrderStatusEnum,
+  PaymentStatusEnum,
+} from '@domain/entities/order-enums.entity'
 
 export class CreateOrderItemDto {
   @ApiProperty({ example: 1, required: true })
@@ -114,13 +120,13 @@ export class CreateBookstoreOrderDto {
   @IsString()
   note?: string
 
-  @ApiProperty({ example: 'DELIVERED', required: false })
+  @ApiProperty({ enum: OrderStatusEnum, required: false })
   @IsOptional()
-  @IsString()
-  status?: string
+  @IsEnum(OrderStatusEnum)
+  status?: OrderStatusEnum
 
-  @ApiProperty({ example: 'PAID', required: false })
+  @ApiProperty({ enum: PaymentStatusEnum, required: false })
   @IsOptional()
-  @IsString()
-  payment?: string
+  @IsEnum(PaymentStatusEnum)
+  payment?: PaymentStatusEnum
 }

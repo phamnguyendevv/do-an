@@ -25,7 +25,6 @@
     "migration:create": "npm run typeorm -- migration:create ./database/migrations/$npm_config_name",
     "migration:revert": "npm run typeorm -- --d src/infrastructure/databases/postgresql/typeorm.config.ts migration:revert",
     "migration:run:prod": "npx typeorm migration:run -d dist/src/infrastructure/databases/postgresql/typeorm.config.js",
-    "prepare": "husky",
     "typeorm:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli migration:generate ./database/migrations/$MIGRATION_NAME -d src/infrastructure/databases/postgresql/typeorm.config.ts"
   },
   "dependencies": {

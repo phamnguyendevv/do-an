@@ -57,6 +57,8 @@ export function AppShell({ children, crumbs, requiredAbility, requiredRole }: Ap
         window.removeEventListener("focus", handleFocus);
       };
     }
+
+    return undefined;
   }, [hydrated, user, navigate]);
 
   if (!hydrated || !user) {

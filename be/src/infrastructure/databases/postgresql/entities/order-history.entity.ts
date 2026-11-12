@@ -3,10 +3,14 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm'
 
 import { OrderHistoryAction } from '@domain/entities/order-history.entity'
+
+import { BookstoreOrder } from './bookstore-order.entity'
 
 @Entity('order_histories')
 @Index('IDX_order_histories_order_id', ['orderId'])
@@ -22,6 +26,10 @@ export class OrderHistory {
 
   @Column({ type: 'bigint', name: 'order_id' })
   public orderId!: number
+
+  @ManyToOne(() => BookstoreOrder, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'order_id' })
+  public order?: BookstoreOrder
 
   @Column({ type: 'varchar', length: 50, name: 'order_code' })
   public orderCode!: string

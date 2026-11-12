@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 
-import { Repository } from 'typeorm'
+import { ILike, Repository } from 'typeorm'
 
 import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
 
@@ -39,9 +39,10 @@ export class PromotionsController {
   async list(@Query() query: ListPromotionsDto) {
     const page = query.page || 1
     const size = query.size || 50
+    const search = query.search?.trim()
     const [data, total] = await this.repository.findAndCount({
-      where: query.search
-        ? [{ code: query.search }, { name: query.search }]
+      where: search
+        ? [{ code: ILike(`%${search}%`) }, { name: ILike(`%${search}%`) }]
         : {},
       order: { createdAt: 'DESC' },
       take: size,

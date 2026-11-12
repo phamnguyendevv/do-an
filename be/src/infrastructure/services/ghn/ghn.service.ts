@@ -80,9 +80,8 @@ export class GhnService {
     this.apiUrl =
       this.configService.get<string>('GHN_API_URL') ||
       'https://dev-online-gateway.ghn.vn/shiip/public-api'
-    this.token =
-      this.configService.get<string>('GHN_TOKEN') ||
-      '7edb78b6-a174-11f1-a973-aee5264794df'
+    const envToken = this.configService.get<string>('GHN_TOKEN')?.trim()
+    this.token = envToken || '7edb78b6-a174-11f1-a973-aee5264794df'
     this.shopId =
       Number(this.configService.get<number>('GHN_SHOP_ID')) || 216414
     this.fromDistrictId =
@@ -285,8 +284,8 @@ export class GhnService {
     })
 
     const baseUrl = this.apiUrl.includes('dev-online-gateway')
-      ? 'https://dev-online-gateway.ghn.vn/a5/index.html?token='
-      : 'https://online-gateway.ghn.vn/a5/index.html?token='
+      ? 'https://dev-online-gateway.ghn.vn/a5/public-api/printA5?token='
+      : 'https://online-gateway.ghn.vn/a5/public-api/printA5?token='
 
     return {
       token: result.token,
@@ -308,7 +307,7 @@ export class GhnService {
    * 9. Cancel order on GHN
    */
   async cancelOrder(orderCodes: string[]) {
-    return this.request<unknown>('/v2/shipping-order/cancel', {
+    return this.request<unknown>('/v2/switch-status/cancel', {
       method: 'POST',
       body: { order_codes: orderCodes },
       withShopId: true,

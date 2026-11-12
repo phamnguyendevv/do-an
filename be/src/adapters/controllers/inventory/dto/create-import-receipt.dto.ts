@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   ValidateNested,
 } from 'class-validator'
@@ -29,6 +30,12 @@ export class ImportReceiptLineDto {
 }
 
 export class CreateImportReceiptDto {
+  @ApiProperty({
+    description: 'Mã chống tạo phiếu nhập trùng khi gửi lại yêu cầu',
+  })
+  @IsUUID()
+  idempotencyKey!: string
+
   @ApiPropertyOptional({ description: 'ID nhà cung cấp' })
   @IsOptional()
   @IsNumber()

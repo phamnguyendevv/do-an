@@ -1,67 +1,41 @@
-import {
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm'
-
-import { NotificationTypeEnum } from '@domain/entities/notification.entity'
-
-import { User } from './user.entity'
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm'
 
 @Entity('notifications')
+@Index('IDX_notifications_actor_created_at', ['actorId', 'createdAt'])
+@Index('IDX_notifications_actor_read', ['actorId', 'read'])
 export class Notification {
-  @PrimaryGeneratedColumn({
+  @PrimaryColumn({
+    type: 'varchar',
+    length: 64,
+    primaryKeyConstraintName: 'PK_notifications_id_actor_id',
+  })
+  id!: string
+
+  @PrimaryColumn({
     type: 'bigint',
-    primaryKeyConstraintName: 'PK_notifications_id',
+    name: 'actor_id',
+    primaryKeyConstraintName: 'PK_notifications_id_actor_id',
   })
-  public readonly id!: number
+  actorId!: number
 
-  @Column({ type: 'int', name: 'sender_id', nullable: true })
-  public senderId?: number
-
-  @Column({ type: 'int', name: 'receiver_id' })
-  public receiverId!: number
-
-  @Column({
-    type: 'smallint',
-    enum: NotificationTypeEnum,
-  })
-  public type!: NotificationTypeEnum
-
-  @Column({ type: 'varchar', length: 255 })
-  public title!: string
+  @Column({ type: 'varchar', length: 160 })
+  title!: string
 
   @Column({ type: 'text' })
-  public message!: string
+  description!: string
 
-  @Column({ type: 'jsonb', nullable: true })
-  public data!: object
+  @Column({ type: 'varchar', length: 80 })
+  module!: string
 
-  @Column({ type: 'boolean', default: false, name: 'is_read' })
-  public isRead!: boolean
+  @Column({ type: 'varchar', length: 16, default: 'info' })
+  tone!: string
 
-  @Column({ type: 'timestamp', nullable: true, name: 'read_at' })
-  public readAt!: Date
+  @Column({ type: 'boolean', default: false })
+  read!: boolean
 
-  @DeleteDateColumn({ name: 'deleted_at' })
-  public isDeleted!: boolean
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  route?: string
 
-  @CreateDateColumn({ name: 'created_at' })
-  public readonly createdAt!: Date
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  public readonly updatedAt!: Date
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'sender_id' })
-  public sender?: User
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'receiver_id' })
-  public receiver!: User
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt!: Date
 }

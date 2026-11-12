@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPX Express — Tạo đơn hàng mới (Trang mô phỏng kiểm tra)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f1f5f9;
+        color: #1e293b;
+        padding-bottom: 60px;
+      }
+      header {
+        background: linear-gradient(135deg, #ee4d2d 0%, #ff5722 100%);
+        color: white;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      }
+      .logo-area {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo-badge {
+        background-color: white;
+        color: #ee4d2d;
+        font-weight: 900;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 16px;
+        letter-spacing: 1px;
+      }
+      .logo-text {
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .user-info {
+        font-size: 13px;
+        opacity: 0.95;
+      }
+      .container {
+        max-width: 800px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+      }
+      .card-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+      }
+      .badge {
+        background: #fee2e2;
+        color: #b91c1c;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+      }
+      .form-group {
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 6px;
+      }
+      .required {
+        color: #ef4444;
+      }
+      input[type="text"],
+      input[type="tel"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 10px 14px;
+        font-size: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        outline: none;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+      input:focus, textarea:focus {
+        border-color: #ee4d2d;
+        box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.15);
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .btn-submit {
+        background: linear-gradient(135deg, #ee4d2d 0%, #ff5722 100%);
+        color: white;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        box-shadow: 0 4px 6px -1px rgba(238, 77, 45, 0.25);
+      }
+      .banner-notice {
+        background-color: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #166534;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo-area">
+        <div class="logo-badge">SPX</div>
+        <div class="logo-text">Shopee Xpress — Cổng Tạo Đơn Vận Chuyển</div>
+      </div>
+      <div class="user-info">
+        Shop: <strong>Hiệu Sách Bookstore (Tài khoản thử nghiệm)</strong>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="banner-notice">
+        <span>ℹ️</span>
+        <div>
+          <strong>Trang mô phỏng giao diện tạo đơn SPX Express:</strong> Tiện ích Bookstore AI sẽ tự động điền các thông tin người nhận, SĐT, địa chỉ và tiền COD vào các ô bên dưới, tô viền xanh nổi bật, và dừng 4 giây để bạn kiểm tra!
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>1. Thông tin người nhận bưu gửi</span>
+          <span class="badge">Bắt buộc</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Họ và tên người nhận <span class="required">*</span></label>
+            <input
+              type="text"
+              name="recipient_name"
+              id="recipient_name"
+              placeholder="Nhập họ và tên người nhận"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Số điện thoại người nhận <span class="required">*</span></label>
+            <input
+              type="tel"
+              name="recipient_phone"
+              id="recipient_phone"
+              placeholder="Nhập số điện thoại (10 chữ số)"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Địa chỉ giao hàng chi tiết <span class="required">*</span></label>
+          <textarea
+            name="recipient_address"
+            id="recipient_address"
+            rows="3"
+            placeholder="Số nhà, tên ngõ/hẻm, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>2. Thông tin gói hàng & Tiền thu hộ</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Tiền thu hộ (COD) (VNĐ)</label>
+            <input
+              type="number"
+              name="cod_amount"
+              id="cod_amount"
+              placeholder="Số tiền shipper cần thu hộ..."
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Khối lượng bưu kiện (gram)</label>
+            <input
+              type="number"
+              name="package_weight"
+              id="package_weight"
+              placeholder="Khối lượng (ví dụ: 500)"
+              value="500"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Ghi chú cho tài xế giao hàng</label>
+          <textarea
+            name="package_notes"
+            id="package_notes"
+            rows="2"
+            placeholder="Ghi chú đơn hàng (ví dụ: Hàng dễ vỡ, cho xem hàng...)"
+          ></textarea>
+        </div>
+      </div>
+
+      <button type="button" class="btn-submit" id="btn-submit-order">
+        Xác nhận tạo đơn hàng SPX
+      </button>
+    </div>
+
+    <!-- Script tự động điền RPA mô phỏng -->
+    <script>
+      (function() {
+        const DEFAULT_ORDER = {
+          recipientName: 'Nguyễn Minh Hằng',
+          recipientPhone: '0833392289',
+          address: 'Số nhà 5, hẻm 10/10, ngõ 521 Cổ Nhuế, Cổ Nhuế, Bắc Từ Liêm, Hà Nội',
+          codAmount: 120000,
+          weightGram: 500,
+          notes: 'Tài liệu in theo yêu cầu (Khách Zalo: Nguyễn Minh Hằng)'
+        };
+
+        function setFieldValue(id, val) {
+          const el = document.getElementById(id);
+          if (!el || val === undefined || val === null) return;
+          el.value = val;
+          el.style.transition = 'all 0.3s ease';
+          el.style.borderColor = '#10b981';
+          el.style.backgroundColor = '#ecfdf5';
+          el.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
+        }
+
+        function createCountdownBanner(data, onClose) {
+          const banner = document.createElement('div');
+          banner.id = 'spx-demo-banner';
+          banner.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            max-width: 400px;
+            background: #ffffff;
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.25), 0 8px 10px -6px rgba(0,0,0,0.1);
+            padding: 16px;
+            z-index: 999999;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px;
+            color: #1e293b;
+            animation: slideIn 0.3s ease-out;
+          `;
+
+          let timeLeft = 4;
+          let isCancelled = false;
+          let intervalId = null;
+
+          banner.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #047857; font-size: 14px;">
+                <span>⚡ Bookstore AI — RPA Điền Đơn SPX</span>
+              </div>
+              <span style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid #fde68a;">
+                Chưa bấm nút tạo đơn
+              </span>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 12px; line-height: 1.5;">
+              <div><strong>👤 Người nhận:</strong> ${data.recipientName}</div>
+              <div><strong>📞 Số điện thoại:</strong> ${data.recipientPhone}</div>
+              <div><strong>📍 Địa chỉ:</strong> ${data.address}</div>
+              <div><strong>💰 Tiền COD:</strong> <span style="color: #047857; font-weight: 700;">${Number(data.codAmount || 0).toLocaleString('vi-VN')} đ</span></div>
+              <div><strong>📦 Ghi chú:</strong> ${data.notes || 'Không có'}</div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+              <span id="countdown-text" style="color: #64748b; font-weight: 600; font-size: 12px;">
+                ⏳ Tự đóng tab sau <span id="countdown-num" style="color: #ef4444; font-size: 15px; font-weight: 800;">4</span>s...
+              </span>
+              <div style="display: flex; gap: 6px;">
+                <button id="btn-keep" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                  Giữ lại tab
+                </button>
+                <button id="btn-close" style="background: #ef4444; border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                  Đóng ngay
+                </button>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(banner);
+
+          const keepBtn = banner.querySelector('#btn-keep');
+          const closeBtn = banner.querySelector('#btn-close');
+          const countNum = banner.querySelector('#countdown-num');
+          const countText = banner.querySelector('#countdown-text');
+
+          keepBtn?.addEventListener('click', function() {
+            isCancelled = true;
+            clearInterval(intervalId);
+            if (countText) {
+              countText.innerHTML = '<span style="color: #047857; font-weight: 700;">✅ Đã giữ lại tab để bạn kiểm tra!</span>';
+            }
+            keepBtn.style.display = 'none';
+          });
+
+          closeBtn?.addEventListener('click', function() {
+            clearInterval(intervalId);
+            banner.remove();
+            onClose();
+          });
+
+          intervalId = setInterval(function() {
+            if (isCancelled) return;
+            timeLeft -= 1;
+            if (countNum) countNum.textContent = String(timeLeft);
+
+            if (timeLeft <= 0) {
+              clearInterval(intervalId);
+              banner.remove();
+              onClose();
+            }
+          }, 1000);
+        }
+
+        function closeThisTab() {
+          if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+            chrome.runtime.sendMessage({ action: 'CLOSE_TAB' }, function() {
+              window.close();
+            });
+          } else {
+            window.close();
+          }
+        }
+
+        function startAutoFill(data) {
+          setTimeout(function() {
+            setFieldValue('recipient_name', data.recipientName);
+            setFieldValue('recipient_phone', data.recipientPhone);
+            setFieldValue('recipient_address', data.address);
+            setFieldValue('cod_amount', data.codAmount);
+            setFieldValue('package_weight', data.weightGram || 500);
+            setFieldValue('package_notes', data.notes || '');
+
+            createCountdownBanner(data, closeThisTab);
+          }, 400);
+        }
+
+        // Kiểm tra dữ liệu từ extension storage hoặc dùng mẫu
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+          chrome.storage.local.get(['pendingSpxOrder'], function(res) {
+            const data = res && res.pendingSpxOrder && res.pendingSpxOrder.recipientName
+              ? res.pendingSpxOrder
+              : DEFAULT_ORDER;
+            startAutoFill(data);
+          });
+        } else {
+          startAutoFill(DEFAULT_ORDER);
+        }
+      })();
+    </script>
+  </body>
+</html>

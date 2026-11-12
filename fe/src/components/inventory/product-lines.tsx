@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { useBooks } from "@/hooks/use-store";
 import { formatCurrency } from "@/utils/format";
+import type { Book } from "@/types";
 
 export interface ProductLine {
   bookId: string;
@@ -26,6 +27,7 @@ interface ProductLinesProps {
   priceLabel?: string;
   /** Warn when the quantity exceeds current stock (export / order) */
   checkStock?: boolean;
+  books?: Book[];
 }
 
 export function ProductLines({
@@ -34,8 +36,10 @@ export function ProductLines({
   withPrice = true,
   priceLabel = "Giá nhập",
   checkStock = false,
+  books: providedBooks,
 }: ProductLinesProps) {
-  const books = useBooks();
+  const localBooks = useBooks();
+  const books = providedBooks ?? localBooks;
 
   const update = (index: number, patch: Partial<ProductLine>) =>
     onChange(lines.map((l, i) => (i === index ? { ...l, ...patch } : l)));

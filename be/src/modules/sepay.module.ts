@@ -2,28 +2,51 @@ import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import { BOOKSTORE_ORDER_REPOSITORY } from '@domain/repositories/bookstore-order.repository.interface'
+import { PAYMENT_TRANSACTION_REPOSITORY } from '@domain/repositories/payment-transaction.repository.interface'
+import { PAYMENT_GATEWAY } from '@domain/services/payment-gateway.interface'
 
 import { GetSepayOrderStatusUseCase } from '@use-cases/orders/get-sepay-order-status.use-case'
 import { ProcessSepayPaymentUseCase } from '@use-cases/orders/process-sepay-payment.use-case'
 
+import { WsJwtAuthGuard } from '@adapters/controllers/common/guards/jwt-socket.guard'
 import { SePayController } from '@adapters/controllers/payment/sepay.controller'
 import { PaymentGateway } from '@adapters/gateways/payment/payment.gateway'
 
+import { EnvironmentConfigModule } from '@infrastructure/config/environment/environment-config.module'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
+import { PaymentTransaction } from '@infrastructure/databases/postgresql/entities/payment-transaction.entity'
 import { BookstoreOrderRepository } from '@infrastructure/databases/postgresql/repositories/bookstore-order.repository'
+import { PaymentTransactionRepository } from '@infrastructure/databases/postgresql/repositories/payment-transaction.repository'
+import { JwtModule } from '@infrastructure/services/jwt/jwt.module'
+
+import { SystemSettingsModule } from './system-settings.module'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BookstoreOrder])],
+  imports: [
+    TypeOrmModule.forFeature([BookstoreOrder, PaymentTransaction]),
+    EnvironmentConfigModule,
+    JwtModule,
+    SystemSettingsModule,
+  ],
   controllers: [SePayController],
   providers: [
     {
       provide: BOOKSTORE_ORDER_REPOSITORY,
       useClass: BookstoreOrderRepository,
     },
+    {
+      provide: PAYMENT_TRANSACTION_REPOSITORY,
+      useClass: PaymentTransactionRepository,
+    },
+    {
+      provide: PAYMENT_GATEWAY,
+      useClass: PaymentGateway,
+    },
     GetSepayOrderStatusUseCase,
     ProcessSepayPaymentUseCase,
     PaymentGateway,
+    WsJwtAuthGuard,
   ],
-  exports: [PaymentGateway],
+  exports: [PaymentGateway, PAYMENT_GATEWAY],
 })
 export class SePayModule {}

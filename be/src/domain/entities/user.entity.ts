@@ -20,3 +20,28 @@ export class UserEntity {
   public readonly createdAt?: Date
   public readonly updatedAt?: Date
 }
+
+export interface ICreateUserInput {
+  username?: string
+  email: string
+  password?: string
+  role?: UserRoleEnum
+  status?: UserStatusEnum
+  phone?: string
+}
+
+export interface IChangePasswordInput {
+  oldPassword: string
+  password: string
+  confirmPassword: string
+}
+
+export interface IResetPasswordInput {
+  email: string
+  inputOtp: string
+  newPassword: string
+}
+
+export interface IUserIdInput {
+  id: number
+}

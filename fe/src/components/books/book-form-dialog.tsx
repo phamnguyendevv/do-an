@@ -1,10 +1,9 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,8 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { bookApi } from "@/lib/book-api";
-import { categoryApi } from "@/lib/category-api";
+import { bookApi, mapBookApiItem } from "@/lib/book-api";
+import { useCategories } from "@/hooks/use-store";
+import { notificationService } from "@/services/notification-service";
 import type { Book } from "@/types";
 
 export const bookFormSchema = z.object({
@@ -48,18 +48,6 @@ export const bookFormSchema = z.object({
 
 type FormValues = z.input<typeof bookFormSchema>;
 
-async function fetchCategoryOptions(): Promise<string[]> {
-  try {
-    const res = await categoryApi.list({ size: 100 });
-    const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-    return items
-      .map((item: any) => (typeof item === "string" ? item : item?.name))
-      .filter(Boolean) as string[];
-  } catch {
-    return [];
-  }
-}
-
 interface BookFormDialogProps {
   trigger: ReactNode;
   book?: Book;
@@ -68,26 +56,8 @@ interface BookFormDialogProps {
 export function BookFormDialog({ trigger, book }: BookFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const categories = useCategories().map((category) => category.name);
   const queryClient = useQueryClient();
-
-  const { data: rawCategories = [] } = useQuery({
-    queryKey: ["category-names"],
-    queryFn: fetchCategoryOptions,
-    staleTime: 60_000,
-    retry: false,
-  });
-
-  const categories = useMemo(() => {
-    if (!Array.isArray(rawCategories)) return [];
-    return Array.from(
-      new Set(
-        rawCategories
-          .map((c: any) => (typeof c === "string" ? c : c?.name))
-          .map((s) => (typeof s === "string" ? s.trim() : ""))
-          .filter((name): name is string => Boolean(name && name.length > 0)),
-      ),
-    );
-  }, [rawCategories]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(bookFormSchema),
@@ -121,13 +91,18 @@ export function BookFormDialog({ trigger, book }: BookFormDialogProps) {
         minStock: Number(values.minStock),
       };
 
-      if (book) {
-        await bookApi.update(book.id, payload);
-      } else {
-        await bookApi.create(payload);
-      }
-
+      const saved = book ? await bookApi.update(book.id, payload) : await bookApi.create(payload);
+      const savedBook = mapBookApiItem(saved);
+      notificationService.push({
+        title: book ? "Thông tin sách đã cập nhật" : "Sách mới đã được thêm",
+        description: `${savedBook.title} đã được lưu thành công.`,
+        module: "Sách",
+        tone: book ? "info" : "success",
+        route: "/books",
+        showToast: false,
+      });
       await queryClient.invalidateQueries({ queryKey: ["books"] });
+
       setOpen(false);
       toast.success(book ? "Cập nhật sách thành công" : "Thêm sách thành công");
     } catch (error) {

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 
 import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
-import { UserEntity } from '@domain/entities/user.entity'
+import { ICreateUserInput, UserEntity } from '@domain/entities/user.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   IUserRepositoryInterface,
@@ -24,14 +24,7 @@ export class CreateUserUseCase {
     private readonly exceptionsService: IException,
   ) {}
 
-  async execute(dto: {
-    username: string
-    email: string
-    password?: string
-    role?: UserRoleEnum
-    phone?: string
-    status?: UserStatusEnum
-  }): Promise<UserEntity> {
+  async execute(dto: ICreateUserInput): Promise<UserEntity> {
     const existing = await this.userRepository.getUserByEmail(dto.email)
     if (existing) {
       throw this.exceptionsService.badRequestException({

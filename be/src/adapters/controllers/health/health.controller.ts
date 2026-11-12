@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common'
+import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
 import {
   HealthCheck,
@@ -6,7 +6,7 @@ import {
   MemoryHealthIndicator,
 } from '@nestjs/terminus'
 
-@Controller('health')
+@Controller({ path: 'health', version: [VERSION_NEUTRAL, '1'] })
 @ApiTags('Health')
 export class HealthController {
   constructor(

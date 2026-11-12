@@ -44,7 +44,7 @@ export interface ServerPaginationProps {
 interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   data: T[];
-  rowKey: (row: T) => string;
+  rowKey: (row: T) => string | number;
   toolbar?: ReactNode;
   pageSize?: number;
   loading?: boolean;

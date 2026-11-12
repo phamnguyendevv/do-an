@@ -50,6 +50,49 @@ export interface WarehouseInsight {
   action?: string;
 }
 
+export interface ReorderRecommendation {
+  book: Book;
+  soldLast30Days: number;
+  averageDailySales: number;
+  daysOfStock: number;
+  targetStock: number;
+  proposedQuantity: number;
+}
+
+export function recommendReorders(
+  snap: IntelSnapshot,
+  options: { leadTimeDays?: number; targetCoverageDays?: number } = {},
+  now = Date.now(),
+): ReorderRecommendation[] {
+  const leadTimeDays = Math.max(0, options.leadTimeDays ?? 7);
+  const targetCoverageDays = Math.max(1, options.targetCoverageDays ?? 30);
+  const sold30 = soldUnits(snap.orders, 30, now);
+
+  return snap.books
+    .flatMap((book) => {
+      const soldLast30Days = sold30.get(book.id) ?? 0;
+      if (soldLast30Days <= 0) return [];
+
+      const averageDailySales = soldLast30Days / 30;
+      const daysOfStock = book.stock / averageDailySales;
+      if (book.stock > book.minStock && daysOfStock > leadTimeDays) return [];
+
+      const targetStock =
+        Math.ceil(averageDailySales * (leadTimeDays + targetCoverageDays)) + book.minStock;
+      return [
+        {
+          book,
+          soldLast30Days,
+          averageDailySales,
+          daysOfStock,
+          targetStock,
+          proposedQuantity: Math.max(1, targetStock - book.stock),
+        },
+      ];
+    })
+    .sort((a, b) => a.daysOfStock - b.daysOfStock);
+}
+
 export function analyzeWarehouse(snap: IntelSnapshot, now = Date.now()) {
   const { books, orders } = snap;
   const sold30 = soldUnits(orders, 30, now);

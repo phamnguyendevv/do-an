@@ -1,9 +1,9 @@
 import type { Book, Order } from "@/types";
-import { store } from "./store";
 import {
   analyzeWarehouse,
   buildWarehouseReport,
   matches,
+  recommendReorders,
   soldUnits,
   type IntelSnapshot,
 } from "./warehouse-intel";
@@ -42,11 +42,6 @@ export interface ToolOutcome {
   action?: PendingAction;
 }
 
-const snapshot = (): IntelSnapshot => {
-  const s = store.getSnapshot();
-  return { books: s.books, orders: s.orders, imports: s.imports, exports: s.exports };
-};
-
 const bookBrief = (b: Book) => ({
   id: b.id,
   title: b.title,
@@ -74,11 +69,11 @@ const findBook = (books: Book[], title: string) =>
   books.find((b) => title.split(/\s+/).every((w) => matches(b.title, w)));
 
 function toLines(
+  books: Book[],
   items: { title: string; quantity: number }[],
   priceOf: (b: Book) => number,
   checkStock: boolean,
 ) {
-  const books = store.getSnapshot().books;
   const lines: ActionLine[] = [];
   const warnings: string[] = [];
   for (const it of items) {
@@ -107,15 +102,13 @@ const startOfToday = () => {
   return d.getTime();
 };
 
-export function executeTool(name: string, rawArgs: string): ToolOutcome {
+export function executeTool(name: string, rawArgs: string, snap: IntelSnapshot): ToolOutcome {
   let args: Record<string, any> = {};
   try {
     args = rawArgs ? JSON.parse(rawArgs) : {};
   } catch {
     args = {};
   }
-  const snap = snapshot();
-
   switch (name) {
     case "analyze_warehouse": {
       const a = analyzeWarehouse(snap);
@@ -129,6 +122,44 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
           slowMovers: a.slowMovers.map((x) => ({ ...bookBrief(x.book), sold30d: 0 })),
           aging90: a.aging.slice(0, 15).map((x) => ({ ...bookBrief(x.book), daysIdle: x.days })),
           insights: a.insights,
+        },
+      };
+    }
+
+    case "inventory_recommendations": {
+      const limit = Math.max(1, Math.min(Number(args["limit"]) || 10, 30));
+      const leadTimeDays = Number(args["leadTimeDays"]) || 7;
+      const targetCoverageDays = Number(args["targetCoverageDays"]) || 30;
+      const recommendations = recommendReorders(snap, { leadTimeDays, targetCoverageDays });
+      const sold30 = soldUnits(snap.orders, 30);
+      const slowStock = analyzeWarehouse(snap)
+        .aging.filter((item) => (sold30.get(item.book.id) ?? 0) === 0)
+        .slice(0, limit)
+        .map(({ book, days }) => ({
+          ...bookBrief(book),
+          daysWithoutSales: days,
+          inventoryValue: book.stock * book.purchasePrice,
+          recommendation: "Tạm dừng nhập; cân nhắc khuyến mãi, combo hoặc chuyển kho.",
+        }));
+
+      return {
+        result: {
+          assumptions: {
+            salesWindowDays: 30,
+            leadTimeDays,
+            targetCoverageDays,
+            note: "Chưa tính đơn nhập đang chờ về vì hệ thống chưa có dữ liệu đó.",
+          },
+          replenish: recommendations.slice(0, limit).map((item) => ({
+            ...bookBrief(item.book),
+            soldLast30Days: item.soldLast30Days,
+            averageDailySales: Number(item.averageDailySales.toFixed(2)),
+            daysOfStock: Number(item.daysOfStock.toFixed(1)),
+            targetStock: item.targetStock,
+            proposedQuantity: item.proposedQuantity,
+            reason: `Tồn hiện tại đủ khoảng ${item.daysOfStock.toFixed(1)} ngày; bán ${item.soldLast30Days} cuốn trong 30 ngày.`,
+          })),
+          slowStock,
         },
       };
     }
@@ -228,7 +259,12 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
     }
 
     case "prepare_create_order": {
-      const { lines, warnings } = toLines(args["items"] ?? [], (b) => b.sellingPrice, true);
+      const { lines, warnings } = toLines(
+        snap.books,
+        args["items"] ?? [],
+        (b) => b.sellingPrice,
+        true,
+      );
       const action: PendingAction = {
         kind: "create_order",
         customerName: String(args["customerName"] ?? ""),
@@ -251,7 +287,12 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
     }
 
     case "prepare_import": {
-      const { lines, warnings } = toLines(args["items"] ?? [], (b) => b.purchasePrice, false);
+      const { lines, warnings } = toLines(
+        snap.books,
+        args["items"] ?? [],
+        (b) => b.purchasePrice,
+        false,
+      );
       const action: PendingAction = {
         kind: "import",
         supplier: String(args["supplier"] ?? ""),
@@ -264,7 +305,12 @@ export function executeTool(name: string, rawArgs: string): ToolOutcome {
     }
 
     case "prepare_export": {
-      const { lines, warnings } = toLines(args["items"] ?? [], (b) => b.sellingPrice, true);
+      const { lines, warnings } = toLines(
+        snap.books,
+        args["items"] ?? [],
+        (b) => b.sellingPrice,
+        true,
+      );
       const action: PendingAction = {
         kind: "export",
         reason: String(args["reason"] ?? "Xuất kho theo yêu cầu"),

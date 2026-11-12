@@ -41,8 +41,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { categoryApi, type CategoryApiItem } from "@/lib/category-api";
 import { Can } from "@/lib/ability";
+import { categoryApi } from "@/lib/category-api";
+import { fetchAllPages } from "@/lib/paginated-api";
+import type { Category } from "@/types";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -67,7 +69,7 @@ function CategoryFormDialog({
   category,
   trigger,
 }: {
-  category?: CategoryApiItem;
+  category?: Category;
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -86,10 +88,16 @@ function CategoryFormDialog({
     setSubmitting(true);
     try {
       if (category) {
-        await categoryApi.update(category.id, values);
+        await categoryApi.update(category.id, {
+          name: values.name,
+          ...(values.description !== undefined ? { description: values.description } : {}),
+        });
         toast.success("Cập nhật danh mục thành công");
       } else {
-        await categoryApi.create(values);
+        await categoryApi.create({
+          name: values.name,
+          ...(values.description !== undefined ? { description: values.description } : {}),
+        });
         toast.success("Thêm danh mục mới thành công");
       }
       await queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
@@ -179,7 +187,7 @@ function CategoryFormDialog({
   );
 }
 
-function CategoryRowActions({ category }: { category: CategoryApiItem }) {
+function CategoryRowActions({ category }: { category: Category }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -245,26 +253,13 @@ function CategoriesPage() {
   const { data: rawCategories = [], isLoading } = useQuery({
     queryKey: ["admin-categories"],
     queryFn: async () => {
-      try {
-        const res = await categoryApi.list({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items;
-      } catch {
-        return [];
-      }
+      const categories = await fetchAllPages((page, size) => categoryApi.list({ page, size }));
+      return categories.map((item) => ({ ...item, id: String(item.id) }));
     },
     staleTime: 30_000,
   });
 
-  const categories: CategoryApiItem[] = useMemo(() => {
-    if (!Array.isArray(rawCategories)) return [];
-    return rawCategories
-      .map((item: any) => {
-        if (typeof item === "string") return { id: 0, name: item, description: "" };
-        return item;
-      })
-      .filter((item): item is CategoryApiItem => Boolean(item && typeof item.name === "string"));
-  }, [rawCategories]);
+  const categories: Category[] = rawCategories;
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -276,7 +271,7 @@ function CategoriesPage() {
     );
   }, [categories, search]);
 
-  const columns: DataTableColumn<CategoryApiItem>[] = [
+  const columns: DataTableColumn<Category>[] = [
     {
       key: "id",
       header: "ID",

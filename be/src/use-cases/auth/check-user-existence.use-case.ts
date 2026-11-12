@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 
 import {
+  ICheckExistInput,
+  ICheckExistResult,
+} from '@domain/entities/auth.entity'
+import {
   IUserRepositoryInterface,
   USER_REPOSITORY,
 } from '@domain/repositories/user.repository.interface'
@@ -16,12 +20,8 @@ export class CheckUserExistenceUseCase {
     email,
     username,
     phone,
-  }: {
-    email?: string
-    username?: string
-    phone?: string
-  }) {
-    const result = {
+  }: ICheckExistInput): Promise<ICheckExistResult> {
+    const result: ICheckExistResult = {
       emailExists: false,
       usernameExists: false,
       phoneExists: false,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowDownRight,
@@ -40,15 +40,21 @@ import {
   RevenueAreaChart,
   StockMovementChart,
 } from "@/components/analytics/charts";
-import { useBooks, useExportReceipts, useImportReceipts, useOrders } from "@/hooks/use-store";
 import {
-  buildReport,
   exportFullAnalyticsReport,
+  buildReport,
   growth,
   growthHint,
   reportRanges,
   type RangeKey,
 } from "@/services/report-service";
+import {
+  useBooks,
+  useExportReceipts,
+  useImportReceipts,
+  useOrders,
+  useStockMovements,
+} from "@/hooks/use-store";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "@/utils/format";
 
 export const Route = createFileRoute("/analytics")({
@@ -71,28 +77,25 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  const orders = useOrders();
-  const books = useBooks();
-  const imports = useImportReceipts();
-  const exports = useExportReceipts();
-
   const [range, setRange] = useState<RangeKey>("30d");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const books = useBooks();
+  const orders = useOrders();
+  const imports = useImportReceipts();
+  const exports = useExportReceipts();
+  const movements = useStockMovements();
 
-  const report = useMemo(
-    () =>
-      buildReport(
-        orders,
-        books,
-        range,
-        new Date(),
-        dateRange?.from
-          ? { from: dateRange.from, ...(dateRange.to ? { to: dateRange.to } : {}) }
-          : undefined,
-        imports,
-        exports,
-      ),
-    [orders, books, range, dateRange, imports, exports],
+  const report = buildReport(
+    orders,
+    books,
+    range,
+    new Date(),
+    dateRange?.from
+      ? { from: dateRange.from, ...(dateRange.to ? { to: dateRange.to } : {}) }
+      : undefined,
+    imports,
+    exports,
+    movements,
   );
 
   const rangeLabel = dateRange?.from

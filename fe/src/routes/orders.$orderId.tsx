@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Edit2, Loader2, Package, QrCode, Truck, User } from "lucide-react";
 import { toast } from "sonner";
@@ -38,71 +38,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { store } from "@/services/store";
 import { useOrders, useShipments } from "@/hooks/use-store";
-import { orderService, orderTransitions } from "@/services/order-service";
+import { orderTransitions } from "@/services/order-service";
+import { mapOrderApiItem, orderApi } from "@/lib/order-api";
 import type { Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import { orderStatusLabel, orderStatusTone, paymentLabel, paymentTone } from "@/utils/status";
-import { orderApi } from "@/lib/order-api";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
-import type { PaymentStatus } from "@/types";
 
 export const Route = createFileRoute("/orders/$orderId")({
   loader: async ({ params }) => {
-    const { orders, shipments } = store.getSnapshot();
-    let order = orders.find((o) => o.id === params.orderId || o.orderCode === params.orderId);
-    if (!order) {
-      try {
-        const fetched = await orderApi.get(params.orderId);
-        if (fetched) {
-          order = {
-            id: String(fetched.id),
-            orderCode: fetched.orderCode,
-            customerName: fetched.customerName,
-            customerPhone: fetched.customerPhone,
-            customerAddress: fetched.customerAddress,
-            provinceId: fetched.provinceId,
-            districtId: fetched.districtId,
-            wardCode: fetched.wardCode,
-            items: (fetched.items || []).map((it) => ({
-              bookId: String(it.bookId),
-              title: it.title,
-              quantity: it.quantity,
-              price: Number(it.price),
-            })),
-            subtotal: Number(fetched.subtotal),
-            discount: Number(fetched.discount),
-            shippingFee: Number(fetched.shippingFee),
-            total: Number(fetched.total),
-            payment: fetched.payment as PaymentStatus,
-            shippingMethod: fetched.shippingMethod,
-            trackingCode: fetched.trackingCode,
-            note: fetched.note,
-            status: fetched.status as OrderStatus,
-            createdAt:
-              typeof fetched.createdAt === "string"
-                ? fetched.createdAt
-                : new Date(fetched.createdAt ?? Date.now()).toISOString(),
-          };
-          store.setState({ orders: [order, ...orders.filter((o) => o.id !== order!.id)] });
-        }
-      } catch {
-        // Order not found in backend either
-      }
-    }
-    if (!order) throw notFound();
-    const shipment =
-      shipments.find((s) => s.orderId === order!.id || s.orderId === order!.orderCode) ?? null;
-    return { order, shipment };
+    const order = mapOrderApiItem(await orderApi.get(params.orderId));
+    return { order, shipment: null };
   },
   head: ({ loaderData }) => {
-    if (!loaderData) {
+    if (!loaderData?.order) {
       return {
-        meta: [
-          { title: "Không tìm thấy đơn hàng — BookStock" },
-          { name: "robots", content: "noindex" },
-        ],
+        meta: [{ title: "Chi tiết đơn hàng — BookStock" }, { name: "robots", content: "noindex" }],
       };
     }
     const code = loaderData.order.orderCode || loaderData.order.id;
@@ -126,21 +78,55 @@ export const Route = createFileRoute("/orders/$orderId")({
 
 function OrderDetailPage() {
   const loaded = Route.useLoaderData();
+  const { orderId } = Route.useParams();
   const orders = useOrders();
   const shipments = useShipments();
-  const order =
-    orders.find(
-      (o) =>
-        o.id === loaded.order.id ||
-        o.orderCode === loaded.order.orderCode ||
-        o.id === loaded.order.orderCode ||
-        o.orderCode === loaded.order.id,
-    ) ?? loaded.order;
+  const orderQuery = useQuery({
+    queryKey: ["order", orderId],
+    queryFn: () => orderApi.get(orderId),
+    retry: false,
+  });
+  const fetchedOrder = orderQuery.data ? mapOrderApiItem(orderQuery.data) : undefined;
+  const cachedOrder = orders.find(
+    (o) =>
+      o.apiBacked &&
+      (o.id === orderId ||
+        o.orderCode === orderId ||
+        o.id === loaded.order?.id ||
+        o.orderCode === loaded.order?.orderCode),
+  );
+  const order = fetchedOrder ?? cachedOrder ?? loaded.order;
+
+  const [editOpen, setEditOpen] = useState(false);
+
+  if (!order) {
+    return (
+      <AppShell crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Đơn hàng" }]}>
+        <PageContainer>
+          <Button variant="ghost" size="sm" asChild className="-ml-2 w-fit text-muted-foreground">
+            <Link to="/orders">
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Quay lại đơn hàng
+            </Link>
+          </Button>
+          <div role={orderQuery.isError ? "alert" : "status"} className="py-16 text-center">
+            {orderQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Đang tải chi tiết đơn hàng...</p>
+            ) : (
+              <p className="text-sm text-destructive">
+                {orderQuery.error instanceof Error
+                  ? orderQuery.error.message
+                  : "Không tìm thấy đơn hàng."}
+              </p>
+            )}
+          </div>
+        </PageContainer>
+      </AppShell>
+    );
+  }
+
   const shipment =
     shipments.find((s) => s.orderId === order.id || s.orderId === order.orderCode) ??
     loaded.shipment;
-
-  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <AppShell
@@ -162,17 +148,18 @@ function OrderDetailPage() {
           description={`Tạo lúc ${formatDateTime(order.createdAt)}`}
           actions={
             <div className="flex items-center gap-2">
-              {order.status === "PENDING" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setEditOpen(true)}
-                  className="gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/40"
-                >
-                  <Edit2 className="h-4 w-4" />
-                  Sửa đơn hàng
-                </Button>
-              )}
+              {order.status === "PENDING" &&
+                !order.shippingMethod.toLowerCase().includes("pos") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditOpen(true)}
+                    className="gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/40"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Sửa đơn hàng
+                  </Button>
+                )}
               {shipment ? (
                 <Button size="sm" variant="outline" asChild>
                   <Link to="/shipping/$shippingId" params={{ shippingId: shipment.id }}>
@@ -444,31 +431,16 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
           .join(", ");
       }
 
-      const res = await orderService.updateOrderInfo(
-        order.id,
-        {
-          customerName: form.customerName,
-          customerPhone: form.customerPhone,
-          customerAddress: fullAddress,
-          note: form.note,
-          toWardCode: form.wardCode || undefined,
-          toDistrictId: form.districtId ? Number(form.districtId) : undefined,
-          weight: form.weight ? Number(form.weight) : undefined,
-          length: form.length ? Number(form.length) : undefined,
-          width: form.width ? Number(form.width) : undefined,
-          height: form.height ? Number(form.height) : undefined,
-          insuranceValue: form.insuranceValue ? Number(form.insuranceValue) : undefined,
-          paymentTypeId: (Number(form.paymentTypeId) || 2) as 1 | 2,
-          requiredNote: form.requiredNote,
-          content: form.content.trim() || undefined,
-        },
-        order.trackingCode,
-      );
-
-      if (!res.ok) {
-        toast.error(res.error ?? "Không thể cập nhật đơn hàng.");
-        return;
-      }
+      const updated = await orderApi.update(order.id, {
+        customerName: form.customerName,
+        customerPhone: form.customerPhone,
+        customerAddress: fullAddress,
+        note: form.note,
+        ...(form.provinceId ? { provinceId: Number(form.provinceId) } : {}),
+        ...(form.districtId ? { districtId: Number(form.districtId) } : {}),
+        ...(form.wardCode ? { wardCode: form.wardCode } : {}),
+      });
+      queryClient.setQueryData(["order", order.id], updated);
 
       // Làm tươi dữ liệu React Query
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -478,7 +450,35 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
         });
       }
 
-      if (hasGhn) {
+      let ghnSyncError: string | null = null;
+      if (order.trackingCode) {
+        try {
+          await ghnApi.updateOrder({
+            order_code: order.trackingCode,
+            to_name: form.customerName,
+            to_phone: form.customerPhone,
+            to_address: fullAddress,
+            ...(form.wardCode ? { to_ward_code: form.wardCode } : {}),
+            ...(form.districtId ? { to_district_id: Number(form.districtId) } : {}),
+            ...(form.weight ? { weight: Number(form.weight) } : {}),
+            ...(form.length ? { length: Number(form.length) } : {}),
+            ...(form.width ? { width: Number(form.width) } : {}),
+            ...(form.height ? { height: Number(form.height) } : {}),
+            ...(form.insuranceValue ? { insurance_value: Number(form.insuranceValue) } : {}),
+            payment_type_id: (Number(form.paymentTypeId) || 2) as 1 | 2,
+            required_note: form.requiredNote,
+            ...(form.content.trim() ? { content: form.content.trim() } : {}),
+            note: form.note,
+          });
+        } catch (error) {
+          ghnSyncError =
+            error instanceof Error ? error.message : "Không thể cập nhật trên GHN Sandbox.";
+        }
+      }
+
+      if (ghnSyncError) {
+        toast.error(`Đã lưu đơn trên BookStock nhưng đồng bộ GHN thất bại: ${ghnSyncError}`);
+      } else if (hasGhn) {
         toast.success("Cập nhật đơn hàng thành công!", {
           description: "Thông tin đã được đồng bộ lên GHN Sandbox và lưu vào hệ thống.",
         });
@@ -895,26 +895,32 @@ function OrderWorkflow({ order }: { order: Order }) {
 
   const move = async (next: OrderStatus) => {
     setPending(next);
-    const res = await orderService.updateStatus(order.id, next);
-    setPending(null);
-    if (!res.ok) {
-      toast.error(res.error ?? "Không thể cập nhật trạng thái");
-    } else {
+    try {
+      const updated = await orderApi.updateStatus(order.id, next);
+      queryClient.setQueryData(["order", order.id], updated);
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
       toast.success(`Đơn ${order.orderCode || order.id} → ${orderStatusLabel[next]}`, {
         description:
           next === "CANCELLED" || next === "RETURNED"
             ? "Số lượng đã được hoàn lại kho."
             : undefined,
       });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật trạng thái");
+    } finally {
+      setPending(null);
     }
   };
 
   const markPaid = async () => {
-    const res = await orderService.updatePayment(order.id, "PAID");
-    if (res.ok) {
+    try {
+      const updated = await orderApi.updatePayment(order.id, "PAID");
+      queryClient.setQueryData(["order", order.id], updated);
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast.success("Đã ghi nhận thanh toán");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể ghi nhận thanh toán");
     }
   };
 
