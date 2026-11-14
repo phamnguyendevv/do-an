@@ -323,10 +323,10 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ theo đúng cấu trúc trê
             : 'Địa chỉ MỚI (2 cấp: Tỉnh - Xã)',
           levels: isOld
             ? [
-              parsed.province,
-              parsed.district,
-              parsed.suggestedWard || parsed.ward,
-            ].filter(Boolean)
+                parsed.province,
+                parsed.district,
+                parsed.suggestedWard || parsed.ward,
+              ].filter(Boolean)
             : [parsed.province, parsed.ward].filter(Boolean),
           reason: isOld
             ? `${parsed.district || 'Khu vực này'} là cấp Quận/Huyện, trên cổng SPX bắt buộc chọn Địa chỉ CŨ (3 cấp).`

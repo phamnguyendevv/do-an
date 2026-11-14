@@ -48,7 +48,7 @@ export class CreateBookstoreOrderUseCase {
     @Inject(REDIS_SERVICE)
     private readonly redisService: IRedisCacheService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   async execute(dto: CreateOrderInput): Promise<BookstoreOrderEntity> {
     if (!dto.customerName || !dto.customerPhone) {
@@ -150,11 +150,11 @@ export class CreateBookstoreOrderUseCase {
 
       const customer = dto.customerId
         ? await queryRunner.manager.findOne(Customer, {
-          where: { id: dto.customerId },
-        })
+            where: { id: dto.customerId },
+          })
         : await queryRunner.manager.findOne(Customer, {
-          where: { phone: dto.customerPhone },
-        })
+            where: { phone: dto.customerPhone },
+          })
       const savedCustomer =
         customer ||
         (await queryRunner.manager.save(
@@ -190,8 +190,8 @@ export class CreateBookstoreOrderUseCase {
         (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
       const expiresAt =
         isPos &&
-          status === OrderStatusEnum.Pending &&
-          payment === PaymentStatusEnum.Unpaid
+        status === OrderStatusEnum.Pending &&
+        payment === PaymentStatusEnum.Unpaid
           ? new Date(Date.now() + 5 * 60 * 1000)
           : null
 

@@ -21,14 +21,14 @@ export type OrderApiItem = {
   shippingMethod: string;
   trackingCode?: string;
   status:
-  | "PENDING"
-  | "CONFIRMED"
-  | "PREPARING"
-  | "SHIPPING"
-  | "DELIVERED"
-  | "CANCELLED"
-  | "FAILED"
-  | "RETURNED";
+    | "PENDING"
+    | "CONFIRMED"
+    | "PREPARING"
+    | "SHIPPING"
+    | "DELIVERED"
+    | "CANCELLED"
+    | "FAILED"
+    | "RETURNED";
   note?: string;
   expiresAt?: string | null;
   createdAt: string;
