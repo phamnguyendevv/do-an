@@ -18,7 +18,8 @@
     "*://*.spx.vn/*",
     "*://*.shopee.vn/*",
     "http://localhost:3000/*",
-    "http://localhost:8000/*"
+    "http://localhost:8000/*",
+    "https://api.zymail.site/*"
   ],
   "action": {
     "default_title": "Mở Bảng Điều Khiển AI Bookstore"

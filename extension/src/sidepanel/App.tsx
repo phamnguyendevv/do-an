@@ -912,7 +912,39 @@ export function formatCleanCustomerAddress(
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'order' | 'tracking'>('chat')
-  const [backendUrl, setBackendUrl] = useState('http://localhost:3000')
+  const [backendUrl, setBackendUrlState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return (
+        localStorage.getItem('bookstore_backend_url') ||
+        'https://api.zymail.site'
+      )
+    }
+    return 'https://api.zymail.site'
+  })
+
+  const setBackendUrl = (url: string) => {
+    setBackendUrlState(url)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bookstore_backend_url', url)
+    }
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.set({ backendUrl: url })
+    }
+  }
+
+  useEffect(() => {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.get(
+        ['backendUrl'],
+        (result: Record<string, any>) => {
+          if (result?.backendUrl && typeof result.backendUrl === 'string') {
+            setBackendUrlState(result.backendUrl)
+          }
+        },
+      )
+    }
+  }, [])
+
   const [showSettings, setShowSettings] = useState(false)
 
   // Chat input

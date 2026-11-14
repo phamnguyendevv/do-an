@@ -2534,12 +2534,39 @@ export async function fillSpxOrderForm(orderData: SpxOrderData, attempt = 1) {
       const rawAddr = (orderData.address || orderData.detailAddress || '').trim()
       console.log(`[Bookstore AI] Phát hiện đơn hàng SPX bị thiếu Tỉnh hoặc Quận/Huyện ("${rawAddr}"), đang gửi vào Gemini AI kiểm tra...`)
       try {
-        const res = await fetch('http://localhost:3000/api/assistant/verify-address', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: rawAddr }),
-        })
-        if (res.ok) {
+        let targetApi = 'https://api.zymail.site'
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+          try {
+            const stored = (await chrome.storage.local.get([
+              'backendUrl',
+            ])) as Record<string, any>
+            if (stored?.backendUrl && typeof stored.backendUrl === 'string') {
+              targetApi = stored.backendUrl.replace(/\/+$/, '')
+            }
+          } catch (_) {}
+        }
+        let res: Response | null = null
+        try {
+          res = await fetch(`${targetApi}/api/assistant/verify-address`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: rawAddr }),
+          })
+        } catch {
+          if (targetApi !== 'http://localhost:3000') {
+            try {
+              res = await fetch(
+                'http://localhost:3000/api/assistant/verify-address',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ address: rawAddr }),
+                },
+              )
+            } catch (_) {}
+          }
+        }
+        if (res && res.ok) {
           const json = await res.json()
           const data = json.data || json
           if (data && data.province) {
