@@ -183,7 +183,6 @@ export const orderService = {
     shippingMethod: string;
     shippingFee: number;
     discount: number;
-    promotionCode?: string;
     trackingCode?: string;
     note?: string;
     expectedDelivery?: string;

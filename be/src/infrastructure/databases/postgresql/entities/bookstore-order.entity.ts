@@ -15,7 +15,6 @@ import {
 } from '@domain/entities/order-enums.entity'
 
 import { Customer } from './customer.entity'
-import { Promotion } from './promotion.entity'
 
 export interface BookstoreOrderItem {
   bookId: number | string
@@ -74,21 +73,6 @@ export class BookstoreOrder {
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   public discount!: number
-
-  @Column({ type: 'bigint', nullable: true, name: 'promotion_id' })
-  public promotionId?: number
-
-  @ManyToOne(() => Promotion, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'promotion_id' })
-  public promotion?: Promotion
-
-  @Column({
-    type: 'varchar',
-    length: 50,
-    nullable: true,
-    name: 'promotion_code',
-  })
-  public promotionCode?: string
 
   @Column({
     type: 'decimal',

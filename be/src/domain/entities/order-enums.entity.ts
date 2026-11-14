@@ -81,8 +81,3 @@ export enum BookStatusEnum {
   OutOfStock = 'OUT_OF_STOCK',
   Discontinued = 'DISCONTINUED',
 }
-
-export enum PromotionDiscountTypeEnum {
-  Percentage = 'PERCENTAGE',
-  Fixed = 'FIXED',
-}

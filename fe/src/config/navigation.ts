@@ -10,7 +10,6 @@ import {
   BarChart3,
   Users,
   UserRoundSearch,
-  BadgePercent,
   History,
   Settings,
   Sparkles,
@@ -105,12 +104,6 @@ export const mainNav: NavItem[] = [
     label: "Khách hàng",
     icon: UserRoundSearch,
     ability: { action: "read", subject: "Customer" },
-  },
-  {
-    href: "/promotions",
-    label: "Khuyến mãi",
-    icon: BadgePercent,
-    ability: { action: "read", subject: "Promotion" },
   },
   {
     href: "/activity-logs",

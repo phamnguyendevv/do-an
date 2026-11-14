@@ -10,7 +10,6 @@ import {
   BookStatusEnum,
   OrderStatusEnum,
   PaymentStatusEnum,
-  PromotionDiscountTypeEnum,
 } from '@domain/entities/order-enums.entity'
 import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
 import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
@@ -33,7 +32,6 @@ import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { Customer } from '@infrastructure/databases/postgresql/entities/customer.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
-import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 
 export { CreateOrderInput }
@@ -50,7 +48,7 @@ export class CreateBookstoreOrderUseCase {
     @Inject(REDIS_SERVICE)
     private readonly redisService: IRedisCacheService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async execute(dto: CreateOrderInput): Promise<BookstoreOrderEntity> {
     if (!dto.customerName || !dto.customerPhone) {
@@ -152,11 +150,11 @@ export class CreateBookstoreOrderUseCase {
 
       const customer = dto.customerId
         ? await queryRunner.manager.findOne(Customer, {
-            where: { id: dto.customerId },
-          })
+          where: { id: dto.customerId },
+        })
         : await queryRunner.manager.findOne(Customer, {
-            where: { phone: dto.customerPhone },
-          })
+          where: { phone: dto.customerPhone },
+        })
       const savedCustomer =
         customer ||
         (await queryRunner.manager.save(
@@ -168,45 +166,12 @@ export class CreateBookstoreOrderUseCase {
           }),
         ))
 
-      let promotion: Promotion | null = null
-      if (dto.promotionCode) {
-        promotion = await queryRunner.manager.findOne(Promotion, {
-          where: { code: dto.promotionCode.toUpperCase(), isActive: true },
-        })
-        const now = new Date()
-        if (
-          !promotion ||
-          promotion.startsAt > now ||
-          promotion.endsAt < now ||
-          (promotion.usageLimit !== null &&
-            promotion.usageLimit !== undefined &&
-            promotion.usedCount >= promotion.usageLimit)
-        ) {
-          throw this.exceptionsService.badRequestException({
-            type: 'PromotionValidationException',
-            message: 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn',
-          })
-        }
-      }
-
       // 4. Financial totals
       const subtotal = dto.items.reduce(
         (s, it) => s + it.price * it.quantity,
         0,
       )
-      let discount = dto.discount || 0
-      if (promotion && subtotal >= Number(promotion.minOrderValue)) {
-        const promotionDiscount =
-          promotion.discountType === PromotionDiscountTypeEnum.Percentage
-            ? (subtotal * Number(promotion.discountValue)) / 100
-            : Number(promotion.discountValue)
-        discount +=
-          promotion.maxDiscount !== null && promotion.maxDiscount !== undefined
-            ? Math.min(promotionDiscount, Number(promotion.maxDiscount))
-            : promotionDiscount
-        promotion.usedCount += 1
-        await queryRunner.manager.save(Promotion, promotion)
-      }
+      const discount = dto.discount || 0
       const shippingFee = dto.shippingFee || 0
       const total = Math.max(0, subtotal - discount + shippingFee)
 
@@ -225,8 +190,8 @@ export class CreateBookstoreOrderUseCase {
         (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
       const expiresAt =
         isPos &&
-        status === OrderStatusEnum.Pending &&
-        payment === PaymentStatusEnum.Unpaid
+          status === OrderStatusEnum.Pending &&
+          payment === PaymentStatusEnum.Unpaid
           ? new Date(Date.now() + 5 * 60 * 1000)
           : null
 
@@ -243,8 +208,6 @@ export class CreateBookstoreOrderUseCase {
         items: dto.items,
         subtotal,
         discount,
-        promotionId: promotion?.id,
-        promotionCode: promotion?.code,
         shippingFee,
         total,
         payment,

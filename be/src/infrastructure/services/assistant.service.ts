@@ -59,7 +59,9 @@ export class AssistantService {
         this.configService.get<string>('GEMINI_MODEL') ||
         process.env.GEMINI_MODEL ||
         'gemini-3.5-flash-lite'
-      this.logger.log(`AI Assistant initialized with Gemini (model: ${this.model})`)
+      this.logger.log(
+        `AI Assistant initialized with Gemini (model: ${this.model})`,
+      )
     } else if (groqKey) {
       this.client = new OpenAI({
         apiKey: groqKey,
@@ -69,7 +71,9 @@ export class AssistantService {
         this.configService.get<string>('GROQ_MODEL') ||
         process.env.GROQ_MODEL ||
         'openai/gpt-oss-120b'
-      this.logger.log(`AI Assistant initialized with Groq fallback (model: ${this.model})`)
+      this.logger.log(
+        `AI Assistant initialized with Groq fallback (model: ${this.model})`,
+      )
     } else {
       this.logger.warn(
         'GEMINI_API_KEY is not configured, AI assistant is disabled. Backend will still start.',
@@ -160,7 +164,9 @@ export class AssistantService {
                 id: call.id,
                 name: call.function.name,
                 args: call.function.arguments,
-                ...(call.extra_content ? { extra_content: call.extra_content } : {}),
+                ...(call.extra_content
+                  ? { extra_content: call.extra_content }
+                  : {}),
               },
             ]
           : [],

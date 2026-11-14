@@ -42,7 +42,6 @@ const modules = [
   "Trợ lý AI",
   "Người dùng",
   "Khách hàng",
-  "Khuyến mãi",
   "Lịch sử hoạt động",
 ];
 
@@ -233,9 +232,8 @@ function NotificationsPage() {
             rows.map((notification) => (
               <article
                 key={notification.id}
-                className={`flex items-start gap-3 border-b p-4 last:border-b-0 ${
-                  notification.read ? "" : "bg-primary/[0.035]"
-                }`}
+                className={`flex items-start gap-3 border-b p-4 last:border-b-0 ${notification.read ? "" : "bg-primary/[0.035]"
+                  }`}
               >
                 <span
                   aria-label={notification.tone}

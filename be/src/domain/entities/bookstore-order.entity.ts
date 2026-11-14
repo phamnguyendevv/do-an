@@ -50,7 +50,6 @@ export interface CreateOrderInput {
   items: CreateOrderItemInput[]
   shippingFee?: number
   discount?: number
-  promotionCode?: string
   shippingMethod?: string
   trackingCode?: string
   note?: string

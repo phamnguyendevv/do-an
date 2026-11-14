@@ -18,7 +18,9 @@ function cleanJsonString(raw: string): string {
 
 function extractVnPhoneNumber(raw: string): string {
   if (!raw) return ''
-  const normalized = raw.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\u00A0/g, ' ')
+  const normalized = raw
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
   const match = normalized.match(/(?:(?:\+?84|0)\s*[35789])(?:[\s.-]*\d){8}\b/)
   if (!match) return ''
   let cleaned = match[0].replace(/\D/g, '')
@@ -170,7 +172,9 @@ export class GeminiParserService {
 
     const candidateModels = [
       this.modelName,
-      this.modelName === 'gemini-3.5-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.5-flash-lite',
+      this.modelName === 'gemini-3.5-flash-lite'
+        ? 'gemini-3.5-flash'
+        : 'gemini-3.5-flash-lite',
     ]
 
     let lastError: Error | null = null
@@ -196,8 +200,12 @@ export class GeminiParserService {
 
         if (!response.ok) {
           const errText = await response.text()
-          this.logger.warn(`Gemini API [${model}] returned ${response.status}: ${errText}`)
-          lastError = new Error(`Gemini API returned status ${response.status}: ${errText}`)
+          this.logger.warn(
+            `Gemini API [${model}] returned ${response.status}: ${errText}`,
+          )
+          lastError = new Error(
+            `Gemini API returned status ${response.status}: ${errText}`,
+          )
           // If status is 503 or 429, try the next model
           if (response.status === 503 || response.status === 429) {
             continue
@@ -218,12 +226,16 @@ export class GeminiParserService {
       }
     }
 
-    throw lastError || new Error('Failed to call Gemini with all candidate models')
+    throw (
+      lastError || new Error('Failed to call Gemini with all candidate models')
+    )
   }
 
-  async verifyAddress(
-    address: string,
-  ): Promise<{ success: boolean; data?: AddressVerificationResult; error?: string }> {
+  async verifyAddress(address: string): Promise<{
+    success: boolean
+    data?: AddressVerificationResult
+    error?: string
+  }> {
     if (!address || !address.trim()) {
       return { success: false, error: 'Address cannot be empty' }
     }
@@ -274,21 +286,30 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ theo đúng cấu trúc trê
 
     try {
       const jsonStr = await this.callGemini(prompt)
-      const parsed: AddressVerificationResult = JSON.parse(cleanJsonString(jsonStr))
+      const parsed: AddressVerificationResult = JSON.parse(
+        cleanJsonString(jsonStr),
+      )
 
       // Sanitize province / district fallback
       if (!parsed.province || parsed.province === 'null') {
-        const fullAddrLower = `${parsed.district || ''} ${parsed.ward || ''} ${address}`.toLowerCase()
+        const fullAddrLower =
+          `${parsed.district || ''} ${parsed.ward || ''} ${address}`.toLowerCase()
         if (['quảng ngãi', 'sơn hà'].some((k) => fullAddrLower.includes(k))) {
           parsed.province = 'Quảng Ngãi'
-        } else if (['tiền giang', 'chợ gạo'].some((k) => fullAddrLower.includes(k))) {
+        } else if (
+          ['tiền giang', 'chợ gạo'].some((k) => fullAddrLower.includes(k))
+        ) {
           parsed.province = 'Tiền Giang'
-        } else if (['nam định', 'hải hậu'].some((k) => fullAddrLower.includes(k))) {
+        } else if (
+          ['nam định', 'hải hậu'].some((k) => fullAddrLower.includes(k))
+        ) {
           parsed.province = 'Nam Định'
         }
       }
 
-      const isOld = parsed.addressType === 'OLD_3_LEVEL' || (parsed.addressType !== 'NEW_2_LEVEL' && Boolean(parsed.district))
+      const isOld =
+        parsed.addressType === 'OLD_3_LEVEL' ||
+        (parsed.addressType !== 'NEW_2_LEVEL' && Boolean(parsed.district))
       parsed.addressType = isOld ? 'OLD_3_LEVEL' : 'NEW_2_LEVEL'
       if (!isOld) {
         parsed.district = ''
@@ -297,9 +318,15 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ theo đúng cấu trúc trê
       if (!parsed.spxRecommendation) {
         parsed.spxRecommendation = {
           mode: parsed.addressType,
-          modeText: isOld ? 'Địa chỉ CŨ (3 cấp: Tỉnh - Huyện - Xã)' : 'Địa chỉ MỚI (2 cấp: Tỉnh - Xã)',
+          modeText: isOld
+            ? 'Địa chỉ CŨ (3 cấp: Tỉnh - Huyện - Xã)'
+            : 'Địa chỉ MỚI (2 cấp: Tỉnh - Xã)',
           levels: isOld
-            ? [parsed.province, parsed.district, parsed.suggestedWard || parsed.ward].filter(Boolean)
+            ? [
+              parsed.province,
+              parsed.district,
+              parsed.suggestedWard || parsed.ward,
+            ].filter(Boolean)
             : [parsed.province, parsed.ward].filter(Boolean),
           reason: isOld
             ? `${parsed.district || 'Khu vực này'} là cấp Quận/Huyện, trên cổng SPX bắt buộc chọn Địa chỉ CŨ (3 cấp).`
@@ -362,17 +389,76 @@ Trả về duy nhất định dạng JSON theo mẫu:
       const parsed: ParsedAddressResult = JSON.parse(cleanJsonString(jsonStr))
 
       if (!parsed.province || parsed.province === 'null') {
-        const fullAddrLower = `${parsed.district || ''} ${parsed.ward || ''} ${parsed.detailAddress || ''}`.toLowerCase()
+        const fullAddrLower =
+          `${parsed.district || ''} ${parsed.ward || ''} ${parsed.detailAddress || ''}`.toLowerCase()
         const hcmDistricts = [
-          'bình tân', 'bình thạnh', 'tân bình', 'tân phú', 'gò vấp', 'phú nhuận', 'thủ đức',
-          'bình chánh', 'hóc môn', 'củ chi', 'nhà bè', 'cần giờ',
-          'quận 1', 'quận 2', 'quận 3', 'quận 4', 'quận 5', 'quận 6', 'quận 7', 'quận 8', 'quận 9', 'quận 10', 'quận 11', 'quận 12',
-          'q.1', 'q.2', 'q.3', 'q.4', 'q.5', 'q.6', 'q.7', 'q.8', 'q.9', 'q.10', 'q.11', 'q.12',
-          'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12',
+          'bình tân',
+          'bình thạnh',
+          'tân bình',
+          'tân phú',
+          'gò vấp',
+          'phú nhuận',
+          'thủ đức',
+          'bình chánh',
+          'hóc môn',
+          'củ chi',
+          'nhà bè',
+          'cần giờ',
+          'quận 1',
+          'quận 2',
+          'quận 3',
+          'quận 4',
+          'quận 5',
+          'quận 6',
+          'quận 7',
+          'quận 8',
+          'quận 9',
+          'quận 10',
+          'quận 11',
+          'quận 12',
+          'q.1',
+          'q.2',
+          'q.3',
+          'q.4',
+          'q.5',
+          'q.6',
+          'q.7',
+          'q.8',
+          'q.9',
+          'q.10',
+          'q.11',
+          'q.12',
+          'q1',
+          'q2',
+          'q3',
+          'q4',
+          'q5',
+          'q6',
+          'q7',
+          'q8',
+          'q9',
+          'q10',
+          'q11',
+          'q12',
         ]
         const hnDistricts = [
-          'cầu giấy', 'đống đa', 'ba đình', 'hoàn kiếm', 'hai bà trưng', 'hoàng mai', 'thanh xuân',
-          'long biên', 'nam từ liêm', 'bắc từ liêm', 'tây hồ', 'hà đông', 'thanh trì', 'gia lâm', 'đông anh', 'sóc sơn', 'hoài đức',
+          'cầu giấy',
+          'đống đa',
+          'ba đình',
+          'hoàn kiếm',
+          'hai bà trưng',
+          'hoàng mai',
+          'thanh xuân',
+          'long biên',
+          'nam từ liêm',
+          'bắc từ liêm',
+          'tây hồ',
+          'hà đông',
+          'thanh trì',
+          'gia lâm',
+          'đông anh',
+          'sóc sơn',
+          'hoài đức',
         ]
         if (hcmDistricts.some((d) => fullAddrLower.includes(d))) {
           parsed.province = 'Hồ Chí Minh'
@@ -384,21 +470,34 @@ Trả về duy nhất định dạng JSON theo mẫu:
       // TỰ ĐỘNG GỬI VÀO GEMINI KIỂM TRA & BỔ SUNG NẾU THIẾU TỈNH HOẶC QUẬN/HUYỆN
       if (!parsed.province || !parsed.district) {
         try {
-          const addrToVerify = [parsed.detailAddress, parsed.ward, parsed.district, parsed.province].filter(Boolean).join(', ') || text
+          const addrToVerify =
+            [
+              parsed.detailAddress,
+              parsed.ward,
+              parsed.district,
+              parsed.province,
+            ]
+              .filter(Boolean)
+              .join(', ') || text
           if (addrToVerify && addrToVerify.length >= 4) {
-            this.logger.log(`[Bookstore AI] parseAddress phát hiện thiếu Tỉnh hoặc Huyện ("${addrToVerify}"), tự động gửi Gemini kiểm tra...`)
+            this.logger.log(
+              `[Bookstore AI] parseAddress phát hiện thiếu Tỉnh hoặc Huyện ("${addrToVerify}"), tự động gửi Gemini kiểm tra...`,
+            )
             const verifyRes = await this.verifyAddress(addrToVerify)
             if (verifyRes.success && verifyRes.data) {
               const vd = verifyRes.data
               if (!parsed.province && vd.province) parsed.province = vd.province
               if (!parsed.district && vd.district) parsed.district = vd.district
-              if (!parsed.ward && (vd.ward || vd.suggestedWard)) parsed.ward = vd.ward || vd.suggestedWard || ''
+              if (!parsed.ward && (vd.ward || vd.suggestedWard))
+                parsed.ward = vd.ward || vd.suggestedWard || ''
               if (vd.addressType) parsed.addressType = vd.addressType
               parsed.verification = vd
             }
           }
         } catch (e: any) {
-          this.logger.warn(`[Bookstore AI] Lỗi kiểm tra bổ sung địa chỉ thiếu trong parseAddress: ${e.message}`)
+          this.logger.warn(
+            `[Bookstore AI] Lỗi kiểm tra bổ sung địa chỉ thiếu trong parseAddress: ${e.message}`,
+          )
         }
       }
 
@@ -441,7 +540,11 @@ Trả về duy nhất định dạng JSON theo mẫu:
   async parseProducts(
     text: string,
     availableBooks?: Array<{ id: string; title: string }>,
-  ): Promise<{ success: boolean; data?: ParsedProductsResult; error?: string }> {
+  ): Promise<{
+    success: boolean
+    data?: ParsedProductsResult
+    error?: string
+  }> {
     if (!text || !text.trim()) {
       return { success: false, error: 'Text cannot be empty' }
     }
@@ -505,7 +608,11 @@ Trả về duy nhất định dạng JSON theo mẫu:
 
   async analyzeChat(
     messages: ConversationMessage[],
-    availableBooks?: Array<{ id: string | number; title: string; price?: number }>,
+    availableBooks?: Array<{
+      id: string | number
+      title: string
+      price?: number
+    }>,
     customerNameHint?: string,
     customerPhoneHint?: string,
   ): Promise<{ success: boolean; data?: AnalyzeChatResult; error?: string }> {
@@ -513,9 +620,15 @@ Trả về duy nhất định dạng JSON theo mẫu:
       return { success: false, error: 'Messages cannot be empty' }
     }
 
-    if ((!availableBooks || availableBooks.length === 0) && this.bookRepository) {
+    if (
+      (!availableBooks || availableBooks.length === 0) &&
+      this.bookRepository
+    ) {
       try {
-        const result = await this.bookRepository.findBooks({ size: 100, page: 1 })
+        const result = await this.bookRepository.findBooks({
+          size: 100,
+          page: 1,
+        })
         availableBooks = (result.data || []).map((b) => ({
           id: String(b.id),
           title: b.title,
@@ -534,8 +647,9 @@ ${JSON.stringify(availableBooks)}
 `
         : 'Không có danh mục kho cụ thể, hãy trích xuất tên sách theo nội dung khách nói.'
 
-    const customerHintContext = customerNameHint || customerPhoneHint
-      ? `
+    const customerHintContext =
+      customerNameHint || customerPhoneHint
+        ? `
 Thông tin tài khoản mạng xã hội của khách hàng:
 - Tên tài khoản Zalo / Facebook: "${customerNameHint || ''}"
 - Số điện thoại phát hiện: "${customerPhoneHint || ''}"
@@ -547,7 +661,7 @@ QUY TẮC BẮT BUỘC VỀ THÔNG TIN KHÁCH HÀNG:
 2. "phone":
    - Tìm số điện thoại (10 chữ số) từ nội dung chat, danh thiếp hoặc số đính kèm ${customerPhoneHint ? `(${customerPhoneHint})` : ''}. Điền số điện thoại vào trường "phone".
 `
-      : ''
+        : ''
 
     const prompt = `
 Bạn là AI chuyên gia phân tích hội thoại bán hàng (Zalo, Facebook Messenger) cho nhà sách.
@@ -648,7 +762,11 @@ Trả về DUY NHẤT định dạng JSON:
       const customer = parsed.customer || ({} as any)
 
       // 1. Quét tìm SĐT từ tin nhắn ghim / hint / messages nếu Gemini chưa nhận diện được
-      if (!customer.phone || customer.phone === 'null' || customer.phone.includes('Chưa có')) {
+      if (
+        !customer.phone ||
+        customer.phone === 'null' ||
+        customer.phone.includes('Chưa có')
+      ) {
         for (const m of messages) {
           if (m.text.includes('[Tin nhắn ghim]')) {
             const found = extractVnPhoneNumber(m.text)
@@ -659,7 +777,8 @@ Trả về DUY NHẤT định dạng JSON:
           }
         }
         if (!customer.phone && customerPhoneHint) {
-          customer.phone = extractVnPhoneNumber(customerPhoneHint) || customerPhoneHint
+          customer.phone =
+            extractVnPhoneNumber(customerPhoneHint) || customerPhoneHint
         } else if (!customer.phone) {
           for (const m of messages) {
             const found = extractVnPhoneNumber(m.text)
@@ -677,21 +796,37 @@ Trả về DUY NHẤT định dạng JSON:
       }
 
       // 2. Mặc định tên Zalo nếu khách không nói tên riêng
-      if (!customer.customerName || customer.customerName === 'null' || customer.customerName.includes('Chưa có') || customer.customerName === 'Khách hàng') {
+      if (
+        !customer.customerName ||
+        customer.customerName === 'null' ||
+        customer.customerName.includes('Chưa có') ||
+        customer.customerName === 'Khách hàng'
+      ) {
         for (const m of messages) {
           if (m.text.includes('[Tin nhắn ghim]')) {
-            const mMatch = m.text.replace(/\[Tin nhắn ghim\]:\s*/i, '').trim().match(/^([A-ZÀ-Ỹa-zà-ỹ\s]{2,30}):/)
-            if (mMatch && !/tin nhắn|tin ghim|ghi chú|thông báo/i.test(mMatch[1])) {
+            const mMatch = m.text
+              .replace(/\[Tin nhắn ghim\]:\s*/i, '')
+              .trim()
+              .match(/^([A-ZÀ-Ỹa-zà-ỹ\s]{2,30}):/)
+            if (
+              mMatch &&
+              !/tin nhắn|tin ghim|ghi chú|thông báo/i.test(mMatch[1])
+            ) {
               customer.customerName = mMatch[1].trim()
               break
             }
           }
         }
-        if ((!customer.customerName || customer.customerName === 'Khách hàng') && customerNameHint) {
+        if (
+          (!customer.customerName || customer.customerName === 'Khách hàng') &&
+          customerNameHint
+        ) {
           customer.customerName = customerNameHint
         } else if (!customer.customerName) {
           for (const m of messages) {
-            const cardMatch = m.text.match(/\[Chia sẻ danh thiếp\]:\s*([^\-]+?)\s*-\s*SĐT:/i)
+            const cardMatch = m.text.match(
+              /\[Chia sẻ danh thiếp\]:\s*([^-]+?)\s*-\s*SĐT:/i,
+            )
             if (cardMatch) {
               customer.customerName = cardMatch[1].trim()
               break
@@ -701,40 +836,116 @@ Trả về DUY NHẤT định dạng JSON:
       }
 
       // 3. Fallback bóc tách địa chỉ từ tin nhắn ghim nếu Gemini bỏ sót địa chỉ
-      if ((!customer.province || !customer.ward || !customer.detailAddress) && messages.some((m) => m.text.includes('[Tin nhắn ghim]'))) {
+      if (
+        (!customer.province || !customer.ward || !customer.detailAddress) &&
+        messages.some((m) => m.text.includes('[Tin nhắn ghim]'))
+      ) {
         const pinMsg = messages.find((m) => m.text.includes('[Tin nhắn ghim]'))
         if (pinMsg) {
           try {
-            const rawPin = pinMsg.text.replace(/\[Tin nhắn ghim\]:\s*/i, '').trim()
+            const rawPin = pinMsg.text
+              .replace(/\[Tin nhắn ghim\]:\s*/i, '')
+              .trim()
             const addrResult = await this.parseAddress(rawPin)
             if (addrResult.success && addrResult.data) {
-              if (!customer.province) customer.province = addrResult.data.province
-              if (!customer.district) customer.district = addrResult.data.district
+              if (!customer.province)
+                customer.province = addrResult.data.province
+              if (!customer.district)
+                customer.district = addrResult.data.district
               if (!customer.ward) customer.ward = addrResult.data.ward
-              if (!customer.detailAddress) customer.detailAddress = addrResult.data.detailAddress
-              if (!customer.addressType) customer.addressType = addrResult.data.addressType
-              if (!customer.phone && addrResult.data.phone) customer.phone = addrResult.data.phone
-              if (!customer.customerName && addrResult.data.customerName) customer.customerName = addrResult.data.customerName
+              if (!customer.detailAddress)
+                customer.detailAddress = addrResult.data.detailAddress
+              if (!customer.addressType)
+                customer.addressType = addrResult.data.addressType
+              if (!customer.phone && addrResult.data.phone)
+                customer.phone = addrResult.data.phone
+              if (!customer.customerName && addrResult.data.customerName)
+                customer.customerName = addrResult.data.customerName
             }
           } catch (addrErr) {
-            this.logger.warn(`Fallback address parse from pin message failed: ${addrErr}`)
+            this.logger.warn(
+              `Fallback address parse from pin message failed: ${addrErr instanceof Error ? addrErr.message : String(addrErr)}`,
+            )
           }
         }
       }
 
       // 3.5 Tự động suy luận Tỉnh/Thành phố nếu khách chỉ nhắc Quận/Huyện quen thuộc (ví dụ "Bình Tân", "Gò Vấp", "Cầu Giấy"...)
-      if (!customer.province || customer.province === 'null' || customer.province.includes('Chưa có')) {
-        const fullAddrLower = `${customer.district || ''} ${customer.ward || ''} ${customer.rawAddress || ''} ${customer.detailAddress || ''}`.toLowerCase()
+      if (
+        !customer.province ||
+        customer.province === 'null' ||
+        customer.province.includes('Chưa có')
+      ) {
+        const fullAddrLower =
+          `${customer.district || ''} ${customer.ward || ''} ${customer.rawAddress || ''} ${customer.detailAddress || ''}`.toLowerCase()
         const hcmDistricts = [
-          'bình tân', 'bình thạnh', 'tân bình', 'tân phú', 'gò vấp', 'phú nhuận', 'thủ đức',
-          'bình chánh', 'hóc môn', 'củ chi', 'nhà bè', 'cần giờ',
-          'quận 1', 'quận 2', 'quận 3', 'quận 4', 'quận 5', 'quận 6', 'quận 7', 'quận 8', 'quận 9', 'quận 10', 'quận 11', 'quận 12',
-          'q.1', 'q.2', 'q.3', 'q.4', 'q.5', 'q.6', 'q.7', 'q.8', 'q.9', 'q.10', 'q.11', 'q.12',
-          'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12',
+          'bình tân',
+          'bình thạnh',
+          'tân bình',
+          'tân phú',
+          'gò vấp',
+          'phú nhuận',
+          'thủ đức',
+          'bình chánh',
+          'hóc môn',
+          'củ chi',
+          'nhà bè',
+          'cần giờ',
+          'quận 1',
+          'quận 2',
+          'quận 3',
+          'quận 4',
+          'quận 5',
+          'quận 6',
+          'quận 7',
+          'quận 8',
+          'quận 9',
+          'quận 10',
+          'quận 11',
+          'quận 12',
+          'q.1',
+          'q.2',
+          'q.3',
+          'q.4',
+          'q.5',
+          'q.6',
+          'q.7',
+          'q.8',
+          'q.9',
+          'q.10',
+          'q.11',
+          'q.12',
+          'q1',
+          'q2',
+          'q3',
+          'q4',
+          'q5',
+          'q6',
+          'q7',
+          'q8',
+          'q9',
+          'q10',
+          'q11',
+          'q12',
         ]
         const hnDistricts = [
-          'cầu giấy', 'đống đa', 'ba đình', 'hoàn kiếm', 'hai bà trưng', 'hoàng mai', 'thanh xuân',
-          'long biên', 'nam từ liêm', 'bắc từ liêm', 'tây hồ', 'hà đông', 'thanh trì', 'gia lâm', 'đông anh', 'sóc sơn', 'hoài đức',
+          'cầu giấy',
+          'đống đa',
+          'ba đình',
+          'hoàn kiếm',
+          'hai bà trưng',
+          'hoàng mai',
+          'thanh xuân',
+          'long biên',
+          'nam từ liêm',
+          'bắc từ liêm',
+          'tây hồ',
+          'hà đông',
+          'thanh trì',
+          'gia lâm',
+          'đông anh',
+          'sóc sơn',
+          'hoài đức',
         ]
 
         if (hcmDistricts.some((d) => fullAddrLower.includes(d))) {
@@ -745,20 +956,39 @@ Trả về DUY NHẤT định dạng JSON:
       }
 
       // TỰ ĐỘNG GỬI VÀO GEMINI KIỂM TRA & SUY LUẬN BỔ SUNG NẾU THIẾU TỈNH HOẶC QUẬN/HUYỆN
-      if (!customer.province || (!customer.district && customer.addressType === 'OLD_3_LEVEL') || !customer.district) {
-        const addrToVerify = customer.rawAddress || [customer.detailAddress, customer.ward, customer.district, customer.province].filter(Boolean).join(', ')
+      if (
+        !customer.province ||
+        (!customer.district && customer.addressType === 'OLD_3_LEVEL') ||
+        !customer.district
+      ) {
+        const addrToVerify =
+          customer.rawAddress ||
+          [
+            customer.detailAddress,
+            customer.ward,
+            customer.district,
+            customer.province,
+          ]
+            .filter(Boolean)
+            .join(', ')
         if (addrToVerify && addrToVerify.length >= 4) {
           try {
-            this.logger.log(`[Bookstore AI] analyzeChat phát hiện thiếu Tỉnh hoặc Huyện ("${addrToVerify}"), tự động gửi Gemini verifyAddress kiểm tra...`)
+            this.logger.log(
+              `[Bookstore AI] analyzeChat phát hiện thiếu Tỉnh hoặc Huyện ("${addrToVerify}"), tự động gửi Gemini verifyAddress kiểm tra...`,
+            )
             const verifyRes = await this.verifyAddress(addrToVerify)
             if (verifyRes.success && verifyRes.data) {
               const vd = verifyRes.data
               if (!customer.province && vd.province) {
-                this.logger.log(`[Bookstore AI] Gemini AI đã suy luận thành công Tỉnh: "${vd.province}"`)
+                this.logger.log(
+                  `[Bookstore AI] Gemini AI đã suy luận thành công Tỉnh: "${vd.province}"`,
+                )
                 customer.province = vd.province
               }
               if (!customer.district && vd.district) {
-                this.logger.log(`[Bookstore AI] Gemini AI đã suy luận thành công Quận/Huyện: "${vd.district}"`)
+                this.logger.log(
+                  `[Bookstore AI] Gemini AI đã suy luận thành công Quận/Huyện: "${vd.district}"`,
+                )
                 customer.district = vd.district
               }
               if (!customer.ward && (vd.ward || vd.suggestedWard)) {
@@ -770,7 +1000,9 @@ Trả về DUY NHẤT định dạng JSON:
               customer.verification = vd
             }
           } catch (e: any) {
-            this.logger.warn(`[Bookstore AI] Lỗi khi tự động gửi Gemini kiểm tra địa chỉ thiếu trong analyzeChat: ${e.message}`)
+            this.logger.warn(
+              `[Bookstore AI] Lỗi khi tự động gửi Gemini kiểm tra địa chỉ thiếu trong analyzeChat: ${e.message}`,
+            )
           }
         }
       }
@@ -778,7 +1010,9 @@ Trả về DUY NHẤT định dạng JSON:
       // Bóc tách giá từ tên sách nếu item.price chưa có (ví dụ: "combo 195k", "bản màu combo 195k" -> 195000)
       for (const it of parsed.items || []) {
         if (!it.price || it.price <= 0) {
-          const m = `${it.bookTitle} ${it.originalText || ''}`.match(/(\d+)\s*(k|nghìn|ngàn)\b/i)
+          const m = `${it.bookTitle} ${it.originalText || ''}`.match(
+            /(\d+)\s*(k|nghìn|ngàn)\b/i,
+          )
           if (m) {
             it.price = Number(m[1]) * 1000
           }
@@ -857,11 +1091,27 @@ Trả về DUY NHẤT định dạng JSON:
           .replace(/^(quận|huyện|thị xã|q|h|tx)\s+/i, '')
           .trim()
 
-        if (cleanWard === cleanDist || cleanWard.includes(cleanDist) || cleanDist.includes(cleanWard)) {
-          const rawChat = messages.map((m) => m.text).join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          const matches = rawChat.match(new RegExp(cleanWard.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
+        if (
+          cleanWard === cleanDist ||
+          cleanWard.includes(cleanDist) ||
+          cleanDist.includes(cleanWard)
+        ) {
+          const rawChat = messages
+            .map((m) => m.text)
+            .join(' ')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+          const matches =
+            rawChat.match(
+              new RegExp(cleanWard.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+            ) || []
           if (matches.length <= 1) {
-            if (/^(xã|phường|thị trấn)\b/i.test(customer.ward) || rawChat.includes('xã ' + cleanWard) || rawChat.includes('phường ' + cleanWard)) {
+            if (
+              /^(xã|phường|thị trấn)\b/i.test(customer.ward) ||
+              rawChat.includes('xã ' + cleanWard) ||
+              rawChat.includes('phường ' + cleanWard)
+            ) {
               customer.district = ''
               customer.addressType = 'NEW_2_LEVEL'
             } else {
@@ -872,7 +1122,9 @@ Trả về DUY NHẤT định dạng JSON:
       }
 
       if (!customer.addressType || customer.district) {
-        customer.addressType = customer.district ? 'OLD_3_LEVEL' : (customer.addressType || 'NEW_2_LEVEL')
+        customer.addressType = customer.district
+          ? 'OLD_3_LEVEL'
+          : customer.addressType || 'NEW_2_LEVEL'
       }
 
       const isOld = customer.addressType === 'OLD_3_LEVEL'
@@ -892,7 +1144,9 @@ Trả về DUY NHẤT định dạng JSON:
         detailAddress: customer.detailAddress || '',
       }
 
-      let missing = Array.isArray(parsed.missingFields) ? parsed.missingFields : []
+      let missing = Array.isArray(parsed.missingFields)
+        ? parsed.missingFields
+        : []
       if (customer.customerName) {
         missing = missing.filter((f) => f !== 'customerName')
       }
@@ -915,7 +1169,8 @@ Trả về DUY NHẤT định dạng JSON:
         missing = missing.filter((f) => f !== 'items')
       }
       parsed.missingFields = missing
-      parsed.isReadyToCreateOrder = missing.length === 0 && (parsed.items || []).length > 0
+      parsed.isReadyToCreateOrder =
+        missing.length === 0 && (parsed.items || []).length > 0
 
       return {
         success: true,

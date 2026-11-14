@@ -18,22 +18,22 @@ export interface ActionLine {
 
 export type PendingAction =
   | {
-      kind: "create_order";
-      customerName: string;
-      customerPhone: string;
-      customerAddress: string;
-      lines: ActionLine[];
-      total: number;
-      warnings: string[];
-    }
+    kind: "create_order";
+    customerName: string;
+    customerPhone: string;
+    customerAddress: string;
+    lines: ActionLine[];
+    total: number;
+    warnings: string[];
+  }
   | {
-      kind: "import";
-      supplier: string;
-      note: string;
-      lines: ActionLine[];
-      total: number;
-      warnings: string[];
-    }
+    kind: "import";
+    supplier: string;
+    note: string;
+    lines: ActionLine[];
+    total: number;
+    warnings: string[];
+  }
   | { kind: "export"; reason: string; orderId: string; lines: ActionLine[]; warnings: string[] }
   | { kind: "navigate"; path: string; label: string };
 
@@ -139,7 +139,7 @@ export function executeTool(name: string, rawArgs: string, snap: IntelSnapshot):
           ...bookBrief(book),
           daysWithoutSales: days,
           inventoryValue: book.stock * book.purchasePrice,
-          recommendation: "Tạm dừng nhập; cân nhắc khuyến mãi, combo hoặc chuyển kho.",
+          recommendation: "Tạm dừng nhập; cân nhắc giảm giá, combo hoặc chuyển kho.",
         }));
 
       return {

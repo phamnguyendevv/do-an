@@ -105,7 +105,9 @@ export class CustomersController {
     const phone = dto.phone.replace(/\D/g, '').replace(/^84/, '0')
     const existing = await this.repository.findOneBy({ phone })
     if (existing) {
-      throw new BadRequestException('Số điện thoại này đã tồn tại trong danh sách khách hàng')
+      throw new BadRequestException(
+        'Số điện thoại này đã tồn tại trong danh sách khách hàng',
+      )
     }
     return this.repository.save(this.repository.create({ ...dto, phone }))
   }
@@ -120,7 +122,9 @@ export class CustomersController {
       const phone = dto.phone.replace(/\D/g, '').replace(/^84/, '0')
       const existing = await this.repository.findOneBy({ phone })
       if (existing && Number(existing.id) !== id) {
-        throw new BadRequestException('Số điện thoại này đã thuộc về khách hàng khác')
+        throw new BadRequestException(
+          'Số điện thoại này đã thuộc về khách hàng khác',
+        )
       }
       dto.phone = phone
     }

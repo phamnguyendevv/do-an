@@ -21,21 +21,27 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsEmail({}, { message: 'Email không đúng định dạng' })
   email?: string
 
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsString()
   address?: string
 
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsString()
   note?: string
@@ -54,21 +60,27 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsEmail({}, { message: 'Email không đúng định dạng' })
   email?: string
 
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsString()
   address?: string
 
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsString()
   note?: string

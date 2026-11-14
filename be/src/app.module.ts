@@ -16,7 +16,6 @@ import { GhnModule } from '@modules/ghn.module'
 import { InventoryModule } from '@modules/inventory.module'
 import { NotificationsModule } from '@modules/notifications.module'
 import { OrdersModule } from '@modules/orders.module'
-import { PromotionsModule } from '@modules/promotions.module'
 import { RevenueModule } from '@modules/revenue.module'
 import { SePayModule } from '@modules/sepay.module'
 import { SuppliersModule } from '@modules/supplier.module'
@@ -72,7 +71,6 @@ import { HealthModule } from './modules/health.module'
     SePayModule,
     RevenueModule,
     AssistantModule,
-    PromotionsModule,
     ActivityLogsModule,
     NotificationsModule,
     SystemSettingsModule,

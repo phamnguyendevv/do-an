@@ -10,13 +10,14 @@ import {
 } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 
-import { CreateBookstoreOrderDto } from '@adapters/controllers/orders/dto/create-order.dto'
-
 import {
   BOOKSTORE_ORDER_REPOSITORY,
   IBookstoreOrderRepositoryInterface,
 } from '@domain/repositories/bookstore-order.repository.interface'
+
 import { CreateBookstoreOrderUseCase } from '@use-cases/orders/create-order.use-case'
+
+import { CreateBookstoreOrderDto } from '@adapters/controllers/orders/dto/create-order.dto'
 
 import {
   AssistantReply,
@@ -50,7 +51,10 @@ export class AssistantController {
   ) {}
 
   @Get('provinces')
-  @ApiOperation({ summary: 'Lấy danh sách 63 Tỉnh/Thành phố của Việt Nam (kèm bí danh TPHCM, HN...)' })
+  @ApiOperation({
+    summary:
+      'Lấy danh sách 63 Tỉnh/Thành phố của Việt Nam (kèm bí danh TPHCM, HN...)',
+  })
   async getProvinces() {
     return await this.ghnService.getProvinces()
   }
@@ -88,19 +92,25 @@ export class AssistantController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Detailed address verification, AI overview, and SPX recommendation',
+    description:
+      'Detailed address verification, AI overview, and SPX recommendation',
   })
-  async verifyAddress(
-    @Body() body: { address: string },
-  ): Promise<{ success: boolean; data?: AddressVerificationResult; error?: string }> {
+  async verifyAddress(@Body() body: { address: string }): Promise<{
+    success: boolean
+    data?: AddressVerificationResult
+    error?: string
+  }> {
     return await this.geminiParserService.verifyAddress(body.address)
   }
 
   @Post('parse-address')
-  @ApiOperation({ summary: 'Parse customer and shipping address using Gemini AI' })
+  @ApiOperation({
+    summary: 'Parse customer and shipping address using Gemini AI',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Parsed customer name, phone, and Vietnamese address hierarchy',
+    description:
+      'Parsed customer name, phone, and Vietnamese address hierarchy',
   })
   async parseAddress(
     @Body() body: { text: string },
@@ -115,8 +125,16 @@ export class AssistantController {
     description: 'Parsed books and quantities matched against inventory',
   })
   async parseProducts(
-    @Body() body: { text: string; books?: Array<{ id: string; title: string }> },
-  ): Promise<{ success: boolean; data?: ParsedProductsResult; error?: string }> {
+    @Body()
+    body: {
+      text: string
+      books?: Array<{ id: string; title: string }>
+    },
+  ): Promise<{
+    success: boolean
+    data?: ParsedProductsResult
+    error?: string
+  }> {
     return await this.geminiParserService.parseProducts(body.text, body.books)
   }
 
@@ -155,9 +173,7 @@ export class AssistantController {
     status: 200,
     description: 'Order created and synced to bookstore orders database',
   })
-  async createOrderFromExtension(
-    @Body() dto: CreateBookstoreOrderDto,
-  ) {
+  async createOrderFromExtension(@Body() dto: CreateBookstoreOrderDto) {
     const order = await this.createOrderUseCase.execute({
       ...dto,
       actor: 'Extension / Zalo AI Assistant',
@@ -191,7 +207,10 @@ export class AssistantController {
     }
     const order = await this.orderRepository.findOrderByCode(body.orderCode)
     if (!order) {
-      return { success: false, error: `Không tìm thấy đơn hàng mã ${body.orderCode}` }
+      return {
+        success: false,
+        error: `Không tìm thấy đơn hàng mã ${body.orderCode}`,
+      }
     }
     await this.orderRepository.updateOrder(
       { id: order.id },

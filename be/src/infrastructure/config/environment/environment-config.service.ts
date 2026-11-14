@@ -120,7 +120,8 @@ export class EnvironmentConfigService
 
   getSepayAccountName(): string {
     return (
-      this.configService.get<string>('SEPAY_ACCOUNT_NAME') || 'PHAM TRUNG NGUYEN'
+      this.configService.get<string>('SEPAY_ACCOUNT_NAME') ||
+      'PHAM TRUNG NGUYEN'
     )
   }
 

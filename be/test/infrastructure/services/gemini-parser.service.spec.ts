@@ -84,7 +84,10 @@ describe('GeminiParserService', () => {
 
     const messages: ConversationMessage[] = [
       { sender: 'customer', text: 'Ship cho mình 1 cuốn HSK 5 nhé' },
-      { sender: 'customer', text: 'Mình tên Nguyễn Văn A, SĐT 0912345678, số 12 Lê Duẩn, Bến Nghé, Q1, HCM' },
+      {
+        sender: 'customer',
+        text: 'Mình tên Nguyễn Văn A, SĐT 0912345678, số 12 Lê Duẩn, Bến Nghé, Q1, HCM',
+      },
     ]
 
     const result = await service.analyzeChat(messages, [

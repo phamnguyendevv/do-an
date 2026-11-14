@@ -21,14 +21,14 @@ export type OrderApiItem = {
   shippingMethod: string;
   trackingCode?: string;
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PREPARING"
-    | "SHIPPING"
-    | "DELIVERED"
-    | "CANCELLED"
-    | "FAILED"
-    | "RETURNED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PREPARING"
+  | "SHIPPING"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "FAILED"
+  | "RETURNED";
   note?: string;
   expiresAt?: string | null;
   createdAt: string;
@@ -116,7 +116,6 @@ export const orderApi = {
     }>;
     shippingFee?: number;
     discount?: number;
-    promotionCode?: string;
     shippingMethod?: string;
     trackingCode?: string;
     note?: string;
