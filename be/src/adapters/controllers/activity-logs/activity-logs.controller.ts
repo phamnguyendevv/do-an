@@ -21,22 +21,34 @@ export class ActivityLogsController {
   @Get()
   @CheckPolicies({ action: 'read', subject: 'ActivityLog' })
   async list(@Query() query: ListActivityLogsDto) {
-    const page = query.page || 1
-    const size = query.size || 50
+    const page = Number(query.page) || 1
+    const size = Number(query.size) || 20
     const queryBuilder = this.repository
       .createQueryBuilder('log')
-      .orderBy('log.created_at', 'DESC')
+      .select([
+        'log.id',
+        'log.actorId',
+        'log.actorName',
+        'log.actorRole',
+        'log.action',
+        'log.resourceType',
+        'log.resourceId',
+        'log.description',
+        'log.ipAddress',
+        'log.createdAt',
+      ])
+      .orderBy('log.createdAt', 'DESC')
       .take(size)
       .skip((page - 1) * size)
     if (query.action)
       queryBuilder.andWhere('log.action = :action', { action: query.action })
     if (query.resourceType)
-      queryBuilder.andWhere('log.resource_type = :resourceType', {
+      queryBuilder.andWhere('log.resourceType = :resourceType', {
         resourceType: query.resourceType,
       })
     if (query.search)
       queryBuilder.andWhere(
-        '(log.description ILIKE :search OR log.actor_name ILIKE :search)',
+        '(log.description ILIKE :search OR log.actorName ILIKE :search)',
         { search: `%${query.search}%` },
       )
     const [data, total] = await queryBuilder.getManyAndCount()
