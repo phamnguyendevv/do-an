@@ -140,6 +140,13 @@ export class GeminiParserService {
   private readonly logger = new Logger(GeminiParserService.name)
   private readonly apiKey: string
   private readonly modelName: string
+  private cachedBooks: Array<{
+    id: string | number
+    title: string
+    price?: number
+  }> = []
+  private lastBooksFetchTime = 0
+  private readonly booksCacheTtlMs = 5 * 60 * 1000 // 5 minutes cache
 
   constructor(
     private configService: ConfigService,
@@ -624,18 +631,30 @@ Trả về duy nhất định dạng JSON theo mẫu:
       (!availableBooks || availableBooks.length === 0) &&
       this.bookRepository
     ) {
-      try {
-        const result = await this.bookRepository.findBooks({
-          size: 100,
-          page: 1,
-        })
-        availableBooks = (result.data || []).map((b) => ({
-          id: String(b.id),
-          title: b.title,
-          price: b.sellingPrice,
-        }))
-      } catch (err: any) {
-        this.logger.warn(`Could not load books from repository: ${err.message}`)
+      const now = Date.now()
+      if (
+        this.cachedBooks.length > 0 &&
+        now - this.lastBooksFetchTime < this.booksCacheTtlMs
+      ) {
+        availableBooks = this.cachedBooks
+      } else {
+        try {
+          const result = await this.bookRepository.findBooks({
+            size: 60,
+            page: 1,
+          })
+          this.cachedBooks = (result.data || []).map((b) => ({
+            id: String(b.id),
+            title: b.title,
+            price: b.sellingPrice,
+          }))
+          this.lastBooksFetchTime = now
+          availableBooks = this.cachedBooks
+        } catch (err: any) {
+          this.logger.warn(
+            `Could not load books from repository: ${err.message}`,
+          )
+        }
       }
     }
 
@@ -643,9 +662,31 @@ Trả về duy nhất định dạng JSON theo mẫu:
       availableBooks && availableBooks.length > 0
         ? `
 Danh mục sách hiện có trong kho để đối chiếu:
-${JSON.stringify(availableBooks)}
+${availableBooks.map((b) => `- [ID:${b.id}] ${b.title}${b.price ? ` (${b.price.toLocaleString('vi-VN')}đ)` : ''}`).join('\n')}
 `
         : 'Không có danh mục kho cụ thể, hãy trích xuất tên sách theo nội dung khách nói.'
+
+    // Tối ưu hóa ngữ cảnh hội thoại: Giữ lại tin ghim, danh thiếp, tin chứa thông tin giao hàng và 30 tin nhắn mới nhất
+    let effectiveMessages = messages
+    if (messages.length > 35) {
+      const highPriority = messages.filter(
+        (m) =>
+          m.text.includes('[Tin nhắn ghim]') ||
+          m.text.includes('[Chia sẻ danh thiếp]') ||
+          /(?:địa chỉ|giao về|sđt|số điện thoại|người nhận|chốt|ship|tổng|combo)/i.test(
+            m.text,
+          ),
+      )
+      const recent = messages.slice(-30)
+      const combined = [...highPriority, ...recent]
+      const seen = new Set<string>()
+      effectiveMessages = combined.filter((m) => {
+        const key = `${m.sender}:${m.text}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    }
 
     const customerHintContext =
       customerNameHint || customerPhoneHint
@@ -683,7 +724,7 @@ ${booksContext}
 ${customerHintContext}
 
 Lịch sử cuộc trò chuyện (theo thứ tự thời gian):
-${messages.map((m) => `[${m.sender === 'customer' ? 'Khách hàng' : m.sender === 'seller' ? 'Người bán' : 'Hệ thống'}]: ${m.text}`).join('\n')}
+${effectiveMessages.map((m) => `[${m.sender === 'customer' ? 'Khách hàng' : m.sender === 'seller' ? 'Người bán' : 'Hệ thống'}]: ${m.text}`).join('\n')}
 
 Yêu cầu phân tích:
 1. "intent":
@@ -835,37 +876,28 @@ Trả về DUY NHẤT định dạng JSON:
         }
       }
 
-      // 3. Fallback bóc tách địa chỉ từ tin nhắn ghim nếu Gemini bỏ sót địa chỉ
+      // 3. Fallback bóc tách địa chỉ nhanh từ tin nhắn ghim nếu Gemini bỏ sót một số trường
       if (
         (!customer.province || !customer.ward || !customer.detailAddress) &&
         messages.some((m) => m.text.includes('[Tin nhắn ghim]'))
       ) {
         const pinMsg = messages.find((m) => m.text.includes('[Tin nhắn ghim]'))
         if (pinMsg) {
-          try {
-            const rawPin = pinMsg.text
-              .replace(/\[Tin nhắn ghim\]:\s*/i, '')
-              .trim()
-            const addrResult = await this.parseAddress(rawPin)
-            if (addrResult.success && addrResult.data) {
-              if (!customer.province)
-                customer.province = addrResult.data.province
-              if (!customer.district)
-                customer.district = addrResult.data.district
-              if (!customer.ward) customer.ward = addrResult.data.ward
-              if (!customer.detailAddress)
-                customer.detailAddress = addrResult.data.detailAddress
-              if (!customer.addressType)
-                customer.addressType = addrResult.data.addressType
-              if (!customer.phone && addrResult.data.phone)
-                customer.phone = addrResult.data.phone
-              if (!customer.customerName && addrResult.data.customerName)
-                customer.customerName = addrResult.data.customerName
+          const rawPin = pinMsg.text
+            .replace(/\[Tin nhắn ghim\]:\s*/i, '')
+            .trim()
+          if (!customer.phone) {
+            const p = extractVnPhoneNumber(rawPin)
+            if (p) customer.phone = p
+          }
+          if (!customer.customerName) {
+            const m = rawPin.match(/^([A-ZÀ-Ỹa-zà-ỹ\s]{2,30}):/)
+            if (m && !/tin nhắn|tin ghim|ghi chú/i.test(m[1])) {
+              customer.customerName = m[1].trim()
             }
-          } catch (addrErr) {
-            this.logger.warn(
-              `Fallback address parse from pin message failed: ${addrErr instanceof Error ? addrErr.message : String(addrErr)}`,
-            )
+          }
+          if (!customer.detailAddress && rawPin.length > 5) {
+            customer.rawAddress = customer.rawAddress || rawPin
           }
         }
       }
@@ -955,56 +987,53 @@ Trả về DUY NHẤT định dạng JSON:
         }
       }
 
-      // TỰ ĐỘNG GỬI VÀO GEMINI KIỂM TRA & SUY LUẬN BỔ SUNG NẾU THIẾU TỈNH HOẶC QUẬN/HUYỆN
-      if (
-        !customer.province ||
-        (!customer.district && customer.addressType === 'OLD_3_LEVEL') ||
-        !customer.district
-      ) {
-        const addrToVerify =
-          customer.rawAddress ||
-          [
-            customer.detailAddress,
-            customer.ward,
-            customer.district,
-            customer.province,
-          ]
-            .filter(Boolean)
-            .join(', ')
-        if (addrToVerify && addrToVerify.length >= 4) {
-          try {
-            this.logger.log(
-              `[Bookstore AI] analyzeChat phát hiện thiếu Tỉnh hoặc Huyện ("${addrToVerify}"), tự động gửi Gemini verifyAddress kiểm tra...`,
-            )
-            const verifyRes = await this.verifyAddress(addrToVerify)
-            if (verifyRes.success && verifyRes.data) {
-              const vd = verifyRes.data
-              if (!customer.province && vd.province) {
-                this.logger.log(
-                  `[Bookstore AI] Gemini AI đã suy luận thành công Tỉnh: "${vd.province}"`,
-                )
-                customer.province = vd.province
-              }
-              if (!customer.district && vd.district) {
-                this.logger.log(
-                  `[Bookstore AI] Gemini AI đã suy luận thành công Quận/Huyện: "${vd.district}"`,
-                )
-                customer.district = vd.district
-              }
-              if (!customer.ward && (vd.ward || vd.suggestedWard)) {
-                customer.ward = vd.ward || vd.suggestedWard || ''
-              }
-              if (vd.addressType) {
-                customer.addressType = vd.addressType
-              }
-              customer.verification = vd
-            }
-          } catch (e: any) {
-            this.logger.warn(
-              `[Bookstore AI] Lỗi khi tự động gửi Gemini kiểm tra địa chỉ thiếu trong analyzeChat: ${e.message}`,
-            )
-          }
-        }
+      // Khởi tạo thông tin thẩm định địa chỉ đồng bộ ngay từ kết quả phân tích
+      const isOldAddr =
+        customer.addressType === 'OLD_3_LEVEL' || Boolean(customer.district)
+      const fullDisplayAddr = [
+        customer.detailAddress,
+        customer.ward,
+        customer.district,
+        customer.province,
+      ]
+        .filter(Boolean)
+        .join(', ')
+
+      customer.verification = {
+        address: fullDisplayAddr || customer.rawAddress || '',
+        isValid: Boolean(
+          customer.province && (customer.ward || customer.district),
+        ),
+        isExisting: true,
+        province: customer.province || '',
+        district: customer.district || '',
+        ward: customer.ward || '',
+        detailAddress: customer.detailAddress || '',
+        addressType: isOldAddr ? 'OLD_3_LEVEL' : 'NEW_2_LEVEL',
+        spxRecommendation: {
+          mode: isOldAddr ? 'OLD_3_LEVEL' : 'NEW_2_LEVEL',
+          modeText: isOldAddr
+            ? 'Địa chỉ CŨ (3 cấp: Tỉnh - Huyện - Xã)'
+            : 'Địa chỉ MỚI (2 cấp: Tỉnh - Xã)',
+          levels: (isOldAddr
+            ? [customer.province, customer.district, customer.ward]
+            : [customer.province, customer.ward]
+          ).filter((x): x is string => Boolean(x)),
+          reason: isOldAddr
+            ? 'Địa chỉ có Quận/Huyện, trên cổng SPX chọn Địa chỉ CŨ (3 cấp).'
+            : 'Địa chỉ áp dụng mô hình 2 cấp Tỉnh - Xã.',
+        },
+        overviewAi: `Địa chỉ đã được AI trích xuất từ cuộc trò chuyện: ${fullDisplayAddr}`,
+        bulletPoints: [
+          `Tỉnh/Thành phố: ${customer.province || 'Chưa rõ'}`,
+          customer.district
+            ? `Quận/Huyện: ${customer.district}`
+            : 'Không yêu cầu Quận/Huyện (mô hình 2 cấp)',
+          `Phường/Xã: ${customer.ward || 'Chưa rõ'}`,
+          customer.detailAddress
+            ? `Địa chỉ chi tiết: ${customer.detailAddress}`
+            : 'Chưa có số nhà / tên đường chi tiết',
+        ],
       }
 
       // Bóc tách giá từ tên sách nếu item.price chưa có (ví dụ: "combo 195k", "bản màu combo 195k" -> 195000)

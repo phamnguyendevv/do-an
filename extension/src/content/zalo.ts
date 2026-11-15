@@ -517,8 +517,8 @@ export async function extractZaloMessages(scrollUp?: boolean): Promise<{
   addBatch(initialBatch, false)
 
   // Tự động cuộn ngược lên nhiều lần để tải trọn vẹn toàn bộ các tin nhắn cũ hơn
-  // Mặc định cuộn 8 lần (đủ cho 100-150 tin nhắn), nếu scrollUp = true thì cuộn 16 lần
-  const maxScrollPasses = scrollUp ? 16 : 8
+  // Mặc định cuộn 6 lần (đủ cho 100-150 tin nhắn), nếu scrollUp = true thì cuộn 15 lần
+  const maxScrollPasses = scrollUp ? 15 : 6
 
   if (scrollContainer && scrollContainer !== document.body && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
     let consecutiveZeroCount = 0
@@ -530,8 +530,8 @@ export async function extractZaloMessages(scrollUp?: boolean): Promise<{
       scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - 1500)
       scrollContainer.dispatchEvent(new Event('scroll', { bubbles: true }))
 
-      // Chờ Zalo Web nạp thêm tin nhắn vào DOM
-      await new Promise((resolve) => setTimeout(resolve, 400))
+      // Chờ Zalo Web nạp thêm tin nhắn vào DOM (180ms là đủ nhanh và mượt)
+      await new Promise((resolve) => setTimeout(resolve, 180))
 
       const batch = collectVisibleZaloMessages(scrollContainer, midX, contactCardMap)
       const added = addBatch(batch, true)

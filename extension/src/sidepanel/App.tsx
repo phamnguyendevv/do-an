@@ -39,6 +39,9 @@ export interface AnalyzedData {
     ward?: string
     detailAddress?: string
     rawAddress?: string
+    addressType?: 'OLD_3_LEVEL' | 'NEW_2_LEVEL'
+    spxFormat?: any
+    verification?: AddressVerificationResult
   }
   items: Array<{
     bookId: string | null
@@ -578,8 +581,8 @@ async function extractZaloInPage(scrollUp = false) {
   const initialBatch = collectVisibleZaloMessages(scrollContainer as Element, midX, contactCardMap)
   addBatch(initialBatch, false)
 
-  // Mặc định cuộn 10 đợt nếu bấm lấy tin thường, cuộn 20 đợt nếu bấm "Cuộn sâu lấy hết"
-  const maxScrollPasses = scrollUp ? 20 : 10
+  // Mặc định cuộn 6 đợt nếu bấm lấy tin thường, cuộn 15 đợt nếu bấm "Cuộn sâu lấy hết"
+  const maxScrollPasses = scrollUp ? 15 : 6
   if (
     scrollContainer &&
     scrollContainer !== document.body &&
@@ -594,7 +597,7 @@ async function extractZaloInPage(scrollUp = false) {
       el.scrollTop = Math.max(0, el.scrollTop - 1500)
       el.dispatchEvent(new Event('scroll', { bubbles: true }))
 
-      await new Promise((resolve) => setTimeout(resolve, 380))
+      await new Promise((resolve) => setTimeout(resolve, 180))
 
       const batch = collectVisibleZaloMessages(scrollContainer as Element, midX, contactCardMap)
       const added = addBatch(batch, true)
@@ -1144,9 +1147,9 @@ export default function App() {
         }
       })
 
-      // Tự động kích hoạt thẩm định chuyên sâu Gemini AI nếu có địa chỉ
-      if (fullAddress && fullAddress.length > 5) {
-        handleVerifyAddressWithAi(fullAddress)
+      // Tận dụng kết quả thẩm định địa chỉ đã có từ AI phân tích
+      if (analyzedData.customer?.verification) {
+        setAddressVerification(analyzedData.customer.verification)
       }
     }
   }, [analyzedData, customerZaloName, customerZaloPhone])
@@ -1317,7 +1320,7 @@ export default function App() {
 
       if (!res || !res.ok) {
         try {
-          const fallbackRes = await fetch(`${baseUrl}/api/v1/api/assistant/analyze-chat`, {
+          const fallbackRes = await fetch(`${baseUrl}/api/v1/assistant/analyze-chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(reqPayload),
@@ -1421,19 +1424,53 @@ export default function App() {
 
         setAnalyzedData(resultData)
 
-        // MẶC ĐỊNH SỬ DỤNG GEMINI AI: Tự động thẩm định chuyên sâu ngay sau khi phân tích
-        const autoAddr =
-          formatCleanCustomerAddress(
-            resultData.customer?.detailAddress,
-            resultData.customer?.ward,
-            resultData.customer?.district,
-            resultData.customer?.province,
-          ) ||
-          resultData.customer?.rawAddress ||
-          orderDraft.address
-
-        if (autoAddr && autoAddr.trim().length > 5) {
-          handleVerifyAddressWithAi(autoAddr.trim())
+        // Tận dụng kết quả thẩm định địa chỉ trực tiếp từ AI phân tích
+        if (resultData.customer?.verification) {
+          setAddressVerification(resultData.customer.verification)
+        } else {
+          const autoAddr =
+            formatCleanCustomerAddress(
+              resultData.customer?.detailAddress,
+              resultData.customer?.ward,
+              resultData.customer?.district,
+              resultData.customer?.province,
+            ) ||
+            resultData.customer?.rawAddress ||
+            orderDraft.address
+          if (autoAddr && autoAddr.trim().length > 5) {
+            const c = resultData.customer || {}
+            const isOld = c.addressType === 'OLD_3_LEVEL'
+            setAddressVerification({
+              address: autoAddr.trim(),
+              isValid: Boolean(c.province && (c.ward || c.district)),
+              isExisting: true,
+              province: c.province || '',
+              district: c.district || '',
+              ward: c.ward || '',
+              detailAddress: c.detailAddress || '',
+              addressType: c.addressType || (c.district ? 'OLD_3_LEVEL' : 'NEW_2_LEVEL'),
+              spxRecommendation: {
+                mode: c.addressType || (c.district ? 'OLD_3_LEVEL' : 'NEW_2_LEVEL'),
+                modeText: isOld
+                  ? 'Địa chỉ CŨ (3 cấp: Tỉnh - Huyện - Xã)'
+                  : 'Địa chỉ MỚI (2 cấp: Tỉnh - Xã)',
+                levels: isOld
+                  ? [c.province, c.district, c.ward].filter(Boolean)
+                  : [c.province, c.ward].filter(Boolean),
+                reason: isOld
+                  ? 'Địa chỉ có Quận/Huyện theo chuẩn 3 cấp'
+                  : 'Địa chỉ áp dụng mô hình 2 cấp Tỉnh - Xã',
+              },
+              overviewAi: `Địa chỉ đã được AI phân tích: ${autoAddr.trim()}`,
+              bulletPoints: [
+                `Tỉnh/Thành phố: ${c.province || 'Chưa rõ'}`,
+                c.district
+                  ? `Quận/Huyện: ${c.district}`
+                  : 'Không yêu cầu Quận/Huyện (mô hình 2 cấp)',
+                `Phường/Xã: ${c.ward || 'Chưa rõ'}`,
+              ],
+            })
+          }
         }
       } else {
         const rawErr =
