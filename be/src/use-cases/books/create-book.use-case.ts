@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { BookEntity } from '@domain/entities/book.entity'
+import { BookEntity, ICreateBookInput } from '@domain/entities/book.entity'
+import { BookStatusEnum } from '@domain/entities/order-enums.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -22,7 +23,7 @@ export class CreateBookUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(book: Partial<BookEntity>): Promise<BookEntity> {
+  async execute(book: ICreateBookInput): Promise<BookEntity> {
     const normalized = {
       ...book,
       status: this.resolveStatus(book.stock ?? 0, book.minStock ?? 0),
@@ -41,9 +42,9 @@ export class CreateBookUseCase {
     return created
   }
 
-  private resolveStatus(stock: number, minStock: number): string {
-    if (stock === 0) return 'OUT_OF_STOCK'
-    if (stock <= minStock) return 'LOW_STOCK'
-    return 'IN_STOCK'
+  private resolveStatus(stock: number, minStock: number): BookStatusEnum {
+    if (stock === 0) return BookStatusEnum.OutOfStock
+    if (stock <= minStock) return BookStatusEnum.LowStock
+    return BookStatusEnum.InStock
   }
 }

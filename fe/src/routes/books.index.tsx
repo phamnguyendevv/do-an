@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eye, FileSpreadsheet, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,13 +9,19 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchInput } from "@/components/shared/search-input";
 import { FilterBar } from "@/components/shared/filter-bar";
-import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import {
+  DateRangePicker,
+  type DateRange,
+  toApiDateRange,
+  formatDateRange,
+} from "@/components/shared/date-range-picker";
 import { PriceRangeFilter, type PriceRange } from "@/components/shared/price-range-filter";
 import { ActiveFilterChips, type ActiveFilter } from "@/components/shared/active-filter-chips";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { BookFormDialog } from "@/components/books/book-form-dialog";
+import { BookCover } from "@/components/books/book-cover";
 import { ExcelBookImportDialog } from "@/components/books/excel-book-import-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,11 +37,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { bookApi } from "@/lib/book-api";
-import { categoryApi } from "@/lib/category-api";
 import { exportBooksToExcel } from "@/lib/excel-service";
 import { usePaginatedBooks } from "@/hooks/use-paginated-books";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useCategories } from "@/hooks/use-store";
+import { bookApi } from "@/lib/book-api";
+import { notificationService } from "@/services/notification-service";
 import { formatCompactCurrency, formatCurrency } from "@/utils/format";
 import { bookStatusLabel, bookStatusTone } from "@/utils/status";
 import { Can } from "@/lib/ability";
@@ -79,7 +86,7 @@ function BooksPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const queryClient = useQueryClient();
+  const categories = useCategories();
 
   const resetPage = () => setPage(1);
 
@@ -130,13 +137,9 @@ function BooksPage() {
       });
     }
     if (dateRange?.from) {
-      const d = dateRange;
-      const label = d.to
-        ? `${d.from.toLocaleDateString("vi")} – ${d.to.toLocaleDateString("vi")}`
-        : d.from.toLocaleDateString("vi");
       chips.push({
         key: "date",
-        label: `Ngày tạo: ${label}`,
+        label: `Ngày tạo: ${formatDateRange(dateRange)}`,
         onRemove: () => {
           setDateRange(undefined);
           resetPage();
@@ -155,33 +158,10 @@ function BooksPage() {
     setPage(1);
   };
 
-  const { data: rawCategories = [] } = useQuery({
-    queryKey: ["category-names"],
-    queryFn: async () => {
-      try {
-        const res = await categoryApi.list({ size: 100 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items
-          .map((c: any) => (typeof c === "string" ? c : c?.name))
-          .filter(Boolean) as string[];
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 60_000,
-  });
-
-  const categoryNames = useMemo(() => {
-    if (!Array.isArray(rawCategories)) return [];
-    return Array.from(
-      new Set(
-        rawCategories
-          .map((c: any) => (typeof c === "string" ? c : c?.name))
-          .map((s) => (typeof s === "string" ? s.trim() : ""))
-          .filter((name): name is string => Boolean(name && name.length > 0)),
-      ),
-    );
-  }, [rawCategories]);
+  const categoryNames = useMemo(
+    () => Array.from(new Set(categories.map((item) => item.name.trim()).filter(Boolean))),
+    [categories],
+  );
 
   const { books, pagination, isLoading, isFetching, error } = usePaginatedBooks({
     page,
@@ -189,10 +169,9 @@ function BooksPage() {
     search: debouncedSearch,
     category,
     status,
-    minPrice: priceRange.min,
-    maxPrice: priceRange.max,
-    startDate: dateRange?.from?.toISOString(),
-    endDate: dateRange?.to?.toISOString(),
+    ...(priceRange.min !== undefined ? { minPrice: priceRange.min } : {}),
+    ...(priceRange.max !== undefined ? { maxPrice: priceRange.max } : {}),
+    ...toApiDateRange(dateRange),
   });
 
   const columns: DataTableColumn<Book>[] = [
@@ -202,13 +181,19 @@ function BooksPage() {
       sortable: true,
       value: (b) => b.title ?? "",
       cell: (b) => (
-        <Link
-          to="/books/$bookId"
-          params={{ bookId: b.id }}
-          className="font-medium hover:text-primary"
-        >
-          {b.title || "—"}
-        </Link>
+        <div className="flex items-center gap-3">
+          <BookCover
+            book={b}
+            className="h-24 w-[68px] shrink-0 rounded-md shadow-sm ring-1 ring-border/60"
+          />
+          <Link
+            to="/books/$bookId"
+            params={{ bookId: b.id }}
+            className="font-medium hover:text-primary"
+          >
+            {b.title || "—"}
+          </Link>
+        </div>
       ),
     },
     {
@@ -271,11 +256,7 @@ function BooksPage() {
                 <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Xuất Excel
               </Button>
               <Can I="create" a="Book">
-                <ExcelBookImportDialog
-                  onSuccess={() => {
-                    queryClient.invalidateQueries({ queryKey: ["books"] });
-                  }}
-                />
+                <ExcelBookImportDialog />
                 <BookFormDialog
                   trigger={
                     <Button size="sm">
@@ -389,8 +370,8 @@ function BooksPage() {
 }
 
 function BookRowActions({ book }: { book: Book }) {
-  const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   return (
     <>
@@ -436,6 +417,14 @@ function BookRowActions({ book }: { book: Book }) {
           onConfirm={async () => {
             try {
               await bookApi.remove(book.id);
+              notificationService.push({
+                title: "Sách đã bị xóa",
+                description: `${book.title} đã được xóa khỏi danh mục sách.`,
+                module: "Sách",
+                tone: "warning",
+                route: "/books",
+                showToast: false,
+              });
               await queryClient.invalidateQueries({ queryKey: ["books"] });
               toast.success("Đã xóa sách");
             } catch (error) {

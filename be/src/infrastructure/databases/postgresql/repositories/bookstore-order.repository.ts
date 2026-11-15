@@ -82,7 +82,9 @@ export class BookstoreOrderRepository
 
     if (endDate) {
       const end = new Date(endDate)
-      end.setHours(23, 59, 59, 999)
+      if (typeof endDate === 'string' && endDate.length <= 10) {
+        end.setHours(23, 59, 59, 999)
+      }
       query.andWhere('order.createdAt <= :endDate', { endDate: end })
     }
 

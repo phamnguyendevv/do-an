@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { orderService } from "@/services/order-service";
 import { store } from "@/services/store";
+import { orderApi } from "@/lib/order-api";
 import type { Book } from "@/types";
 
 const getBookSellingPrice = (b: Book): number => {
@@ -125,6 +126,23 @@ describe("POS Pricing & Calculations", () => {
       ],
       orders: [],
       shipments: [],
+    });
+    store.setState({ orders: [], imports: [], exports: [], shipments: [] });
+    vi.spyOn(orderApi, "create").mockResolvedValue({
+      id: 5,
+      orderCode: "POS-1",
+      customerName: "Khách lẻ tại quầy",
+      customerPhone: "0911223344",
+      customerAddress: "Bán trực tiếp tại quầy POS",
+      items: [{ bookId: "pos-book-1", title: "Sách POS Test", quantity: 2, price: 80000 }],
+      subtotal: 160000,
+      discount: 0,
+      shippingFee: 0,
+      total: 160000,
+      payment: "PAID",
+      shippingMethod: "Bán tại quầy (POS)",
+      status: "DELIVERED",
+      createdAt: new Date().toISOString(),
     });
 
     const res = await orderService.createOrder({

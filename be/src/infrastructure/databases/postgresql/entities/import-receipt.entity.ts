@@ -2,13 +2,24 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
 
 import { ImportReceiptItem } from '@domain/entities/import-receipt.entity'
 
+import { Supplier } from './supplier.entity'
+import { User } from './user.entity'
+
 @Entity('import_receipts')
+@Index('IDX_import_receipts_created_by_id', ['createdById'])
+@Index('UQ_import_receipts_idempotency', ['createdById', 'idempotencyKey'], {
+  unique: true,
+  where: '"idempotency_key" IS NOT NULL',
+})
 export class ImportReceipt {
   @PrimaryGeneratedColumn({
     type: 'bigint',
@@ -21,6 +32,10 @@ export class ImportReceipt {
 
   @Column({ type: 'bigint', name: 'supplier_id', nullable: true })
   public supplierId?: number
+
+  @ManyToOne(() => Supplier, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'supplier_id' })
+  public supplier?: Supplier
 
   @Column({ type: 'varchar', length: 255, name: 'supplier_name' })
   public supplierName!: string
@@ -52,6 +67,19 @@ export class ImportReceipt {
 
   @Column({ type: 'varchar', length: 255, name: 'created_by', nullable: true })
   public createdBy?: string
+
+  @Column({ type: 'bigint', nullable: true, name: 'created_by_id' })
+  public createdById?: number
+
+  @Column({ type: 'uuid', nullable: true, name: 'idempotency_key' })
+  public idempotencyKey?: string
+
+  @Column({ type: 'varchar', length: 64, nullable: true, name: 'request_hash' })
+  public requestHash?: string
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by_id' })
+  public creator?: User
 
   @CreateDateColumn({ name: 'created_at' })
   public readonly createdAt!: Date

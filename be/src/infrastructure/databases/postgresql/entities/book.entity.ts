@@ -3,11 +3,15 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
 
 import { BookStatusEnum } from '@domain/entities/order-enums.entity'
+
+import { Category } from './category.entity'
 
 @Entity('books')
 @Index('IDX_books_status', ['status'])
@@ -31,8 +35,23 @@ export class Book {
   @Column({ type: 'varchar', length: 255, nullable: true })
   publisher?: string
 
+  /**
+   * Tên thể loại (string) — giữ nguyên để backward compatibility.
+   * Dùng categoryId (FK) để JOIN với bảng categories.
+   */
   @Column({ type: 'varchar', length: 255 })
   category!: string
+
+  /**
+   * FK tới categories(id) — được thêm bởi migration CleanupAndRefactorSchema.
+   * Constraint: FK_books_category_id ON DELETE SET NULL.
+   */
+  @Column({ type: 'bigint', nullable: true, name: 'category_id' })
+  categoryId?: number
+
+  @ManyToOne(() => Category, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'category_id' })
+  categoryRelation?: Category
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   purchasePrice!: number

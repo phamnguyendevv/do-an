@@ -137,6 +137,7 @@ export async function parseBookExcelFile(file: File): Promise<{
   }
 
   const ws = wb.Sheets[firstSheetName];
+  if (!ws) return { data: [], errors: ["Không tìm thấy sheet dữ liệu trong file Excel."] };
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
   if (rows.length < 2) {
@@ -178,15 +179,15 @@ export async function parseBookExcelFile(file: File): Promise<{
     data.push({
       title,
       author,
-      publisher,
-      isbn,
+      ...(publisher ? { publisher } : {}),
+      ...(isbn ? { isbn } : {}),
       category,
       importPrice,
       price,
       stock,
       minStock,
-      publishedYear,
-      description,
+      ...(publishedYear !== undefined ? { publishedYear } : {}),
+      ...(description ? { description } : {}),
     });
   }
 
@@ -208,6 +209,7 @@ export async function parseInventoryImportFile(file: File): Promise<{
   }
 
   const ws = wb.Sheets[firstSheetName];
+  if (!ws) return { data: [], errors: ["Không tìm thấy sheet dữ liệu trong file Excel."] };
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
   const data: ParsedImportRow[] = [];

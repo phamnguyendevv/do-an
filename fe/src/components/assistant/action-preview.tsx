@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { inventoryApi } from "@/lib/inventory-api";
+import { orderApi } from "@/lib/order-api";
 import { formatCurrency } from "@/utils/format";
-import { inventoryService } from "@/services/inventory-service";
-import { orderService } from "@/services/order-service";
 import type { PendingAction } from "@/services/assistant-tools";
 
 const titleOf = (a: PendingAction) =>
@@ -22,8 +23,19 @@ const titleOf = (a: PendingAction) =>
 
 export function ActionPreview({ action }: { action: PendingAction }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const requestKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const importDate = useRef(new Date().toISOString());
+
+  function idempotencyKeyFor(payload: object) {
+    const fingerprint = JSON.stringify(payload);
+    if (requestKeyRef.current?.fingerprint !== fingerprint) {
+      requestKeyRef.current = { fingerprint, key: crypto.randomUUID() };
+    }
+    return requestKeyRef.current.key;
+  }
 
   if (action.kind === "navigate") {
     return (
@@ -45,59 +57,64 @@ export function ActionPreview({ action }: { action: PendingAction }) {
     setBusy(true);
     try {
       if (action.kind === "create_order") {
-        const res = await orderService.createOrder({
+        const res = await orderApi.create({
           customerName: action.customerName,
           customerPhone: action.customerPhone || "0000000000",
           customerAddress: action.customerAddress,
           shippingMethod: "Giao hàng tiêu chuẩn",
           shippingFee: 0,
           discount: 0,
-          lines: action.lines.map((l) => ({
+          items: action.lines.map((l) => ({
             bookId: l.bookId,
+            title: l.title,
             quantity: l.quantity,
             price: l.price,
           })),
         });
-        if (!res.ok) {
-          toast.error(res.error ?? "Không tạo được đơn hàng.");
-          return;
-        }
-        toast.success(`Đã tạo đơn ${res.data?.id}`);
-        setDone(`Đã tạo đơn hàng ${res.data?.id}.`);
+        toast.success(`Đã tạo đơn ${res.orderCode || res.id}`);
+        setDone(`Đã tạo đơn hàng ${res.orderCode || res.id}.`);
       } else if (action.kind === "import") {
-        const res = await inventoryService.createImport({
-          supplier: action.supplier || "Nhà cung cấp khác",
-          date: new Date().toISOString(),
+        const payload = {
+          supplierName: action.supplier || "Nhà cung cấp khác",
+          importDate: importDate.current,
           note: action.note,
           lines: action.lines.map((l) => ({
             bookId: l.bookId,
             quantity: l.quantity,
             price: l.price,
           })),
+        };
+        const res = await inventoryApi.createImport({
+          ...payload,
+          idempotencyKey: idempotencyKeyFor(payload),
         });
-        if (!res.ok) {
-          toast.error(res.error ?? "Không tạo được phiếu nhập.");
-          return;
-        }
-        toast.success(`Đã tạo phiếu nhập ${res.data?.id}`);
-        setDone(`Đã tạo phiếu nhập ${res.data?.id}.`);
+        toast.success(`Đã tạo phiếu nhập ${res.receiptCode || res.id}`);
+        setDone(`Đã tạo phiếu nhập ${res.receiptCode || res.id}.`);
       } else {
-        const res = await inventoryService.createExport({
-          orderId: action.orderId,
+        const orderId = Number(action.orderId);
+        const payload = {
+          ...(Number.isSafeInteger(orderId) && orderId > 0 ? { orderId } : {}),
           reason: action.reason,
           lines: action.lines.map((l) => ({
             bookId: l.bookId,
             quantity: l.quantity,
             price: l.price,
           })),
+        };
+        const res = await inventoryApi.createExport({
+          ...payload,
+          idempotencyKey: idempotencyKeyFor(payload),
         });
-        if (!res.ok) {
-          toast.error(res.error ?? "Không tạo được phiếu xuất.");
-          return;
-        }
-        toast.success(`Đã tạo phiếu xuất ${res.data?.id}`);
-        setDone(`Đã tạo phiếu xuất ${res.data?.id}.`);
+        toast.success(`Đã tạo phiếu xuất ${res.receiptCode || res.id}`);
+        setDone(`Đã tạo phiếu xuất ${res.receiptCode || res.id}.`);
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books", "live-list"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["orders"] }),
+      ]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể thực hiện thao tác.");
     } finally {
       setBusy(false);
     }

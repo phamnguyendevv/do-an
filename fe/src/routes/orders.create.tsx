@@ -23,6 +23,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProductLines, type ProductLine } from "@/components/inventory/product-lines";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,11 +40,13 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber } from "@/utils/format";
-import { orderService } from "@/services/order-service";
-import { useBooks, useOrders } from "@/hooks/use-store";
+import { orderApi } from "@/lib/order-api";
+import { useLiveBooks } from "@/hooks/use-live-books";
+import { usePaginatedOrders } from "@/hooks/use-paginated-orders";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
 import { normalizeText, parseCustomerAndAddress } from "@/lib/vn-address-parser";
 import { parseProductList } from "@/lib/product-parser";
+import { geminiParseCustomerAndAddress, geminiParseProducts } from "@/lib/gemini-order-parser";
 import {
   AddressBookDialog,
   type AddressBookContact,
@@ -73,8 +76,9 @@ interface WardOption extends GhnWard {
 function CreateOrderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const books = useBooks();
-  const orders = useOrders();
+  const booksQuery = useLiveBooks();
+  const books = booksQuery.data ?? [];
+  const { orders } = usePaginatedOrders({ page: 1, size: 100 });
 
   // Chế độ địa chỉ: MỚI (2 cấp) vs CŨ (3 cấp)
   const [addressType, setAddressType] = useState<AddressType>("NEW_2_LEVEL");
@@ -250,7 +254,7 @@ function CreateOrderPage() {
     if (c.address) {
       setIsAutoParsing(true);
       try {
-        const parsed = await parseCustomerAndAddress(
+        const parsed = await geminiParseCustomerAndAddress(
           c.address,
           provinces,
           ghnApi.getDistricts,
@@ -413,7 +417,7 @@ function CreateOrderPage() {
         return;
       }
 
-      const parsed = await parseCustomerAndAddress(
+      const parsed = await geminiParseCustomerAndAddress(
         textToParse,
         provinces,
         ghnApi.getDistricts,
@@ -457,9 +461,14 @@ function CreateOrderPage() {
             parsed.districtName && `Khu vực: ${parsed.districtName}`,
           ].filter(Boolean);
 
-          toast.success("Đã tự động nhận diện thông tin khách hàng!", {
-            description: summaryParts.join(" • "),
-          });
+          toast.success(
+            parsed.isAiParsed
+              ? "✨ Gemini AI: Đã tự động nhận diện thông tin khách hàng!"
+              : "Đã tự động nhận diện thông tin khách hàng!",
+            {
+              description: summaryParts.join(" • "),
+            },
+          );
         }
       } else {
         // Chế độ 3 cấp: Yêu cầu đủ Tỉnh/TP, Quận/Huyện và Phường/Xã
@@ -492,9 +501,14 @@ function CreateOrderPage() {
             parsed.wardName && `Phường/Xã: ${parsed.wardName}`,
           ].filter(Boolean);
 
-          toast.success("Đã tự động nhận diện và điền thông tin khách hàng!", {
-            description: summaryParts.join(" • "),
-          });
+          toast.success(
+            parsed.isAiParsed
+              ? "✨ Gemini AI: Đã tự động nhận diện và điền thông tin khách hàng!"
+              : "Đã tự động nhận diện và điền thông tin khách hàng!",
+            {
+              description: summaryParts.join(" • "),
+            },
+          );
         }
       }
     } catch (e: any) {
@@ -531,7 +545,7 @@ function CreateOrderPage() {
         return;
       }
 
-      const parsed = parseProductList(textToParse, books);
+      const parsed = await geminiParseProducts(textToParse, books);
 
       if (parsed.lines.length === 0) {
         toast.warning("Không tìm thấy sản phẩm nào phù hợp trong kho!", {
@@ -560,9 +574,14 @@ function CreateOrderPage() {
           },
         );
       } else {
-        toast.success(`Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`, {
-          description: matchedNames.join(" • "),
-        });
+        toast.success(
+          parsed.isAiParsed
+            ? `✨ Gemini AI: Đã thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`
+            : `Đã tự động thêm ${parsed.lines.length} loại sản phẩm vào đơn hàng!`,
+          {
+            description: matchedNames.join(" • "),
+          },
+        );
       }
     } catch (e: any) {
       console.error("Lỗi phân tích sản phẩm tự động:", e);
@@ -583,7 +602,7 @@ function CreateOrderPage() {
       }));
       setAutoInputText(`${contact.name}, ${contact.phone}, ${contact.address}`);
 
-      const parsed = await parseCustomerAndAddress(
+      const parsed = await geminiParseCustomerAndAddress(
         contact.address,
         provinces,
         ghnApi.getDistricts,
@@ -609,8 +628,27 @@ function CreateOrderPage() {
 
   const submit = async () => {
     setError(null);
+    if (booksQuery.isLoading || booksQuery.error) {
+      setError("Không thể tạo đơn khi chưa tải được danh sách sách từ máy chủ.");
+      return;
+    }
+
     if (!customer.name.trim() || !customer.phone.trim()) {
       setError("Vui lòng nhập họ tên và số điện thoại khách hàng.");
+      return;
+    }
+
+    const selectedLines = lines.filter((line) => line.bookId && line.quantity > 0);
+    if (selectedLines.length === 0 || selectedLines.length !== lines.length) {
+      setError("Vui lòng chọn ít nhất một đầu sách và kiểm tra số lượng.");
+      return;
+    }
+    const unavailableLine = selectedLines.find((line) => {
+      const book = books.find((item) => item.id === line.bookId);
+      return !book || line.quantity > book.stock;
+    });
+    if (unavailableLine) {
+      setError("Một hoặc nhiều đầu sách không còn đủ tồn kho. Vui lòng kiểm tra lại.");
       return;
     }
 
@@ -668,41 +706,45 @@ function CreateOrderPage() {
       }
     }
 
-    const res = await orderService.createOrder({
-      customerName: customer.name,
-      customerPhone: customer.phone,
-      customerAddress: fullAddress || customer.detailAddress,
-      provinceId,
-      districtId,
-      wardCode,
-      shippingMethod:
-        carrierType === "GHN"
-          ? "Giao Hàng Nhanh (GHN)"
-          : carrierType === "STORE"
-            ? "Tại cửa hàng"
-            : "Vận chuyển khác",
-      shippingFee,
-      discount,
-      trackingCode: ghnTrackingCode,
-      note: customer.note,
-      expectedDelivery: ghnLeadTime || undefined,
-      lines,
-    });
+    try {
+      const res = await orderApi.create({
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerAddress: fullAddress || customer.detailAddress,
+        ...(provinceId !== undefined ? { provinceId } : {}),
+        ...(districtId !== undefined ? { districtId } : {}),
+        wardCode,
+        shippingMethod:
+          carrierType === "GHN"
+            ? "Giao Hàng Nhanh (GHN)"
+            : carrierType === "STORE"
+              ? "Tại cửa hàng"
+              : "Vận chuyển khác",
+        shippingFee,
+        discount,
+        ...(ghnTrackingCode ? { trackingCode: ghnTrackingCode } : {}),
+        ...(customer.note ? { note: customer.note } : {}),
+        items: lines
+          .filter((line) => line.bookId && line.quantity > 0)
+          .map((line) => ({
+            bookId: line.bookId,
+            title: books.find((book) => book.id === line.bookId)?.title ?? "Sách",
+            quantity: line.quantity,
+            price: line.price,
+          })),
+      });
 
-    setSubmitting(false);
-    if (!res.ok) {
-      setError(res.error ?? "Không thể tạo đơn hàng.");
-      return;
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order-audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["books", "live-list"] });
+
+      toast.success(`Tạo đơn hàng ${res.orderCode || res.id} thành công — tồn kho đã được trừ`);
+      navigate({ to: "/orders" });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Không thể tạo đơn hàng.");
+    } finally {
+      setSubmitting(false);
     }
-
-    // Invalidate react-query cache for orders and audit logs
-    queryClient.invalidateQueries({ queryKey: ["orders"] });
-    queryClient.invalidateQueries({ queryKey: ["order-audit-logs"] });
-
-    toast.success(
-      `Tạo đơn hàng ${res.data?.orderCode || res.data?.id} thành công — tồn kho đã được trừ`,
-    );
-    navigate({ to: "/orders" });
   };
 
   return (
@@ -806,7 +848,7 @@ function CreateOrderPage() {
                         </>
                       ) : (
                         <>
-                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán và nhập tự động
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Dán & Nhập
                         </>
                       )}
                     </Button>
@@ -982,9 +1024,8 @@ function CreateOrderPage() {
                             // Tự động gán mã phường mặc định của quận/huyện để tính cước GHN
                             try {
                               const ws = await ghnApi.getWards(id);
-                              if (ws && ws.length > 0) {
-                                setWardCode(ws[0].WardCode);
-                              }
+                              const firstWard = ws[0];
+                              if (firstWard) setWardCode(firstWard.WardCode);
                             } catch {
                               // fallback
                             }
@@ -1196,7 +1237,7 @@ function CreateOrderPage() {
                         </>
                       ) : (
                         <>
-                          <ClipboardPaste className="h-3.5 w-3.5" /> Dán & Thêm sản phẩm
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Dán & Thêm
                         </>
                       )}
                     </Button>
@@ -1204,7 +1245,27 @@ function CreateOrderPage() {
                 </div>
 
                 {/* Danh sách các dòng sản phẩm chi tiết */}
-                <ProductLines lines={lines} onChange={setLines} checkStock priceLabel="Giá bán" />
+                <ProductLines
+                  books={books}
+                  lines={lines}
+                  onChange={setLines}
+                  checkStock
+                  priceLabel="Giá bán"
+                />
+                {booksQuery.error ? (
+                  <div
+                    role="alert"
+                    className="flex items-center justify-between gap-3 text-sm text-destructive"
+                  >
+                    <span>
+                      Không thể tải danh sách sách:{" "}
+                      {booksQuery.error instanceof Error ? booksQuery.error.message : "Lỗi máy chủ"}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => void booksQuery.refetch()}>
+                      Thử lại
+                    </Button>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
 

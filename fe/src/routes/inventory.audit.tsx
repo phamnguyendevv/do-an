@@ -32,12 +32,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/use-auth";
 import { useBooks } from "@/hooks/use-store";
-import { inventoryApi, type StockAuditApiItem } from "@/lib/inventory-api";
 import { exportBooksToExcel } from "@/lib/excel-service";
+import { inventoryApi } from "@/lib/inventory-api";
 import { formatDateTime, formatNumber } from "@/utils/format";
 import { Can } from "@/lib/ability";
+import { mapStockAudit } from "@/hooks/use-store";
+import { notificationService } from "@/services/notification-service";
+import type { Stocktake } from "@/types";
 
 export const Route = createFileRoute("/inventory/audit")({
   head: () => ({
@@ -53,7 +55,7 @@ export const Route = createFileRoute("/inventory/audit")({
 });
 
 interface AuditDraftLine {
-  bookId: number;
+  bookId: string;
   title: string;
   systemStock: number;
   actualStock: number;
@@ -61,7 +63,6 @@ interface AuditDraftLine {
 }
 
 function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
-  const { user } = useAuth();
   const books = useBooks();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(
@@ -75,7 +76,7 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
   const initializeLines = () => {
     setDraftLines(
       books.map((b) => ({
-        bookId: parseInt(b.id, 10) || 0,
+        bookId: b.id,
         title: b.title,
         systemStock: b.stock,
         actualStock: b.stock,
@@ -89,13 +90,13 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
     setOpen(nextOpen);
   };
 
-  const updateActualStock = (bookId: number, val: number) => {
+  const updateActualStock = (bookId: string, val: number) => {
     setDraftLines((prev) =>
       prev.map((l) => (l.bookId === bookId ? { ...l, actualStock: Math.max(0, val) } : l)),
     );
   };
 
-  const updateReason = (bookId: number, val: string) => {
+  const updateReason = (bookId: string, val: string) => {
     setDraftLines((prev) => prev.map((l) => (l.bookId === bookId ? { ...l, reason: val } : l)));
   };
 
@@ -103,20 +104,28 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      return await inventoryApi.createAudit({
+      const result = await inventoryApi.createAudit({
         title,
-        note,
-        auditDate: new Date().toISOString(),
+        ...(note ? { note } : {}),
         items: draftLines.map((l) => ({
-          bookId: l.bookId,
+          bookId: Number(l.bookId),
           title: l.title,
           systemStock: l.systemStock,
           actualStock: l.actualStock,
-          reason: l.reason || undefined,
+          ...(l.reason ? { reason: l.reason } : {}),
         })),
       });
+      return mapStockAudit(result);
     },
     onSuccess: () => {
+      notificationService.push({
+        title: "Phiếu kiểm kê đã tạo",
+        description: `${title} đã được lưu thành công.`,
+        module: "Kho hàng",
+        tone: "info",
+        route: "/inventory/audit",
+        showToast: false,
+      });
       toast.success("Tạo phiếu kiểm kê kho thành công!");
       queryClient.invalidateQueries({ queryKey: ["inventory", "audits"] });
       setOpen(false);
@@ -285,24 +294,27 @@ function CreateAuditDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function DetailAuditDialog({
-  audit,
-  trigger,
-}: {
-  audit: StockAuditApiItem;
-  trigger: React.ReactNode;
-}) {
+function DetailAuditDialog({ audit, trigger }: { audit: Stocktake; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [confirmBalanceOpen, setConfirmBalanceOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const balanceMutation = useMutation({
     mutationFn: async () => {
-      return await inventoryApi.balanceAudit(audit.id);
+      const result = await inventoryApi.balanceAudit(audit.id);
+      return mapStockAudit(result);
     },
     onSuccess: () => {
+      notificationService.push({
+        title: "Đã cân bằng tồn kho",
+        description: `Tồn kho đã được cập nhật theo phiếu ${audit.id}.`,
+        module: "Kho hàng",
+        tone: "success",
+        route: "/inventory",
+        showToast: false,
+      });
       toast.success(
-        `Đã cân bằng kho thành công theo phiếu ${audit.auditCode}! Tồn kho và Sổ kho đã cập nhật.`,
+        `Đã cân bằng kho thành công theo phiếu ${audit.id}! Tồn kho và Sổ kho đã cập nhật.`,
       );
       queryClient.invalidateQueries({ queryKey: ["inventory", "audits"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", "movements"] });
@@ -322,8 +334,7 @@ function DetailAuditDialog({
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-primary" /> Chi tiết phiếu kiểm kê{" "}
-              {audit.auditCode}
+              <ClipboardCheck className="h-5 w-5 text-primary" /> Chi tiết phiếu kiểm kê {audit.id}
             </DialogTitle>
             <DialogDescription>
               {audit.title} • Ngày kiểm: {formatDateTime(audit.auditDate)} • Người kiểm:{" "}
@@ -432,7 +443,7 @@ function DetailAuditDialog({
         open={confirmBalanceOpen}
         onOpenChange={setConfirmBalanceOpen}
         title="Xác nhận Cân bằng kho?"
-        description={`Hệ thống sẽ cập nhật lại số lượng tồn kho của toàn bộ sách theo số lượng thực tế trong phiếu ${audit.auditCode}, và tự động ghi log vào Sổ kho (StockMovement) với loại ADJUST.`}
+        description={`Hệ thống sẽ cập nhật lại số lượng tồn kho của toàn bộ sách theo số lượng thực tế trong phiếu ${audit.id}, và tự động ghi log vào Sổ kho (StockMovement) với loại ADJUST.`}
         confirmLabel="Xác nhận Cân bằng"
         onConfirm={() => balanceMutation.mutate()}
       />
@@ -444,44 +455,45 @@ function StockAuditPage() {
   const [search, setSearch] = useState("");
   const books = useBooks();
 
-  const { data: auditsData, refetch } = useQuery({
+  const {
+    data: auditsData = [],
+    refetch,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["inventory", "audits"],
     queryFn: async () => {
-      try {
-        const res = await inventoryApi.listAudits({ size: 100 });
-        return res?.data || [];
-      } catch {
-        return [];
-      }
+      const result = await inventoryApi.listAudits({ page: 1, size: 100 });
+      return result.data.map(mapStockAudit);
     },
     staleTime: 10_000,
   });
 
-  const audits = auditsData || [];
+  const audits = auditsData;
 
   const filteredAudits = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return audits;
     return audits.filter(
       (a) =>
-        a.auditCode.toLowerCase().includes(q) ||
+        a.id.toLowerCase().includes(q) ||
         a.title.toLowerCase().includes(q) ||
-        a.auditedBy.toLowerCase().includes(q),
+        (a.auditedBy ?? "").toLowerCase().includes(q),
     );
   }, [audits, search]);
 
-  const columns: DataTableColumn<StockAuditApiItem>[] = [
+  const columns: DataTableColumn<Stocktake>[] = [
     {
       key: "auditCode",
       header: "Mã phiếu",
       sortable: true,
-      value: (a) => a.auditCode,
+      value: (a) => a.id,
       cell: (a) => (
         <DetailAuditDialog
           audit={a}
           trigger={
             <button className="font-mono text-xs font-semibold text-primary hover:underline">
-              {a.auditCode}
+              {a.id}
             </button>
           }
         />
@@ -617,6 +629,8 @@ function StockAuditPage() {
             columns={columns}
             data={filteredAudits}
             rowKey={(a) => a.id}
+            loading={isLoading}
+            error={error instanceof Error ? error.message : null}
             emptyTitle="Chưa có phiếu kiểm kê kho nào. Nhấn 'Tạo phiếu kiểm kê' để bắt đầu đợt kiểm đếm mới."
           />
         </div>

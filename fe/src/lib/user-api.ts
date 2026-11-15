@@ -18,6 +18,7 @@ export type UserApiItem = {
 };
 
 import { apiRequest } from "./api-client";
+import { notificationService } from "@/services/notification-service";
 
 export type UserListApiResponse = {
   data: UserApiItem[];
@@ -55,17 +56,35 @@ export const userApi = {
     phone?: string;
     status?: number;
   }) {
-    return apiRequest<UserApiItem>("/admin/users", {
+    const user = await apiRequest<UserApiItem>("/admin/users", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    notificationService.push({
+      title: "Tài khoản người dùng mới",
+      description: "Hệ thống vừa thêm một người dùng.",
+      module: "Người dùng",
+      tone: "info",
+      route: "/users",
+      showToast: false,
+    });
+    return user;
   },
 
   async update(id: number | string, payload: { role?: number; status?: number }) {
-    return apiRequest<boolean>(`/admin/users/${id}`, {
+    const updated = await apiRequest<boolean>(`/admin/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
+    notificationService.push({
+      title: "Cập nhật tài khoản người dùng",
+      description: "Vai trò hoặc trạng thái tài khoản đã thay đổi.",
+      module: "Người dùng",
+      tone: "info",
+      route: "/users",
+      showToast: false,
+    });
+    return updated;
   },
 
   async getProfile() {
@@ -98,9 +117,18 @@ export const userApi = {
   },
 
   async adminResetPassword(id: number | string, password: string) {
-    return apiRequest<boolean>(`/admin/users/${id}/reset-password`, {
+    const reset = await apiRequest<boolean>(`/admin/users/${id}/reset-password`, {
       method: "PUT",
       body: JSON.stringify({ password }),
     });
+    notificationService.push({
+      title: "Thông tin bảo mật tài khoản đã thay đổi",
+      description: "Quản trị viên vừa đặt lại mật khẩu cho một tài khoản.",
+      module: "Người dùng",
+      tone: "warning",
+      route: "/users",
+      showToast: false,
+    });
+    return reset;
   },
 };

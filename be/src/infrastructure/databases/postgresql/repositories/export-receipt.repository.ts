@@ -44,7 +44,7 @@ export class ExportReceiptRepository
 
     if (search) {
       query.andWhere(
-        '(r.receiptCode ILIKE :search OR r.orderId ILIKE :search OR r.reason ILIKE :search OR r.note ILIKE :search)',
+        '(r.receiptCode ILIKE :search OR CAST(r.orderId AS TEXT) ILIKE :search OR r.reason ILIKE :search OR r.note ILIKE :search)',
         { search: `%${search}%` },
       )
     }
@@ -54,7 +54,7 @@ export class ExportReceiptRepository
     }
 
     if (orderId) {
-      query.andWhere('r.orderId ILIKE :orderId', { orderId: `%${orderId}%` })
+      query.andWhere('r.orderId = :orderId', { orderId })
     }
 
     if (startDate) {

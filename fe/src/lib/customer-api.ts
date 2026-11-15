@@ -37,7 +37,11 @@ export const customerApi = {
       `/admin/customers/lookup?phone=${encodeURIComponent(normalized)}`,
     );
   },
-  list(params?: { search?: string; page?: number; size?: number }) {
+  list(params?: {
+    search?: string | undefined;
+    page?: number | undefined;
+    size?: number | undefined;
+  }) {
     const query = new URLSearchParams();
     if (params?.search) query.set("search", params.search);
     if (params?.page) query.set("page", String(params.page));

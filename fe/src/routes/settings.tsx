@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Check,
@@ -43,10 +44,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { sepayApi } from "@/lib/order-api";
+import { useSystemSettings } from "@/hooks/use-system-settings";
+import { SYSTEM_SETTINGS_QUERY_KEY, systemSettingsApi } from "@/lib/system-settings-api";
 import {
   defaultSepayConfig,
   defaultStoreBranding,
-  storeSettingsService,
   VIETNAM_BANKS,
   type SepayConfig,
   type StoreBranding,
@@ -68,18 +70,21 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const queryClient = useQueryClient();
+  const settingsQuery = useSystemSettings();
   const [sepayConfig, setSepayConfig] = useState<SepayConfig>(defaultSepayConfig);
   const [storeBranding, setStoreBranding] = useState<StoreBranding>(defaultStoreBranding);
+  const [isSaving, setIsSaving] = useState(false);
   const [previewAmount, setPreviewAmount] = useState<number>(50000);
   const [testOrderCode, setTestOrderCode] = useState<string>("ORD-2025001");
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<any>(null);
 
-  // Load saved configurations on mount
   useEffect(() => {
-    setSepayConfig(storeSettingsService.getSepayConfig());
-    setStoreBranding(storeSettingsService.getStoreBranding());
-  }, []);
+    if (!settingsQuery.data) return;
+    setSepayConfig(settingsQuery.data.sepay);
+    setStoreBranding(settingsQuery.data.branding);
+  }, [settingsQuery.data]);
 
   const liveQrUrl = `https://qr.sepay.vn/img?bank=${encodeURIComponent(
     sepayConfig.bank,
@@ -94,7 +99,11 @@ function SettingsPage() {
       : "http://localhost:3000";
   const webhookUrl = `${backendBase}/api/v1/payment/sepay/webhook`;
 
-  const handleSaveSepay = () => {
+  const handleSaveSepay = async () => {
+    if (!settingsQuery.data) {
+      toast.error("Chưa tải được cấu hình từ máy chủ.");
+      return;
+    }
     if (!sepayConfig.accountNumber.trim()) {
       toast.error("Vui lòng nhập số tài khoản ngân hàng!");
       return;
@@ -103,23 +112,45 @@ function SettingsPage() {
       toast.error("Vui lòng nhập tên chủ tài khoản!");
       return;
     }
-    storeSettingsService.saveSepayConfig(sepayConfig);
-    toast.success("Đã lưu cấu hình tài khoản SePay thành công!");
+    setIsSaving(true);
+    try {
+      const saved = await systemSettingsApi.update({ sepay: sepayConfig });
+      queryClient.setQueryData(SYSTEM_SETTINGS_QUERY_KEY, saved);
+      setSepayConfig(saved.sepay);
+      toast.success("Đã lưu cấu hình SePay dùng chung trên máy chủ.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu cấu hình SePay.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleResetSepay = () => {
-    setSepayConfig(defaultSepayConfig);
-    storeSettingsService.saveSepayConfig(defaultSepayConfig);
-    toast.info("Đã khôi phục cấu hình SePay về mặc định.");
+    if (!settingsQuery.data) return;
+    setSepayConfig(settingsQuery.data.sepay);
+    toast.info("Đã khôi phục cấu hình SePay về giá trị đang lưu trên máy chủ.");
   };
 
-  const handleSaveStore = () => {
+  const handleSaveStore = async () => {
+    if (!settingsQuery.data) {
+      toast.error("Chưa tải được cấu hình từ máy chủ.");
+      return;
+    }
     if (!storeBranding.storeName.trim()) {
       toast.error("Tên cửa hàng không được để trống!");
       return;
     }
-    storeSettingsService.saveStoreBranding(storeBranding);
-    toast.success("Đã lưu thông tin nhà sách thành công!");
+    setIsSaving(true);
+    try {
+      const saved = await systemSettingsApi.update({ branding: storeBranding });
+      queryClient.setQueryData(SYSTEM_SETTINGS_QUERY_KEY, saved);
+      setStoreBranding(saved.branding);
+      toast.success("Đã lưu thông tin cửa hàng dùng chung trên máy chủ.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu thông tin cửa hàng.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCopy = (text: string, label: string) => {
@@ -155,6 +186,17 @@ function SettingsPage() {
   return (
     <AppShell>
       <PageContainer>
+        {settingsQuery.isError ? (
+          <p
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/40 p-3 text-sm text-destructive"
+          >
+            Không thể tải cài đặt từ backend:{" "}
+            {settingsQuery.error instanceof Error
+              ? settingsQuery.error.message
+              : "Lỗi không xác định"}
+          </p>
+        ) : null}
         <PageHeader
           title="Cài đặt hệ thống"
           description="Quản lý cấu hình thanh toán SePay VietQR, thông tin tài khoản ngân hàng và thông tin nhà sách."
@@ -274,17 +316,27 @@ function SettingsPage() {
                   <div className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-xs text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 flex items-start gap-2">
                     <Info className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>
-                      Sau khi lưu cấu hình, tất cả mã QR tại màn hình <strong>Bán lẻ POS</strong>,{" "}
-                      <strong>In hóa đơn K80</strong> và <strong>Chi tiết đơn hàng</strong> sẽ tự
-                      động cập nhật ngay lập tức theo tài khoản của bạn.
+                      Cấu hình dùng chung trên máy chủ sẽ cập nhật mã QR tại màn hình{" "}
+                      <strong>Bán lẻ POS</strong>, <strong>In hóa đơn K80</strong> và{" "}
+                      <strong>Chi tiết đơn hàng</strong> sẽ tự động cập nhật ngay lập tức theo tài
+                      khoản của bạn.
                     </span>
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between border-t pt-4">
-                  <Button variant="outline" size="sm" onClick={handleResetSepay}>
-                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Khôi phục mặc định
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetSepay}
+                    disabled={!settingsQuery.data || isSaving}
+                  >
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Hủy thay đổi
                   </Button>
-                  <Button size="sm" onClick={handleSaveSepay}>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSepay}
+                    disabled={!settingsQuery.data || isSaving}
+                  >
                     <Save className="mr-1.5 h-3.5 w-3.5" /> Lưu cấu hình
                   </Button>
                 </CardFooter>
@@ -442,7 +494,11 @@ function SettingsPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end border-t pt-4">
-                <Button size="sm" onClick={handleSaveStore}>
+                <Button
+                  size="sm"
+                  onClick={handleSaveStore}
+                  disabled={!settingsQuery.data || isSaving}
+                >
                   <Save className="mr-1.5 h-3.5 w-3.5" /> Lưu thông tin cửa hàng
                 </Button>
               </CardFooter>

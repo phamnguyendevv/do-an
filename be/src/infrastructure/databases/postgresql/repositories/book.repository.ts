@@ -19,6 +19,7 @@ const DEFAULT_SELECT_FIELDS: (keyof Book)[] = [
   'publisher',
   'isbn',
   'category',
+  'categoryId',
   'purchasePrice',
   'sellingPrice',
   'stock',
@@ -40,6 +41,7 @@ export class BookRepository implements IBookRepositoryInterface {
     size,
     page,
     category,
+    categoryId,
     status,
     minPrice,
     maxPrice,
@@ -83,6 +85,10 @@ export class BookRepository implements IBookRepositoryInterface {
       query.andWhere('book.category = :category', { category })
     }
 
+    if (categoryId) {
+      query.andWhere('book.categoryId = :categoryId', { categoryId })
+    }
+
     if (status) {
       query.andWhere('book.status = :status', { status })
     }
@@ -103,7 +109,9 @@ export class BookRepository implements IBookRepositoryInterface {
 
     if (endDate) {
       const end = new Date(endDate)
-      end.setHours(23, 59, 59, 999)
+      if (typeof endDate === 'string' && endDate.length <= 10) {
+        end.setHours(23, 59, 59, 999)
+      }
       query.andWhere('book.createdAt <= :endDate', { endDate: end })
     }
 

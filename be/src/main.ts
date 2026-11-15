@@ -80,28 +80,51 @@ async function bootstrap() {
     credentials: true,
   })
 
-  // Seed a default admin user if no users exist (useful for local dev)
+  // Seed demo accounts only for local development.
   try {
     const userRepo = app.get(USER_REPOSITORY)
     const bcrypt = app.get(BCRYPT_SERVICE)
     if (userRepo && bcrypt) {
-      const { pagination } = await userRepo.findUsers({ size: 1, page: 1 })
-      const total = pagination?.total ?? 0
-      if (total === 0) {
-        const plain = 'admin123'
-        const hashed = await bcrypt.hash(plain)
-        const admin = {
-          email: 'admin@example.com',
-          username: 'admin',
+      const demoAccounts =
+        env === 'local'
+          ? [
+              {
+                email: 'admin@example.com',
+                username: 'admin',
+                password: 'admin123',
+                role: UserRoleEnum.Admin,
+              },
+              {
+                email: 'staff@example.com',
+                username: 'staff',
+                password: 'staff123',
+                role: UserRoleEnum.Staff,
+              },
+              {
+                email: 'user@gmail.com',
+                username: 'user',
+                password: 'password123',
+                role: UserRoleEnum.Staff,
+              },
+            ]
+          : []
+
+      for (const account of demoAccounts) {
+        const existing = await userRepo.getUserByEmail(account.email)
+        if (existing) continue
+
+        const hashed = await bcrypt.hash(account.password)
+        await userRepo.createUser({
+          email: account.email,
+          username: account.username,
           password: hashed,
           confirmPassword: hashed,
-          role: UserRoleEnum.Admin,
+          role: account.role,
           status: UserStatusEnum.Active,
           emailVerified: true,
-        }
-        await userRepo.createUser(admin)
+        })
         // eslint-disable-next-line no-console
-        console.log('Seeded admin user: admin@example.com / admin123')
+        console.log(`Seeded local demo account: ${account.email}`)
       }
     }
   } catch (err) {

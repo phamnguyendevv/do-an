@@ -26,11 +26,13 @@ function NavLink({
 }) {
   const Icon = item.icon;
   const base = cn(
-    "flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
+    "flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium transition-[transform,box-shadow,background-color,color] duration-200 ease-out motion-reduce:transition-none",
     collapsed && "justify-center px-0",
     active
       ? "bg-sidebar-accent text-sidebar-accent-foreground"
       : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+    !item.disabled &&
+      "motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:focus-visible:-translate-y-0.5 motion-safe:focus-visible:shadow-md",
     item.disabled && "cursor-not-allowed opacity-45 hover:bg-transparent",
   );
 

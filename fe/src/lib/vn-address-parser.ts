@@ -523,17 +523,19 @@ export interface ParsedAddressResult {
   customerName: string;
   customerPhone: string;
   detailAddress: string;
-  provinceId?: number;
-  provinceName?: string;
-  districtId?: number;
-  districtName?: string;
-  wardCode?: string;
-  wardName?: string;
-  unmatchedWardCandidate?: string;
-  warningMessage?: string;
-  is2LevelConverted?: boolean;
+  provinceId?: number | undefined;
+  provinceName?: string | undefined;
+  districtId?: number | undefined;
+  districtName?: string | undefined;
+  wardCode?: string | undefined;
+  wardName?: string | undefined;
+  unmatchedWardCandidate?: string | undefined;
+  warningMessage?: string | undefined;
+  is2LevelConverted?: boolean | undefined;
   confidence: number;
 }
+
+export type ParsedCustomerAddressResult = ParsedAddressResult;
 
 /**
  * Escape special regex characters in string
@@ -628,8 +630,9 @@ export async function parseCustomerAndAddress(
     /(?:tên|ten|họ và tên|ho va ten|họ tên|ho ten|người nhận|nguoi nhan|khách hàng|khach hang|tên khách|ten khach|name|receiver)\s*[:：\-]\s*([^\r\n,;|\t]+)/i;
   const nameLabelMatch = rawInput.match(nameLabelRegex);
 
-  if (nameLabelMatch && isPotentialPersonName(nameLabelMatch[1])) {
-    customerName = nameLabelMatch[1].trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
+  const labeledName = nameLabelMatch?.[1];
+  if (nameLabelMatch && labeledName && isPotentialPersonName(labeledName)) {
+    customerName = labeledName.trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
     workingText = workingText.replace(nameLabelMatch[0], " ").trim();
   }
 
@@ -858,8 +861,9 @@ export async function parseCustomerAndAddress(
         "i",
       );
       const afterMatch = rawInput.match(afterPhoneRegex);
-      if (afterMatch) {
-        const candidateWords = afterMatch[1].trim().split(/\s+/);
+      const afterPhoneText = afterMatch?.[1];
+      if (afterPhoneText) {
+        const candidateWords = afterPhoneText.trim().split(/\s+/);
         for (let len = Math.min(candidateWords.length, 4); len >= 1; len--) {
           const cand = candidateWords.slice(0, len).join(" ");
           if (isPotentialPersonName(cand)) {
@@ -906,8 +910,9 @@ export async function parseCustomerAndAddress(
       const beforePhoneMatch = rawInput.match(
         new RegExp(`^\\s*([A-ZÀ-Ỹa-zà-ỹ\\s]{2,35})[\\s,;:\\-]+${escapeRegex(rawPhone)}`, "i"),
       );
-      if (beforePhoneMatch && isPotentialPersonName(beforePhoneMatch[1])) {
-        customerName = beforePhoneMatch[1].trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
+      const beforePhoneName = beforePhoneMatch?.[1];
+      if (beforePhoneName && isPotentialPersonName(beforePhoneName)) {
+        customerName = beforePhoneName.trim().replace(/^[:：\-.,\s]+|[:：\-.,\s]+$/g, "");
       }
     }
 
@@ -919,10 +924,12 @@ export async function parseCustomerAndAddress(
         .filter((t) => t.length > 0);
 
       if (lines.length > 1) {
-        if (isPotentialPersonName(lines[0])) {
-          customerName = lines[0];
-        } else if (isPotentialPersonName(lines[lines.length - 1])) {
-          customerName = lines[lines.length - 1];
+        const firstLine = lines[0];
+        const lastLine = lines[lines.length - 1];
+        if (firstLine && isPotentialPersonName(firstLine)) {
+          customerName = firstLine;
+        } else if (lastLine && isPotentialPersonName(lastLine)) {
+          customerName = lastLine;
         }
       }
     }
@@ -1053,15 +1060,16 @@ export async function parseCustomerAndAddress(
     customerName,
     customerPhone: phone,
     detailAddress,
-    provinceId: matchedProvince?.ProvinceID,
-    provinceName: matchedProvince?.ProvinceName,
-    districtId: matchedDistrict?.DistrictID,
-    districtName: matchedDistrict?.DistrictName,
-    wardCode: matchedWard?.WardCode,
-    wardName: matchedWard?.WardName,
-    unmatchedWardCandidate,
-    warningMessage,
-    is2LevelConverted,
+    ...(matchedProvince
+      ? { provinceId: matchedProvince.ProvinceID, provinceName: matchedProvince.ProvinceName }
+      : {}),
+    ...(matchedDistrict
+      ? { districtId: matchedDistrict.DistrictID, districtName: matchedDistrict.DistrictName }
+      : {}),
+    ...(matchedWard ? { wardCode: matchedWard.WardCode, wardName: matchedWard.WardName } : {}),
+    ...(unmatchedWardCandidate ? { unmatchedWardCandidate } : {}),
+    ...(warningMessage ? { warningMessage } : {}),
+    ...(is2LevelConverted !== undefined ? { is2LevelConverted } : {}),
     confidence: Math.min(1.0, confidence),
   };
 }
@@ -1074,10 +1082,10 @@ export function resolve2LevelTo3Level(
   wardCode: string,
   allWardsInProvince: Array<GhnWard & { districtName?: string }>,
 ): {
-  districtId?: number;
+  districtId?: number | undefined;
   wardCode: string;
-  wardName?: string;
-  districtName?: string;
+  wardName?: string | undefined;
+  districtName?: string | undefined;
 } | null {
   const target = allWardsInProvince.find((w) => w.WardCode === wardCode);
   if (!target) return null;
@@ -1086,6 +1094,6 @@ export function resolve2LevelTo3Level(
     districtId: target.DistrictID,
     wardCode: target.WardCode,
     wardName: target.WardName,
-    districtName: target.districtName,
+    ...(target.districtName ? { districtName: target.districtName } : {}),
   };
 }

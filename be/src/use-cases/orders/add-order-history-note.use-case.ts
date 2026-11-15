@@ -1,6 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { OrderHistoryEntity } from '@domain/entities/order-history.entity'
+import {
+  OrderHistoryActionEnum,
+  OrderHistoryEntity,
+} from '@domain/entities/order-history.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOKSTORE_ORDER_REPOSITORY,
@@ -59,7 +62,7 @@ export class AddOrderHistoryNoteUseCase {
     return await this.historyRepository.createHistory({
       orderId: order.id,
       orderCode: order.orderCode,
-      action: 'NOTE_ADDED',
+      action: OrderHistoryActionEnum.NoteAdded,
       fromStatus: String(order.status),
       toStatus: String(order.status),
       fromPayment: String(order.payment),

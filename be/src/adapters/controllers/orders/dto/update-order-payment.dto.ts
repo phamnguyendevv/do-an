@@ -1,14 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger'
 
-import { IsNotEmpty, IsString } from 'class-validator'
+import { IsEnum } from 'class-validator'
+
+import { PaymentStatusEnum } from '@domain/entities/order-enums.entity'
 
 export class UpdateOrderPaymentDto {
   @ApiProperty({
     example: 'PAID',
-    enum: ['PAID', 'UNPAID', 'REFUNDED'],
+    enum: PaymentStatusEnum,
     required: true,
   })
-  @IsString()
-  @IsNotEmpty()
-  payment!: string
+  @IsEnum(PaymentStatusEnum)
+  payment!: PaymentStatusEnum
 }

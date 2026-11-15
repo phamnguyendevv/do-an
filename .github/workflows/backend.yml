@@ -1,0 +1,166 @@
+name:  Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'be/**'
+      - 'nginx/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/backend.yml'
+      - 'scripts/deploy-be.sh'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'be/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: enestars/do-an-backend
+
+jobs:
+  test:
+    name:  Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./be
+
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: be/package-lock.json
+
+      - name:  Install dependencies
+        run: npm ci
+
+      - name:  Run ESLint
+        run: npm run lint
+
+      - name:  Run Tests
+        run: npm test
+        env:
+          NODE_ENV: test
+
+
+  build-and-push:
+    name: Build & Push Docker Image to DockerHub
+    runs-on: ubuntu-latest
+    environment: cicd
+    needs: test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Extract Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build & Push Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./be
+          file: ./be/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name:  Deploy to VPS
+    runs-on: ubuntu-latest
+    environment: cicd
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name:  Checkout code (lấy script deploy)
+        uses: actions/checkout@v4
+
+      - name: 📁 Copy deploy script lên VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "scripts/deploy-be.sh,scripts/ensure-env-production.sh,docker-compose.prod.yml"
+          target: "/opt/app"
+
+      - name: 🚀 SSH vào VPS và chạy deploy
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          SEPAY_BANK: ${{ secrets.SEPAY_BANK }}
+          SEPAY_ACCOUNT: ${{ secrets.SEPAY_ACCOUNT }}
+          SEPAY_ACCOUNT_NAME: ${{ secrets.SEPAY_ACCOUNT_NAME }}
+          SEPAY_WEBHOOK_SECRET: ${{ secrets.SEPAY_WEBHOOK_SECRET }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          GHN_TOKEN: ${{ secrets.GHN_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        with:
+          envs: DATABASE_NAME,DATABASE_USER,DATABASE_PASSWORD,JWT_SECRET,JWT_REFRESH_SECRET,SEPAY_BANK,SEPAY_ACCOUNT,SEPAY_ACCOUNT_NAME,SEPAY_WEBHOOK_SECRET,REDIS_PASSWORD,GHN_TOKEN,GROQ_API_KEY,EMAIL_USERNAME,EMAIL_PASSWORD,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,STRIPE_SECRET_KEY,DOCKERHUB_USERNAME,DOCKERHUB_PASSWORD
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            if [ ! -f /opt/app/scripts/deploy-be.sh ] && [ -f /opt/app/deploy-be.sh ]; then
+              mkdir -p /opt/app/scripts
+              mv /opt/app/deploy-be.sh /opt/app/scripts/deploy-be.sh
+            fi
+            if [ ! -f /opt/app/scripts/ensure-env-production.sh ] && [ -f /opt/app/ensure-env-production.sh ]; then
+              mkdir -p /opt/app/scripts
+              mv /opt/app/ensure-env-production.sh /opt/app/scripts/ensure-env-production.sh
+            fi
+            chmod +x /opt/app/scripts/deploy-be.sh /opt/app/scripts/ensure-env-production.sh 2>/dev/null || chmod +x /opt/app/scripts/deploy-be.sh
+            bash /opt/app/scripts/deploy-be.sh
+
+      - name:  Deploy Backend hoàn tất
+        run: echo "Backend deployed successfully at $(date)"

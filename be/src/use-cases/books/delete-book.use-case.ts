@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { IBookIdInput } from '@domain/entities/book.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -21,7 +22,7 @@ export class DeleteBookUseCase {
     private readonly redisService: IRedisCacheService,
   ) {}
 
-  async execute(params: { id: number }): Promise<boolean> {
+  async execute(params: IBookIdInput): Promise<boolean> {
     const existing = await this.bookRepository.findBookById(params.id)
 
     if (!existing) {

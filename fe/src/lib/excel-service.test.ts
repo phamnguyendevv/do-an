@@ -12,10 +12,12 @@ describe("excel-service", () => {
         author: "Dale Carnegie",
         category: "Kỹ năng sống",
         purchasePrice: 65000,
+        sellingPrice: 95000,
         price: 95000,
         stock: 50,
         minStock: 10,
         status: "IN_STOCK",
+        createdAt: new Date().toISOString(),
       },
     ];
 

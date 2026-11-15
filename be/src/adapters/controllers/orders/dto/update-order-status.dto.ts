@@ -1,22 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger'
 
-import { IsNotEmpty, IsString } from 'class-validator'
+import { IsEnum } from 'class-validator'
+
+import { OrderStatusEnum } from '@domain/entities/order-enums.entity'
 
 export class UpdateOrderStatusDto {
   @ApiProperty({
     example: 'CONFIRMED',
-    enum: [
-      'PENDING',
-      'CONFIRMED',
-      'PREPARING',
-      'SHIPPING',
-      'DELIVERED',
-      'CANCELLED',
-      'RETURNED',
-    ],
+    enum: OrderStatusEnum,
     required: true,
   })
-  @IsString()
-  @IsNotEmpty()
-  status!: string
+  @IsEnum(OrderStatusEnum)
+  status!: OrderStatusEnum
 }

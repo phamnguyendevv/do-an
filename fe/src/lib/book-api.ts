@@ -3,13 +3,34 @@ export type BookApiItem = {
   title: string;
   author: string;
   category: string;
+  isbn?: string;
+  categoryId?: number | string;
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
   minStock: number;
-  status?: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+  description?: string;
+  status?: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "DISCONTINUED";
   createdAt?: string | Date;
 };
+
+export function mapBookApiItem(item: BookApiItem): import("@/types").Book {
+  const stock = Number(item.stock);
+  const minStock = Number(item.minStock);
+  return {
+    ...item,
+    id: String(item.id),
+    categoryId: item.categoryId === undefined ? undefined : String(item.categoryId),
+    purchasePrice: Number(item.purchasePrice),
+    sellingPrice: Number(item.sellingPrice),
+    price: Number(item.sellingPrice),
+    stock,
+    minStock,
+    status:
+      item.status ?? (stock <= 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK"),
+    createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
+  };
+}
 
 export type BookListApiResponse = {
   data: BookApiItem[];

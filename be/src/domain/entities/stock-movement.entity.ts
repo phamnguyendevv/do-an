@@ -1,4 +1,13 @@
+export enum StockMovementTypeEnum {
+  Import = 'IMPORT',
+  Export = 'EXPORT',
+  Sale = 'SALE',
+  Restock = 'RESTOCK',
+  Adjust = 'ADJUST',
+}
+
 export type StockMovementType =
+  | StockMovementTypeEnum
   | 'IMPORT'
   | 'EXPORT'
   | 'SALE'
