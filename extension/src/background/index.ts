@@ -9,23 +9,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Lắng nghe messages từ Content Script hoặc Side Panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'GET_ACTIVE_TAB_INFO') {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      sendResponse({ tab: tabs[0] })
-    })
-    return true
-  }
-
-  // Yêu cầu đóng tab hiện tại (ví dụ sau 4s dừng kiểm tra trên SPX)
-  if (request.action === 'CLOSE_TAB') {
-    if (sender.tab?.id) {
-      chrome.tabs.remove(sender.tab.id)
-      sendResponse({ success: true, tabId: sender.tab.id })
-    } else {
-      sendResponse({ success: false, error: 'Không tìm thấy tab ID' })
-    }
-    return true
-  }
 
   // Chụp ảnh bằng chứng màn hình đã điền form trên SPX
   if (request.action === 'CAPTURE_FILLED_SCREENSHOT') {
@@ -91,7 +74,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   chrome.tabs.sendMessage(
                     spxTab.id!,
                     { action: 'AUTO_FILL_SPX', orderData },
-                    (res) => {
+                    () => {
                       if (chrome.runtime.lastError) {
                         console.log('[Bookstore AI Background] Tab SPX bận hoặc mất kết nối sau khi reload extension, nạp lại tab để tự động điền:', chrome.runtime.lastError.message)
                         chrome.tabs.reload(spxTab.id!)
@@ -115,8 +98,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true
   }
 
-  // Ping test
-  if (request.action === 'PING') {
-    sendResponse({ status: 'PONG', timestamp: Date.now() })
-  }
 })

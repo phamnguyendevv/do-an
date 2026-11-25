@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit2, Loader2, Package, QrCode, Truck, User } from "lucide-react";
+import { ArrowLeft, Edit2, ExternalLink, Loader2, Package, QrCode, Truck, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -45,6 +45,7 @@ import type { Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import { orderStatusLabel, orderStatusTone, paymentLabel, paymentTone } from "@/utils/status";
 import { ghnApi, type GhnDistrict, type GhnProvince, type GhnWard } from "@/lib/ghn-api";
+import { spxApi } from "@/lib/spx-api";
 
 export const Route = createFileRoute("/orders/$orderId")({
   loader: async ({ params }) => {
@@ -128,6 +129,22 @@ function OrderDetailPage() {
     shipments.find((s) => s.orderId === order.id || s.orderId === order.orderCode) ??
     loaded.shipment;
 
+  const isSpx = useMemo(
+    () =>
+      Boolean(
+        order.shippingMethod?.toUpperCase().includes("SPX") ||
+        order.trackingCode?.toUpperCase().startsWith("SPX"),
+      ),
+    [order.shippingMethod, order.trackingCode],
+  );
+
+  const { data: spxData, isLoading: spxLoading } = useQuery({
+    queryKey: ["spx-order-track", order.trackingCode],
+    queryFn: () => spxApi.trackOrder(order.trackingCode!),
+    enabled: Boolean(order.trackingCode && isSpx),
+    staleTime: 60_000,
+  });
+
   return (
     <AppShell
       crumbs={[
@@ -160,7 +177,17 @@ function OrderDetailPage() {
                     Sửa đơn hàng
                   </Button>
                 )}
-              {shipment ? (
+              {isSpx && order.trackingCode ? (
+                <Button size="sm" variant="outline" asChild>
+                  <a
+                    href={`https://spx.vn/track?tracking_number=${encodeURIComponent(order.trackingCode)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Truck className="mr-1.5 h-4 w-4 text-amber-500" /> Tra cứu SPX
+                  </a>
+                </Button>
+              ) : shipment ? (
                 <Button size="sm" variant="outline" asChild>
                   <Link to="/shipping/$shippingId" params={{ shippingId: shipment.id }}>
                     <Truck className="mr-1.5 h-4 w-4" /> Theo dõi vận chuyển
@@ -177,7 +204,12 @@ function OrderDetailPage() {
           </StatusBadge>
           <StatusBadge tone={paymentTone[order.payment]}>{paymentLabel[order.payment]}</StatusBadge>
           <StatusBadge tone="info">{order.shippingMethod}</StatusBadge>
-          {order.trackingCode && <StatusBadge tone="info">GHN: {order.trackingCode}</StatusBadge>}
+          {order.trackingCode &&
+            (isSpx ? (
+              <StatusBadge tone="warning">SPX: {order.trackingCode}</StatusBadge>
+            ) : (
+              <StatusBadge tone="info">GHN: {order.trackingCode}</StatusBadge>
+            ))}
         </div>
 
         <OrderWorkflow order={order} />
@@ -235,6 +267,47 @@ function OrderDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {isSpx && order.trackingCode && (
+              <Card className="shadow-none border-amber-200 dark:border-amber-900/50 bg-amber-50/20 dark:bg-amber-950/10">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                      <Truck className="h-4 w-4" /> Vận chuyển SPX Express
+                    </CardTitle>
+                    <a
+                      href={`https://spx.vn/track?tracking_number=${encodeURIComponent(order.trackingCode)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-amber-600 hover:underline flex items-center gap-1 font-mono font-medium"
+                    >
+                      {order.trackingCode} <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Trạng thái:</span>
+                    <span className="font-semibold text-foreground">
+                      {spxLoading ? "Đang tải..." : spxData?.statusText || "Đang xử lý"}
+                    </span>
+                  </div>
+                  {spxData?.checkpoints && spxData.checkpoints.length > 0 && (
+                    <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40 space-y-1">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Mốc mới nhất:
+                      </span>
+                      <p className="font-medium text-foreground">
+                        {spxData.checkpoints[0].description}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {spxData.checkpoints[0].timeFormatted}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="shadow-none">
               <CardHeader className="pb-2">
@@ -303,13 +376,16 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
     content: order.items.map((i) => `${i.title} x${i.quantity}`).join(", "),
   });
 
-  const hasGhn = !!order.trackingCode;
+  const isSpx =
+    order.shippingMethod?.toUpperCase().includes("SPX") ||
+    order.trackingCode?.toUpperCase().startsWith("SPX");
+  const hasGhn = Boolean(order.trackingCode && !isSpx);
 
   // Lấy chi tiết đơn trực tiếp từ GHN Sandbox khi mở Sheet
   const { data: ghnDetail } = useQuery({
     queryKey: ["ghn-order-detail", order.trackingCode],
     queryFn: async () => {
-      if (!order.trackingCode) return null;
+      if (!order.trackingCode || !hasGhn) return null;
       try {
         return await ghnApi.getOrderDetail(order.trackingCode);
       } catch {
@@ -451,7 +527,7 @@ function EditOrderSheet({ order, open, onOpenChange }: EditOrderSheetProps) {
       }
 
       let ghnSyncError: string | null = null;
-      if (order.trackingCode) {
+      if (hasGhn && order.trackingCode) {
         try {
           await ghnApi.updateOrder({
             order_code: order.trackingCode,

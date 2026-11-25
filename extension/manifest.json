@@ -2,24 +2,25 @@
   "manifest_version": 3,
   "name": "Bookstore AI Assistant - Zalo & SPX Order",
   "version": "1.0.0",
-  "description": "Tự động phân tích hội thoại Zalo/Facebook, bóc tách đơn hàng bằng Gemini AI và đẩy đơn SPX",
+  "description": "Tự động phân tích hội thoại Zalo, bóc tách đơn hàng bằng Gemini AI và đẩy đơn SPX",
   "permissions": [
     "activeTab",
     "tabs",
     "storage",
-    "cookies",
     "sidePanel",
     "scripting"
   ],
   "host_permissions": [
     "*://chat.zalo.me/*",
     "*://web.zalo.me/*",
-    "*://*.facebook.com/*",
     "*://*.spx.vn/*",
     "*://*.shopee.vn/*",
     "http://localhost:3000/*",
-    "http://localhost:8000/*",
     "https://api.zymail.site/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
   ],
   "action": {
     "default_title": "Mở Bảng Điều Khiển AI Bookstore"
@@ -37,19 +38,9 @@
       "js": ["src/content/zalo.ts"]
     },
     {
-      "matches": ["*://*.facebook.com/*"],
-      "js": ["src/content/facebook.ts"]
-    },
-    {
       "matches": ["*://*.spx.vn/*", "*://*.shopee.vn/*"],
       "js": ["src/content/spx.ts"],
       "all_frames": true
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["spx-demo.html"],
-      "matches": ["<all_urls>"]
     }
   ]
 }

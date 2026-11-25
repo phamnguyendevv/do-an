@@ -113,6 +113,10 @@ function ShippingPage() {
             <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
               <Truck className="h-3.5 w-3.5" /> GHN
             </span>
+          ) : s.carrier?.includes("SPX") || s.trackingNumber?.toUpperCase().startsWith("SPX") ? (
+            <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+              <Truck className="h-3.5 w-3.5" /> SPX
+            </span>
           ) : (
             <span>{s.carrier || "Tiêu chuẩn"}</span>
           )}
@@ -136,6 +140,22 @@ function ShippingPage() {
               title="In tem vận đơn GHN A5 / 80x80"
             >
               <Printer className="h-3.5 w-3.5" />
+            </Button>
+          ) : (s.carrier?.includes("SPX") || s.trackingNumber?.toUpperCase().startsWith("SPX")) && s.trackingNumber ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-amber-600"
+              asChild
+              title="Tra cứu trực tiếp trên SPX Express"
+            >
+              <a
+                href={`https://spx.vn/track?tracking_number=${encodeURIComponent(s.trackingNumber)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
             </Button>
           ) : null}
         </div>

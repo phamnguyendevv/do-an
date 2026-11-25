@@ -6,9 +6,16 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  UseGuards,
   VERSION_NEUTRAL,
 } from '@nestjs/common'
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
 
 import {
   BOOKSTORE_ORDER_REPOSITORY,
@@ -34,8 +41,18 @@ import {
   ParsedProductsResult,
 } from '@infrastructure/services/gemini-parser.service'
 import { GhnService } from '@infrastructure/services/ghn/ghn.service'
+import { SpxService } from '@infrastructure/services/spx/spx.service'
+
+import { AssistantAuthGuard } from '../common/guards/assistant-auth.guard'
 
 @ApiTags('assistant')
+@ApiBearerAuth()
+@ApiHeader({
+  name: 'x-api-key',
+  required: false,
+  description: 'API Key nội bộ cho Extension (hoặc dùng JWT Bearer token)',
+})
+@UseGuards(AssistantAuthGuard)
 @Controller({
   path: ['assistant', 'api/assistant'],
   version: [VERSION_NEUTRAL, '1'],
@@ -48,6 +65,7 @@ export class AssistantController {
     @Inject(BOOKSTORE_ORDER_REPOSITORY)
     private orderRepository: IBookstoreOrderRepositoryInterface,
     private ghnService: GhnService,
+    private spxService: SpxService,
   ) {}
 
   @Get('provinces')
@@ -224,5 +242,15 @@ export class AssistantController {
       orderCode: body.orderCode,
       trackingCode: body.trackingCode,
     }
+  }
+
+  @Get('track-spx/:trackingCode')
+  @ApiOperation({
+    summary: 'Tra cứu hành trình đơn hàng bằng mã vận đơn SPX từ extension',
+  })
+  async trackSpxFromExtension(
+    @Param('trackingCode') trackingCode: string,
+  ) {
+    return await this.spxService.trackOrder(trackingCode)
   }
 }

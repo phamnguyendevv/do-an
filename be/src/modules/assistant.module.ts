@@ -6,11 +6,12 @@ import { GeminiParserService } from '../infrastructure/services/gemini-parser.se
 import { BooksModule } from './books.module'
 import { GhnModule } from './ghn.module'
 import { OrdersModule } from './orders.module'
+import { SpxModule } from './spx.module'
 
 @Module({
-  imports: [BooksModule, OrdersModule, GhnModule],
+  imports: [BooksModule, OrdersModule, GhnModule, SpxModule],
   controllers: [AssistantController],
   providers: [AssistantService, GeminiParserService],
   exports: [AssistantService, GeminiParserService],
 })
-export class AssistantModule {}
+export class AssistantModule { }

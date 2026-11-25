@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ghnApi, mapGhnStatus } from "@/lib/ghn-api";
+import { spxApi, mapSpxStatus } from "@/lib/spx-api";
 import { mapOrderApiItem, orderApi } from "@/lib/order-api";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 import {
@@ -170,9 +171,52 @@ function ShippingDetailPage() {
   const isGhn =
     (shipment.carrier?.includes("GHN") ?? false) ||
     (shipment.trackingNumber?.startsWith("GHN") ?? false) ||
-    ((shipment.trackingNumber?.length ?? 0) >= 6 && !shipment.trackingNumber?.startsWith("VN"));
+    ((shipment.trackingNumber?.length ?? 0) >= 6 &&
+      !shipment.trackingNumber?.startsWith("VN") &&
+      !shipment.trackingNumber?.toUpperCase().startsWith("SPX"));
 
   const hasTracking = isGhn && shipment.trackingNumber;
+
+  const isSpx =
+    (shipment.carrier?.includes("SPX") ?? false) ||
+    (shipment.carrier?.includes("Shopee") ?? false) ||
+    (shipment.trackingNumber?.toUpperCase().startsWith("SPX") ?? false);
+
+  const hasSpxTracking = isSpx && Boolean(shipment.trackingNumber);
+
+  // Query SPX status realtime
+  const {
+    data: spxDetail,
+    isLoading: isLoadingSpx,
+    isFetching: isFetchingSpx,
+    refetch: refetchSpx,
+    error: spxError,
+  } = useQuery({
+    queryKey: ["spx-order-detail", shipment.trackingNumber],
+    queryFn: async () => {
+      if (!hasSpxTracking) return null;
+      return spxApi.trackOrder(shipment.trackingNumber!);
+    },
+    enabled: !!hasSpxTracking,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const handleSyncSpx = async () => {
+    if (!shipment.trackingNumber) return;
+    try {
+      const res = await spxApi.syncOrderStatus(shipment.trackingNumber);
+      if (res.updated) {
+        toast.success(res.message);
+        queryClient.invalidateQueries({ queryKey: ["order"] });
+        refetchSpx();
+      } else {
+        toast.info(res.message);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi đồng bộ trạng thái SPX");
+    }
+  };
 
   // Query GHN status realtime
   const {
@@ -411,6 +455,137 @@ function ShippingDetailPage() {
               </Card>
             )}
 
+            {/* SPX Live Status Card */}
+            {hasSpxTracking && (
+              <Card className="shadow-none border-amber-300 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-950/10">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <CardTitle className="text-base text-amber-900 dark:text-amber-200">
+                      Shopee Xpress (SPX)
+                    </CardTitle>
+                    {spxDetail?.statusText && (
+                      <StatusBadge tone="warning">
+                        {spxDetail.statusText}
+                      </StatusBadge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {shipment.trackingNumber && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 gap-1 text-xs border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-300"
+                        asChild
+                      >
+                        <a
+                          href={`https://spx.vn/track?tracking_number=${encodeURIComponent(
+                            shipment.trackingNumber,
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Cổng SPX.vn
+                        </a>
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 gap-1.5 text-xs text-muted-foreground"
+                      disabled={isFetchingSpx}
+                      onClick={() => refetchSpx()}
+                    >
+                      <RefreshCw
+                        className={cn("h-3.5 w-3.5", isFetchingSpx && "animate-spin")}
+                      />
+                      Làm mới
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingSpx ? (
+                    <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin text-amber-600" />
+                      Đang tra cứu hành trình từ Shopee Xpress...
+                    </div>
+                  ) : spxError ? (
+                    <div className="flex items-center gap-2 py-3 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>
+                        Không thể kết nối tra cứu SPX: {(spxError as any)?.message}
+                      </span>
+                    </div>
+                  ) : spxDetail && spxDetail.checkpoints?.length > 0 ? (
+                    <div className="space-y-3">
+                      <ol className="relative space-y-3 pl-7">
+                        <span className="absolute left-[10px] top-1.5 h-[calc(100%-12px)] w-px bg-amber-200 dark:bg-amber-900" />
+                        {spxDetail.checkpoints.map((cp, i) => {
+                          const isFirst = i === 0;
+                          return (
+                            <li key={i} className="relative">
+                              <span
+                                className={cn(
+                                  "absolute -left-7 top-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[9px]",
+                                  isFirst
+                                    ? "border-amber-500 bg-amber-500 text-white shadow-xs"
+                                    : "border-border bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {isFirst ? <Check className="h-2.5 w-2.5" /> : null}
+                              </span>
+                              <div>
+                                <p
+                                  className={cn(
+                                    "text-sm font-semibold",
+                                    isFirst
+                                      ? "text-amber-900 dark:text-amber-200"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {cp.description || cp.status}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {cp.timeFormatted}
+                                  {cp.location ? ` — ${cp.location}` : ""}
+                                </p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                      {spxDetail.source === "SYSTEM_ESTIMATE" && (
+                        <div className="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-2 text-xs text-amber-800 dark:text-amber-300">
+                          ℹ️ Đơn hàng đã ghi nhận mã SPX trên hệ thống BookStore. Các mốc bưu cục sẽ tự động hiển thị khi nhân viên giao hàng SPX quét mã.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="py-2 text-sm text-muted-foreground flex items-center justify-between">
+                      <span>Mã vận đơn SPX chưa có dữ liệu quét bưu cục.</span>
+                      <Button
+                        size="sm"
+                        variant="link"
+                        className="h-auto p-0 text-amber-600"
+                        asChild
+                      >
+                        <a
+                          href={`https://spx.vn/track?tracking_number=${encodeURIComponent(
+                            shipment.trackingNumber || "",
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Kiểm tra trực tiếp trên spx.vn →
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Internal tracking progress */}
             <Card className="shadow-none">
               <CardHeader className="pb-2">
@@ -429,13 +604,13 @@ function ShippingDetailPage() {
                             "absolute -left-8 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px]",
                             done && !failed && "border-success bg-success text-success-foreground",
                             done &&
-                              failed &&
-                              isCurrent &&
-                              "border-destructive bg-destructive text-destructive-foreground",
+                            failed &&
+                            isCurrent &&
+                            "border-destructive bg-destructive text-destructive-foreground",
                             done &&
-                              failed &&
-                              !isCurrent &&
-                              "border-success bg-success text-success-foreground",
+                            failed &&
+                            !isCurrent &&
+                            "border-success bg-success text-success-foreground",
                             !done && "border-border bg-muted text-muted-foreground",
                           )}
                         >
@@ -667,6 +842,69 @@ function ShippingDetailPage() {
                   )}
                   {ghnDetail.cod_amount != null && (
                     <Row label="Thu hộ COD" value={formatCurrency(Number(ghnDetail.cod_amount))} />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* SPX live info */}
+            {spxDetail && (
+              <Card className="shadow-none border-amber-300/80 bg-amber-50/20 dark:bg-amber-950/20">
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-sm flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                      <Truck className="h-3.5 w-3.5 text-amber-600" />
+                      Thông tin Shopee Xpress
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px] px-2 text-amber-800 border-amber-300 hover:bg-amber-100"
+                      onClick={handleSyncSpx}
+                    >
+                      Đồng bộ đơn
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="divide-y text-sm">
+                  <Row
+                    label="Mã vận đơn"
+                    value={
+                      <span className="font-mono text-xs font-bold text-amber-700 dark:text-amber-400">
+                        {spxDetail.trackingCode}
+                      </span>
+                    }
+                  />
+                  <Row
+                    label="Trạng thái SPX"
+                    value={
+                      <span className="font-medium text-xs text-amber-800 dark:text-amber-300">
+                        {spxDetail.statusText}
+                      </span>
+                    }
+                  />
+                  <Row
+                    label="Nguồn dữ liệu"
+                    value={
+                      <span className="text-xs text-muted-foreground">
+                        {spxDetail.source === "SPX_API" ? "Cổng SPX chính thức" : "Ghi nhận hệ thống"}
+                      </span>
+                    }
+                  />
+                  {spxDetail.carrierUrl && (
+                    <div className="pt-2">
+                      <Button
+                        size="sm"
+                        variant="link"
+                        className="h-auto p-0 text-xs text-amber-600 gap-1"
+                        asChild
+                      >
+                        <a href={spxDetail.carrierUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-3 w-3" />
+                          Xem trực tiếp trên spx.vn
+                        </a>
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>

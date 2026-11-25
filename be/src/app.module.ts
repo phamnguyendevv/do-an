@@ -18,6 +18,7 @@ import { NotificationsModule } from '@modules/notifications.module'
 import { OrdersModule } from '@modules/orders.module'
 import { RevenueModule } from '@modules/revenue.module'
 import { SePayModule } from '@modules/sepay.module'
+import { SpxModule } from '@modules/spx.module'
 import { SuppliersModule } from '@modules/supplier.module'
 import { SystemSettingsModule } from '@modules/system-settings.module'
 import { UsersModule } from '@modules/user.module'
@@ -68,6 +69,7 @@ import { HealthModule } from './modules/health.module'
     InventoryModule,
     OrdersModule,
     GhnModule,
+    SpxModule,
     SePayModule,
     RevenueModule,
     AssistantModule,
