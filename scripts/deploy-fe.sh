@@ -22,6 +22,15 @@ NGINX_CONF_SRC="$APP_DIR/nginx/frontend.conf"
 NGINX_CONF_DEST="/etc/nginx/sites-available/zymail.site"
 NGINX_ENABLED="/etc/nginx/sites-enabled/zymail.site"
 
+IMAGE="enestars/do-an-frontend:latest"
+
+# Khoá triển khai để tránh deploy FE & BE đụng độ containerd cùng lúc
+if command -v flock >/dev/null 2>&1; then
+    exec 9>/tmp/bookstore-deploy.lock
+    log "Chờ lock deploy VPS (nếu Backend đang deploy)..."
+    flock -w 420 9 || warn "Hết thời gian chờ lock deploy, tiếp tục thực thi..."
+fi
+
 log "Bắt đầu deploy Frontend (Docker)..."
 
 # Bo sung Docker neu thieu (deploy truoc do loi: docker: command not found).
@@ -96,37 +105,42 @@ if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
 fi
 
 # ============================================================
-# 3. Pull image và khởi chạy container frontend
+# 3. Xóa container & image cũ trước khi pull bản mới
 # ============================================================
 cd "$APP_DIR"
-log "Dung lượng ổ đĩa hiện tại:"
+log "Dung lượng ổ đĩa trước khi dọn:"
+df -h / | awk 'NR==2 {print "  - Đã dùng: "$3"/"$2" ("$5") | Còn trống: "$4}'
+
+log "Dừng container Frontend cũ và xóa image cũ ($IMAGE)..."
+docker stop app-frontend 2>/dev/null || true
+docker rm -f app-frontend 2>/dev/null || true
+docker rmi -f "$IMAGE" 2>/dev/null || true
+docker image prune -f 2>/dev/null || true
+
+log "Dung lượng ổ đĩa sau khi xóa image cũ:"
 df -h / | awk 'NR==2 {print "  - Đã dùng: "$3"/"$2" ("$5") | Còn trống: "$4}'
 
 log "Pull Docker image Frontend mới nhất..."
 pull_frontend() {
-    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull frontend 2>/dev/null || \
-    docker pull enestars/do-an-frontend:latest
+    if command -v timeout >/dev/null 2>&1; then
+        timeout 240 docker pull "$IMAGE"
+    else
+        docker pull "$IMAGE"
+    fi
 }
 
 if ! pull_frontend; then
-    warn "Pull image thất bại. Dừng container cũ, dọn dẹp cache containerd & ổ đĩa để thử lại..."
-    # Dừng và xóa container cũ để giải phóng tài nguyên
-    docker stop app-frontend 2>/dev/null || true
-    docker rm -f app-frontend 2>/dev/null || true
+    warn "Pull image thất bại hoặc quá thời gian. Dọn dẹp cache containerd & ổ đĩa để thử lại..."
     # 1. Dọn dẹp thư mục ingest bị lỗi của containerd
     rm -rf /var/lib/containerd/io.containerd.content.v1.content/ingest/* 2>/dev/null || true
-    # 2. Xóa các image cũ để giải phóng ổ đĩa
-    docker image prune -af --filter "until=1h" 2>/dev/null || docker image prune -f 2>/dev/null || true
+    # 2. Xóa các image dangling/cũ không dùng để giải phóng ổ đĩa
+    docker image prune -f 2>/dev/null || true
     # 3. Khởi động lại containerd nếu có
     systemctl restart containerd 2>/dev/null || true
     sleep 3
     log "Thử pull lại Frontend sau khi dọn dẹp..."
     pull_frontend || error "Không thể pull image frontend sau khi đã dọn dẹp cache containerd"
 fi
-
-log "Dừng và xóa container Frontend cũ..."
-docker stop app-frontend 2>/dev/null || true
-docker rm -f app-frontend 2>/dev/null || true
 
 log "Khởi chạy Frontend container mới..."
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --force-recreate frontend

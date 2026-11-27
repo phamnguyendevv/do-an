@@ -33,6 +33,13 @@ elif [ -f "$APP_DIR/ensure-env-production.sh" ]; then
 fi
 [ -f "$ENV_FILE" ] || error "Không tìm thấy $ENV_FILE — hay them secret vao GitHub environment cicd roi chay lai deploy!"
 
+# Khoá triển khai để tránh deploy BE & FE đụng độ containerd cùng lúc
+if command -v flock >/dev/null 2>&1; then
+    exec 9>/tmp/bookstore-deploy.lock
+    log "Chờ lock deploy VPS (nếu Frontend đang deploy)..."
+    flock -w 420 9 || warn "Hết thời gian chờ lock deploy, tiếp tục thực thi..."
+fi
+
 log "Bắt đầu deploy Backend..."
 
 # Bo sung Docker neu thieu (deploy truoc do loi: docker: command not found).
@@ -73,27 +80,36 @@ if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
 fi
 
 # ============================================================
-# 2. Pull image Backend moi nhat
+# 2. Xóa container & image Backend cũ trước khi pull bản mới
 # ============================================================
 cd "$APP_DIR"
-log "Dung lượng ổ đĩa hiện tại:"
+log "Dung lượng ổ đĩa trước khi dọn:"
+df -h / | awk 'NR==2 {print "  - Đã dùng: "$3"/"$2" ("$5") | Còn trống: "$4}'
+
+log "Dừng container Backend cũ và xóa image cũ ($IMAGE)..."
+docker stop app-backend 2>/dev/null || true
+docker rm -f app-backend 2>/dev/null || true
+docker rmi -f "$IMAGE" 2>/dev/null || true
+docker image prune -f 2>/dev/null || true
+
+log "Dung lượng ổ đĩa sau khi xóa image cũ:"
 df -h / | awk 'NR==2 {print "  - Đã dùng: "$3"/"$2" ("$5") | Còn trống: "$4}'
 
 log "Pull Docker image mới nhất..."
 pull_backend() {
-    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull backend 2>/dev/null || \
-    docker pull "$IMAGE"
+    if command -v timeout >/dev/null 2>&1; then
+        timeout 240 docker pull "$IMAGE"
+    else
+        docker pull "$IMAGE"
+    fi
 }
 
 if ! pull_backend; then
-    warn "Pull image backend thất bại. Dừng container cũ, dọn dẹp cache containerd & ổ đĩa để thử lại..."
-    # Dừng và xóa container cũ để giải phóng tài nguyên
-    docker stop app-backend 2>/dev/null || true
-    docker rm -f app-backend 2>/dev/null || true
+    warn "Pull image backend thất bại hoặc quá thời gian. Dọn dẹp cache containerd & ổ đĩa để thử lại..."
     # 1. Dọn dẹp thư mục ingest bị lỗi của containerd
     rm -rf /var/lib/containerd/io.containerd.content.v1.content/ingest/* 2>/dev/null || true
-    # 2. Xóa các image cũ để giải phóng ổ đĩa
-    docker image prune -af --filter "until=1h" 2>/dev/null || docker image prune -f 2>/dev/null || true
+    # 2. Xóa các image dangling/cũ không dùng để giải phóng ổ đĩa
+    docker image prune -f 2>/dev/null || true
     # 3. Khởi động lại containerd nếu có
     systemctl restart containerd 2>/dev/null || true
     sleep 3

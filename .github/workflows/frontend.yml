@@ -151,6 +151,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          command_timeout: 20m
           script: |
             if [ ! -f /opt/app/scripts/deploy-fe.sh ] && [ -f /opt/app/deploy-fe.sh ]; then
               mkdir -p /opt/app/scripts
