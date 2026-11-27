@@ -14,4 +14,4 @@ import { SpxModule } from './spx.module'
   providers: [AssistantService, GeminiParserService],
   exports: [AssistantService, GeminiParserService],
 })
-export class AssistantModule { }
+export class AssistantModule {}

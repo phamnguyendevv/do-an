@@ -465,9 +465,7 @@ function ShippingDetailPage() {
                       Shopee Xpress (SPX)
                     </CardTitle>
                     {spxDetail?.statusText && (
-                      <StatusBadge tone="warning">
-                        {spxDetail.statusText}
-                      </StatusBadge>
+                      <StatusBadge tone="warning">{spxDetail.statusText}</StatusBadge>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -497,9 +495,7 @@ function ShippingDetailPage() {
                       disabled={isFetchingSpx}
                       onClick={() => refetchSpx()}
                     >
-                      <RefreshCw
-                        className={cn("h-3.5 w-3.5", isFetchingSpx && "animate-spin")}
-                      />
+                      <RefreshCw className={cn("h-3.5 w-3.5", isFetchingSpx && "animate-spin")} />
                       Làm mới
                     </Button>
                   </div>
@@ -513,9 +509,7 @@ function ShippingDetailPage() {
                   ) : spxError ? (
                     <div className="flex items-center gap-2 py-3 text-sm text-destructive">
                       <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>
-                        Không thể kết nối tra cứu SPX: {(spxError as any)?.message}
-                      </span>
+                      <span>Không thể kết nối tra cứu SPX: {(spxError as any)?.message}</span>
                     </div>
                   ) : spxDetail && spxDetail.checkpoints?.length > 0 ? (
                     <div className="space-y-3">
@@ -557,7 +551,8 @@ function ShippingDetailPage() {
                       </ol>
                       {spxDetail.source === "SYSTEM_ESTIMATE" && (
                         <div className="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-2 text-xs text-amber-800 dark:text-amber-300">
-                          ℹ️ Đơn hàng đã ghi nhận mã SPX trên hệ thống BookStore. Các mốc bưu cục sẽ tự động hiển thị khi nhân viên giao hàng SPX quét mã.
+                          ℹ️ Đơn hàng đã ghi nhận mã SPX trên hệ thống BookStore. Các mốc bưu cục sẽ
+                          tự động hiển thị khi nhân viên giao hàng SPX quét mã.
                         </div>
                       )}
                     </div>
@@ -604,13 +599,13 @@ function ShippingDetailPage() {
                             "absolute -left-8 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px]",
                             done && !failed && "border-success bg-success text-success-foreground",
                             done &&
-                            failed &&
-                            isCurrent &&
-                            "border-destructive bg-destructive text-destructive-foreground",
+                              failed &&
+                              isCurrent &&
+                              "border-destructive bg-destructive text-destructive-foreground",
                             done &&
-                            failed &&
-                            !isCurrent &&
-                            "border-success bg-success text-success-foreground",
+                              failed &&
+                              !isCurrent &&
+                              "border-success bg-success text-success-foreground",
                             !done && "border-border bg-muted text-muted-foreground",
                           )}
                         >
@@ -887,7 +882,9 @@ function ShippingDetailPage() {
                     label="Nguồn dữ liệu"
                     value={
                       <span className="text-xs text-muted-foreground">
-                        {spxDetail.source === "SPX_API" ? "Cổng SPX chính thức" : "Ghi nhận hệ thống"}
+                        {spxDetail.source === "SPX_API"
+                          ? "Cổng SPX chính thức"
+                          : "Ghi nhận hệ thống"}
                       </span>
                     }
                   />

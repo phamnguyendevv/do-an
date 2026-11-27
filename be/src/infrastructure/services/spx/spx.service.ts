@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+
 import { DataSource } from 'typeorm'
 
 import { OrderStatusEnum } from '@domain/entities/order-enums.entity'
@@ -61,7 +62,10 @@ const SPX_STATUS_MAP: Record<
   { label: string; orderStatus: OrderStatusEnum }
 > = {
   // Common SPX numeric and text status codes
-  '1': { label: 'Đơn hàng đã được tạo', orderStatus: OrderStatusEnum.Preparing },
+  '1': {
+    label: 'Đơn hàng đã được tạo',
+    orderStatus: OrderStatusEnum.Preparing,
+  },
   '2': {
     label: 'SPX đã tiếp nhận kiện hàng',
     orderStatus: OrderStatusEnum.Preparing,
@@ -270,7 +274,9 @@ export class SpxService {
     // 4. Nếu SPX chưa có dữ liệu hành trình nhưng hệ thống có lưu đơn hàng
     if (order) {
       const checkpoints: SpxTrackingCheckpoint[] = []
-      const createdDate = order.createdAt ? new Date(order.createdAt) : new Date()
+      const createdDate = order.createdAt
+        ? new Date(order.createdAt)
+        : new Date()
 
       checkpoints.push({
         time: createdDate.toISOString(),
@@ -298,7 +304,8 @@ export class SpxService {
             createdDate.getTime() + 60 * 60000,
           ).toLocaleString('vi-VN'),
           status: 'IN_TRANSIT',
-          description: 'Kiện hàng đã bàn giao cho shipper SPX và đang trên đường giao',
+          description:
+            'Kiện hàng đã bàn giao cho shipper SPX và đang trên đường giao',
         })
       } else if (order.status === OrderStatusEnum.Delivered) {
         checkpoints.unshift({

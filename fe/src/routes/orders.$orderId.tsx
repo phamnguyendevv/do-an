@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit2, ExternalLink, Loader2, Package, QrCode, Truck, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit2,
+  ExternalLink,
+  Loader2,
+  Package,
+  QrCode,
+  Truck,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -100,6 +109,22 @@ function OrderDetailPage() {
 
   const [editOpen, setEditOpen] = useState(false);
 
+  const isSpx = useMemo(
+    () =>
+      Boolean(
+        order?.shippingMethod?.toUpperCase().includes("SPX") ||
+        order?.trackingCode?.toUpperCase().startsWith("SPX"),
+      ),
+    [order?.shippingMethod, order?.trackingCode],
+  );
+
+  const { data: spxData, isLoading: spxLoading } = useQuery({
+    queryKey: ["spx-order-track", order?.trackingCode],
+    queryFn: () => spxApi.trackOrder(order!.trackingCode!),
+    enabled: Boolean(order?.trackingCode && isSpx),
+    staleTime: 60_000,
+  });
+
   if (!order) {
     return (
       <AppShell crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Đơn hàng" }]}>
@@ -128,22 +153,6 @@ function OrderDetailPage() {
   const shipment =
     shipments.find((s) => s.orderId === order.id || s.orderId === order.orderCode) ??
     loaded.shipment;
-
-  const isSpx = useMemo(
-    () =>
-      Boolean(
-        order.shippingMethod?.toUpperCase().includes("SPX") ||
-        order.trackingCode?.toUpperCase().startsWith("SPX"),
-      ),
-    [order.shippingMethod, order.trackingCode],
-  );
-
-  const { data: spxData, isLoading: spxLoading } = useQuery({
-    queryKey: ["spx-order-track", order.trackingCode],
-    queryFn: () => spxApi.trackOrder(order.trackingCode!),
-    enabled: Boolean(order.trackingCode && isSpx),
-    staleTime: 60_000,
-  });
 
   return (
     <AppShell

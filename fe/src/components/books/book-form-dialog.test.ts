@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bookFormSchema } from "./book-form-dialog";
+import { bookFormSchema } from "@/lib/book-form-schema";
 
 describe("bookFormSchema", () => {
   it("không bắt buộc nhà xuất bản khi tạo sách", () => {

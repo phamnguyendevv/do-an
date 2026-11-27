@@ -9,7 +9,7 @@ import {
   normalizeDateRange,
   startOf,
   toApiDateRange,
-} from "./date-range-picker";
+} from "@/lib/date-range-utils";
 
 describe("date-range-picker helpers", () => {
   it("normalizes startOf to 00:00:00.000", () => {

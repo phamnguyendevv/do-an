@@ -18,13 +18,8 @@ import {
 import { AppShell } from "@/components/layout/app-shell";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
-import {
-  DateRangePicker,
-  inDateRange,
-  getActivePreset,
-  formatDateRange,
-  type DateRange,
-} from "@/components/shared/date-range-picker";
+import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import { formatDateRange, getActivePreset, inDateRange } from "@/lib/date-range-utils";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";

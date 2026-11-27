@@ -9,12 +9,8 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchInput } from "@/components/shared/search-input";
 import { FilterBar } from "@/components/shared/filter-bar";
-import {
-  DateRangePicker,
-  type DateRange,
-  toApiDateRange,
-  formatDateRange,
-} from "@/components/shared/date-range-picker";
+import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import { formatDateRange, toApiDateRange } from "@/lib/date-range-utils";
 import { PriceRangeFilter, type PriceRange } from "@/components/shared/price-range-filter";
 import { ActiveFilterChips, type ActiveFilter } from "@/components/shared/active-filter-chips";
 import { StatusBadge } from "@/components/shared/status-badge";

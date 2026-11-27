@@ -8,11 +8,8 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchInput } from "@/components/shared/search-input";
 import { FilterBar } from "@/components/shared/filter-bar";
-import {
-  DateRangePicker,
-  inDateRange,
-  type DateRange,
-} from "@/components/shared/date-range-picker";
+import { DateRangePicker, type DateRange } from "@/components/shared/date-range-picker";
+import { inDateRange } from "@/lib/date-range-utils";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
@@ -141,7 +138,8 @@ function ShippingPage() {
             >
               <Printer className="h-3.5 w-3.5" />
             </Button>
-          ) : (s.carrier?.includes("SPX") || s.trackingNumber?.toUpperCase().startsWith("SPX")) && s.trackingNumber ? (
+          ) : (s.carrier?.includes("SPX") || s.trackingNumber?.toUpperCase().startsWith("SPX")) &&
+            s.trackingNumber ? (
             <Button
               variant="ghost"
               size="icon"

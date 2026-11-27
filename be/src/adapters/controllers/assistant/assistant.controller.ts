@@ -248,9 +248,7 @@ export class AssistantController {
   @ApiOperation({
     summary: 'Tra cứu hành trình đơn hàng bằng mã vận đơn SPX từ extension',
   })
-  async trackSpxFromExtension(
-    @Param('trackingCode') trackingCode: string,
-  ) {
+  async trackSpxFromExtension(@Param('trackingCode') trackingCode: string) {
     return await this.spxService.trackOrder(trackingCode)
   }
 }

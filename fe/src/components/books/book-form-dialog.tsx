@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,21 +31,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { bookApi, mapBookApiItem } from "@/lib/book-api";
+import { bookFormSchema, type BookFormValues as FormValues } from "@/lib/book-form-schema";
 import { useCategories } from "@/hooks/use-store";
 import { notificationService } from "@/services/notification-service";
 import type { Book } from "@/types";
-
-export const bookFormSchema = z.object({
-  title: z.string().min(1, "Vui lòng nhập tên sách"),
-  author: z.string().min(1, "Vui lòng nhập tác giả"),
-  category: z.string().min(1, "Vui lòng chọn danh mục"),
-  purchasePrice: z.coerce.number().min(0, "Giá nhập không hợp lệ"),
-  sellingPrice: z.coerce.number().min(0, "Giá bán không hợp lệ"),
-  stock: z.coerce.number().min(0, "Tồn kho không hợp lệ"),
-  minStock: z.coerce.number().min(0, "Tồn tối thiểu không hợp lệ"),
-});
-
-type FormValues = z.input<typeof bookFormSchema>;
 
 interface BookFormDialogProps {
   trigger: ReactNode;
