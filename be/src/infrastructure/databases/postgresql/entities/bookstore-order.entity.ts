@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
@@ -11,6 +13,8 @@ import {
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
+
+import { Customer } from './customer.entity'
 
 export interface BookstoreOrderItem {
   bookId: number | string
@@ -25,6 +29,7 @@ export interface BookstoreOrderItem {
 @Index('IDX_bookstore_orders_payment', ['payment'])
 @Index('IDX_bookstore_orders_status_payment', ['status', 'payment'])
 @Index('IDX_bookstore_orders_created_at', ['createdAt'])
+@Index('IDX_bookstore_orders_expires_at', ['expiresAt'])
 export class BookstoreOrder {
   @PrimaryGeneratedColumn({
     type: 'bigint',
@@ -43,6 +48,10 @@ export class BookstoreOrder {
 
   @Column({ type: 'bigint', nullable: true, name: 'customer_id' })
   public customerId?: number
+
+  @ManyToOne(() => Customer, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'customer_id' })
+  public customer?: Customer
 
   @Column({ type: 'text', name: 'customer_address' })
   public customerAddress!: string
@@ -64,17 +73,6 @@ export class BookstoreOrder {
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   public discount!: number
-
-  @Column({ type: 'bigint', nullable: true, name: 'promotion_id' })
-  public promotionId?: number
-
-  @Column({
-    type: 'varchar',
-    length: 50,
-    nullable: true,
-    name: 'promotion_code',
-  })
-  public promotionCode?: string
 
   @Column({
     type: 'decimal',
@@ -112,6 +110,9 @@ export class BookstoreOrder {
 
   @Column({ type: 'text', nullable: true })
   public note?: string
+
+  @Column({ type: 'timestamptz', name: 'expires_at', nullable: true })
+  public expiresAt?: Date | null
 
   @CreateDateColumn({ name: 'created_at' })
   public readonly createdAt!: Date

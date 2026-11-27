@@ -66,6 +66,12 @@ export class RedisService implements IRedisCacheService {
   }
 
   async delPattern(pattern: string): Promise<void> {
+    const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : null
+    for (const key of this.memoryCache.keys()) {
+      const matches = prefix === null ? key === pattern : key.startsWith(prefix)
+      if (matches) this.memoryCache.delete(key)
+    }
+
     try {
       const stream = this.redisClient.scanStream({
         match: pattern,

@@ -3,13 +3,19 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm'
 
 import { StockMovementType } from '@domain/entities/stock-movement.entity'
 
+import { Book } from './book.entity'
+import { User } from './user.entity'
+
 @Entity('stock_movements')
 @Index('IDX_stock_movements_book_id', ['bookId'])
+@Index('IDX_stock_movements_created_by_id', ['createdById'])
 @Index('IDX_stock_movements_created_at', ['createdAt'])
 export class StockMovement {
   @PrimaryGeneratedColumn({
@@ -20,6 +26,10 @@ export class StockMovement {
 
   @Column({ type: 'bigint', name: 'book_id' })
   public bookId!: number
+
+  @ManyToOne(() => Book, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'book_id' })
+  public book?: Book
 
   @Column({ type: 'varchar', length: 255, name: 'book_title' })
   public bookTitle!: string
@@ -49,6 +59,13 @@ export class StockMovement {
 
   @Column({ type: 'varchar', length: 255, name: 'created_by', nullable: true })
   public createdBy?: string
+
+  @Column({ type: 'bigint', nullable: true, name: 'created_by_id' })
+  public createdById?: number
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by_id' })
+  public creator?: User
 
   @CreateDateColumn({ name: 'created_at' })
   public readonly createdAt!: Date

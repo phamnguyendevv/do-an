@@ -3,9 +3,12 @@ import { Inject, Injectable } from '@nestjs/common'
 import { DataSource } from 'typeorm'
 
 import {
+  CreateImportReceiptInput,
   ImportReceiptEntity,
   ImportReceiptItem,
 } from '@domain/entities/import-receipt.entity'
+import { BookStatusEnum } from '@domain/entities/order-enums.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -29,6 +32,8 @@ import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { ImportReceipt } from '@infrastructure/databases/postgresql/entities/import-receipt.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
 
+import { hashRequest } from './idempotency.util'
+
 @Injectable()
 export class CreateImportReceiptUseCase {
   constructor(
@@ -45,14 +50,7 @@ export class CreateImportReceiptUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-  async execute(dto: {
-    supplierId?: number
-    supplierName: string
-    importDate?: string | Date
-    note?: string
-    lines: Array<{ bookId: number | string; quantity: number; price: number }>
-    createdBy?: string
-  }): Promise<ImportReceiptEntity> {
+  async execute(dto: CreateImportReceiptInput): Promise<ImportReceiptEntity> {
     if (!dto.supplierName || dto.supplierName.trim().length === 0) {
       throw this.exceptionsService.badRequestException({
         type: 'InventoryValidationException',
@@ -87,6 +85,33 @@ export class CreateImportReceiptUseCase {
     await queryRunner.startTransaction()
 
     try {
+      await queryRunner.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        `import:${dto.createdById}:${dto.idempotencyKey}`,
+      ])
+      const requestHash = hashRequest({
+        supplierId: dto.supplierId ?? null,
+        supplierName: dto.supplierName,
+        importDate: dto.importDate ?? null,
+        note: dto.note ?? null,
+        lines: dto.lines,
+      })
+      const existingReceipt = await queryRunner.manager.findOne(ImportReceipt, {
+        where: {
+          createdById: dto.createdById,
+          idempotencyKey: dto.idempotencyKey,
+        },
+      })
+      if (existingReceipt) {
+        if (existingReceipt.requestHash !== requestHash) {
+          throw this.exceptionsService.badRequestException({
+            type: 'IdempotencyKeyConflictException',
+            message: 'Mã yêu cầu đã được sử dụng cho nội dung phiếu nhập khác',
+          })
+        }
+        await queryRunner.commitTransaction()
+        return existingReceipt
+      }
+
       const items: ImportReceiptItem[] = []
       let totalItems = 0
       let totalValue = 0
@@ -125,10 +150,10 @@ export class CreateImportReceiptUseCase {
         const afterStock = beforeStock + qty
         const newStatus =
           afterStock === 0
-            ? 'OUT_OF_STOCK'
+            ? BookStatusEnum.OutOfStock
             : afterStock <= book.minStock
-              ? 'LOW_STOCK'
-              : 'IN_STOCK'
+              ? BookStatusEnum.LowStock
+              : BookStatusEnum.InStock
 
         // 1. Update book stock & purchasePrice if provided
         book.stock = afterStock
@@ -142,7 +167,7 @@ export class CreateImportReceiptUseCase {
         const movement = queryRunner.manager.create(StockMovement, {
           bookId: book.id,
           bookTitle: book.title,
-          type: 'IMPORT',
+          type: StockMovementTypeEnum.Import,
           quantity: qty,
           beforeStock,
           afterStock,
@@ -172,6 +197,9 @@ export class CreateImportReceiptUseCase {
         note: dto.note || '',
         items,
         createdBy: dto.createdBy || 'Admin',
+        createdById: dto.createdById,
+        idempotencyKey: dto.idempotencyKey,
+        requestHash,
       })
 
       const savedReceipt = await queryRunner.manager.save(

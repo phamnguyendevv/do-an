@@ -1,19 +1,7 @@
-import { BookEntity } from '@domain/entities/book.entity'
+import { BookEntity, ISearchBooksInput } from '@domain/entities/book.entity'
 import { IPaginationParams } from '@domain/entities/search.entity'
 
-export interface ISearchBooksParams {
-  size?: number
-  search?: string
-  page?: number
-  category?: string
-  status?: string
-  minPrice?: number
-  maxPrice?: number
-  startDate?: string
-  endDate?: string
-  sortBy?: string
-  sortOrder?: 'ASC' | 'DESC'
-}
+export type ISearchBooksParams = ISearchBooksInput
 
 export const BOOK_REPOSITORY = 'BOOK_REPOSITORY_INTERFACE'
 

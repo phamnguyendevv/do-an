@@ -26,7 +26,6 @@ export type TSubject =
   | 'ExportReceipt'
   | 'StockMovement'
   | 'Revenue'
-  | 'Notification'
   | 'Service'
   | 'Appointment'
   | 'Promotion'
@@ -36,3 +35,4 @@ export type TSubject =
   | 'Shipping'
   | 'Customer'
   | 'ActivityLog'
+  | 'SystemSetting'

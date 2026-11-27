@@ -2,12 +2,17 @@ import { Inject, Injectable } from '@nestjs/common'
 
 import { DataSource } from 'typeorm'
 
-import { BookstoreOrderEntity } from '@domain/entities/bookstore-order.entity'
+import {
+  BookstoreOrderEntity,
+  CreateOrderInput,
+} from '@domain/entities/bookstore-order.entity'
 import {
   BookStatusEnum,
   OrderStatusEnum,
   PaymentStatusEnum,
 } from '@domain/entities/order-enums.entity'
+import { OrderHistoryActionEnum } from '@domain/entities/order-history.entity'
+import { StockMovementTypeEnum } from '@domain/entities/stock-movement.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
 import {
   BOOK_REPOSITORY,
@@ -27,8 +32,9 @@ import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
 import { Customer } from '@infrastructure/databases/postgresql/entities/customer.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
-import { Promotion } from '@infrastructure/databases/postgresql/entities/promotion.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
+
+export { CreateOrderInput }
 
 @Injectable()
 export class CreateBookstoreOrderUseCase {
@@ -44,32 +50,7 @@ export class CreateBookstoreOrderUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-  async execute(dto: {
-    orderCode?: string
-    customerName: string
-    customerPhone: string
-    customerId?: number
-    customerAddress: string
-    provinceId?: number
-    districtId?: number
-    wardCode?: string
-    items: Array<{
-      bookId: number | string
-      title: string
-      quantity: number
-      price: number
-    }>
-    shippingFee?: number
-    discount?: number
-    promotionCode?: string
-    shippingMethod?: string
-    trackingCode?: string
-    note?: string
-    status?: OrderStatusEnum | string
-    payment?: PaymentStatusEnum | string
-    actor?: string
-    actorRole?: string
-  }): Promise<BookstoreOrderEntity> {
+  async execute(dto: CreateOrderInput): Promise<BookstoreOrderEntity> {
     if (!dto.customerName || !dto.customerPhone) {
       throw this.exceptionsService.badRequestException({
         type: 'OrderValidationException',
@@ -89,36 +70,26 @@ export class CreateBookstoreOrderUseCase {
     await queryRunner.startTransaction()
 
     try {
-      // 1. Check stock with pessimistic lock and prepare update
+      // 1. Check stock with pessimistic lock and prepare update for catalog books
       for (const item of dto.items) {
         const bookIdNum =
           typeof item.bookId === 'number'
             ? item.bookId
             : parseInt(String(item.bookId), 10)
-        if (isNaN(bookIdNum)) {
-          throw this.exceptionsService.badRequestException({
-            type: 'OrderValidationException',
-            message: `Mã sách không hợp lệ: ${item.bookId}`,
-          })
-        }
 
-        const book = await queryRunner.manager.findOne(Book, {
-          where: { id: bookIdNum },
-          lock: { mode: 'pessimistic_write' },
-        })
-
-        if (!book) {
-          throw this.exceptionsService.notFoundException({
-            type: 'BookNotFoundException',
-            message: `Không tìm thấy sách với ID: ${bookIdNum}`,
+        // Chỉ kiểm tra tồn kho nếu sách có ID hợp lệ trong kho
+        if (!isNaN(bookIdNum) && bookIdNum > 0) {
+          const book = await queryRunner.manager.findOne(Book, {
+            where: { id: bookIdNum },
+            lock: { mode: 'pessimistic_write' },
           })
-        }
 
-        if (Number(book.stock) < item.quantity) {
-          throw this.exceptionsService.badRequestException({
-            type: 'OrderStockShortageException',
-            message: `Sách "${book.title}" chỉ còn ${book.stock} cuốn trong kho, không đủ số lượng ${item.quantity}`,
-          })
+          if (book && Number(book.stock) < item.quantity) {
+            throw this.exceptionsService.badRequestException({
+              type: 'OrderStockShortageException',
+              message: `Sách "${book.title}" chỉ còn ${book.stock} cuốn trong kho, không đủ số lượng ${item.quantity}`,
+            })
+          }
         }
       }
 
@@ -165,7 +136,7 @@ export class CreateBookstoreOrderUseCase {
           const movement = queryRunner.manager.create(StockMovement, {
             bookId: book.id,
             bookTitle: book.title,
-            type: 'SALE',
+            type: StockMovementTypeEnum.Sale,
             quantity: -item.quantity,
             beforeStock,
             afterStock,
@@ -195,45 +166,12 @@ export class CreateBookstoreOrderUseCase {
           }),
         ))
 
-      let promotion: Promotion | null = null
-      if (dto.promotionCode) {
-        promotion = await queryRunner.manager.findOne(Promotion, {
-          where: { code: dto.promotionCode.toUpperCase(), isActive: true },
-        })
-        const now = new Date()
-        if (
-          !promotion ||
-          promotion.startsAt > now ||
-          promotion.endsAt < now ||
-          (promotion.usageLimit !== null &&
-            promotion.usageLimit !== undefined &&
-            promotion.usedCount >= promotion.usageLimit)
-        ) {
-          throw this.exceptionsService.badRequestException({
-            type: 'PromotionValidationException',
-            message: 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn',
-          })
-        }
-      }
-
       // 4. Financial totals
       const subtotal = dto.items.reduce(
         (s, it) => s + it.price * it.quantity,
         0,
       )
-      let discount = dto.discount || 0
-      if (promotion && subtotal >= Number(promotion.minOrderValue)) {
-        const promotionDiscount =
-          promotion.discountType === 'PERCENTAGE'
-            ? (subtotal * Number(promotion.discountValue)) / 100
-            : Number(promotion.discountValue)
-        discount +=
-          promotion.maxDiscount !== null && promotion.maxDiscount !== undefined
-            ? Math.min(promotionDiscount, Number(promotion.maxDiscount))
-            : promotionDiscount
-        promotion.usedCount += 1
-        await queryRunner.manager.save(Promotion, promotion)
-      }
+      const discount = dto.discount || 0
       const shippingFee = dto.shippingFee || 0
       const total = Math.max(0, subtotal - discount + shippingFee)
 
@@ -242,8 +180,7 @@ export class CreateBookstoreOrderUseCase {
       const isPos =
         dto.shippingMethod?.includes('POS') ||
         dto.shippingMethod?.includes('quầy') ||
-        dto.status === OrderStatusEnum.Delivered ||
-        dto.status === 'DELIVERED'
+        dto.status === OrderStatusEnum.Delivered
 
       const status =
         dto.status ||
@@ -251,6 +188,12 @@ export class CreateBookstoreOrderUseCase {
       const payment =
         dto.payment ||
         (isPos ? PaymentStatusEnum.Paid : PaymentStatusEnum.Unpaid)
+      const expiresAt =
+        isPos &&
+        status === OrderStatusEnum.Pending &&
+        payment === PaymentStatusEnum.Unpaid
+          ? new Date(Date.now() + 5 * 60 * 1000)
+          : null
 
       // 6. Save order
       const order = queryRunner.manager.create(BookstoreOrder, {
@@ -265,8 +208,6 @@ export class CreateBookstoreOrderUseCase {
         items: dto.items,
         subtotal,
         discount,
-        promotionId: promotion?.id,
-        promotionCode: promotion?.code,
         shippingFee,
         total,
         payment,
@@ -274,6 +215,7 @@ export class CreateBookstoreOrderUseCase {
         trackingCode: dto.trackingCode,
         status,
         note: dto.note,
+        expiresAt,
       })
 
       const savedOrder = await queryRunner.manager.save(BookstoreOrder, order)
@@ -282,7 +224,7 @@ export class CreateBookstoreOrderUseCase {
       const history = queryRunner.manager.create(OrderHistory, {
         orderId: savedOrder.id,
         orderCode: savedOrder.orderCode,
-        action: 'CREATED',
+        action: OrderHistoryActionEnum.Created,
         toStatus: String(savedOrder.status),
         toPayment: String(savedOrder.payment),
         title: isPos ? 'Tạo đơn hàng tại quầy (POS)' : 'Tạo đơn hàng mới',

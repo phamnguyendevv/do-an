@@ -20,7 +20,6 @@ export type AppSubject =
   | "Payment"
   | "Shipping"
   | "Customer"
-  | "Promotion"
   | "ActivityLog";
 
 export type AppAbility = MongoAbility<[AppAction, AppSubject]>;
@@ -43,7 +42,6 @@ export function defineAbilityFor(user: User | null): AppAbility {
     can(["read", "create", "update"], "Category");
     can(["read", "create", "update"], "Supplier");
     can(["read", "create", "update"], "Customer");
-    can(["read", "create", "update"], "Promotion");
     can("read", "ActivityLog");
     can(["read", "create", "update", "delete"], "BookstoreOrder");
     can(["read", "create", "update"], "ImportReceipt");

@@ -7,17 +7,20 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { MailerModule } from '@infrastructure/services/mailer/mailer.module'
 import { RedisModule } from '@infrastructure/services/redis/redis.module'
 
+import { ActivityLogsModule } from '@modules/activity-logs.module'
 import { AssistantModule } from '@modules/assistant.module'
 import { BooksModule } from '@modules/books.module'
 import { CategoriesModule } from '@modules/category.module'
 import { CustomersModule } from '@modules/customers.module'
 import { GhnModule } from '@modules/ghn.module'
 import { InventoryModule } from '@modules/inventory.module'
-import { NotificationModule } from '@modules/notification.module'
+import { NotificationsModule } from '@modules/notifications.module'
 import { OrdersModule } from '@modules/orders.module'
 import { RevenueModule } from '@modules/revenue.module'
 import { SePayModule } from '@modules/sepay.module'
+import { SpxModule } from '@modules/spx.module'
 import { SuppliersModule } from '@modules/supplier.module'
+import { SystemSettingsModule } from '@modules/system-settings.module'
 import { UsersModule } from '@modules/user.module'
 
 import { MaintenanceMiddleware } from './infrastructure/common/middlewares/maintenance.middleware'
@@ -66,10 +69,13 @@ import { HealthModule } from './modules/health.module'
     InventoryModule,
     OrdersModule,
     GhnModule,
+    SpxModule,
     SePayModule,
     RevenueModule,
-    NotificationModule,
     AssistantModule,
+    ActivityLogsModule,
+    NotificationsModule,
+    SystemSettingsModule,
   ],
   providers: [
     UserRepository,

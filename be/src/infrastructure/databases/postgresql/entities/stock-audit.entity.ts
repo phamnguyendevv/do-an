@@ -2,13 +2,19 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
 
 import { StockAuditItemEntity } from '@domain/entities/stock-audit.entity'
 
+import { User } from './user.entity'
+
 @Entity('stock_audits')
+@Index('IDX_stock_audits_audited_by_id', ['auditedById'])
 export class StockAudit {
   @PrimaryGeneratedColumn({
     type: 'bigint',
@@ -50,6 +56,13 @@ export class StockAudit {
     default: 'Admin',
   })
   public auditedBy!: string
+
+  @Column({ type: 'bigint', nullable: true, name: 'audited_by_id' })
+  public auditedById?: number
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'audited_by_id' })
+  public auditor?: User
 
   @Column({ type: 'timestamp', name: 'balanced_at', nullable: true })
   public balancedAt?: Date

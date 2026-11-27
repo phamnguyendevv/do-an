@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Logger,
   Param,
   ParseIntPipe,
@@ -9,12 +10,21 @@ import {
 } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 
+import { randomUUID } from 'crypto'
 import { DataSource } from 'typeorm'
+
+import { UserStatusEnum } from '@domain/entities/status.entity'
+import {
+  IPaymentGateway,
+  PAYMENT_GATEWAY,
+} from '@domain/services/payment-gateway.interface'
 
 import { Book } from '@infrastructure/databases/postgresql/entities/book.entity'
 import { BookstoreOrder } from '@infrastructure/databases/postgresql/entities/bookstore-order.entity'
+import { Notification } from '@infrastructure/databases/postgresql/entities/notification.entity'
 import { OrderHistory } from '@infrastructure/databases/postgresql/entities/order-history.entity'
 import { StockMovement } from '@infrastructure/databases/postgresql/entities/stock-movement.entity'
+import { User } from '@infrastructure/databases/postgresql/entities/user.entity'
 import { GhnService } from '@infrastructure/services/ghn/ghn.service'
 
 import {
@@ -59,6 +69,8 @@ export class GhnController {
   constructor(
     private readonly ghnService: GhnService,
     private readonly dataSource: DataSource,
+    @Inject(PAYMENT_GATEWAY)
+    private readonly paymentGateway: IPaymentGateway,
   ) {}
 
   @Get('provinces')
@@ -262,6 +274,18 @@ export class GhnController {
 
       await queryRunner.commitTransaction()
 
+      if (
+        previousStatus !== mappedStatus ||
+        previousPayment !== order.payment
+      ) {
+        await this.publishShippingNotification(
+          order.orderCode,
+          ghnTrackingCode,
+          rawStatus,
+          mappedStatus,
+        )
+      }
+
       this.logger.log(
         `GHN Webhook: Đã đồng bộ đơn ${order.orderCode} sang ${mappedStatus}`,
       )
@@ -280,6 +304,53 @@ export class GhnController {
       return { status: 'error', message: err.message }
     } finally {
       await queryRunner.release()
+    }
+  }
+
+  private async publishShippingNotification(
+    orderCode: string,
+    trackingCode: string,
+    rawStatus: string,
+    mappedStatus: string,
+  ): Promise<void> {
+    try {
+      const users = await this.dataSource.getRepository(User).find({
+        select: { id: true },
+        where: { status: UserStatusEnum.Active },
+      })
+      if (users.length === 0) return
+
+      const id = randomUUID()
+      const repository = this.dataSource.getRepository(Notification)
+      const notificationRows = users.map((user) =>
+        repository.create({
+          id,
+          actorId: user.id,
+          title: 'Cập nhật trạng thái vận chuyển',
+          description: `Đơn ${orderCode} chuyển sang ${mappedStatus} (GHN: ${rawStatus}, mã vận đơn: ${trackingCode}).`,
+          module: 'Vận chuyển',
+          tone:
+            mappedStatus === 'DELIVERED'
+              ? 'success'
+              : ['FAILED', 'RETURNED', 'CANCELLED'].includes(mappedStatus)
+                ? 'warning'
+                : 'info',
+          read: false,
+          route: '/shipping',
+        }),
+      )
+      const saved = await repository.save(notificationRows)
+      saved.forEach((notification) =>
+        this.paymentGateway.emitNotification(
+          Number(notification.actorId),
+          notification,
+        ),
+      )
+    } catch (error) {
+      this.logger.error(
+        'GHN status was synchronized, but its notification could not be persisted or broadcast',
+        error instanceof Error ? error.stack : String(error),
+      )
     }
   }
 }

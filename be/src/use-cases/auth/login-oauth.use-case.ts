@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import { IOauthLoginInput } from '@domain/entities/auth.entity'
 import { UserRoleEnum } from '@domain/entities/role.entity'
 import { UserStatusEnum } from '@domain/entities/status.entity'
 import { EXCEPTIONS, IException } from '@domain/exceptions/exceptions.interface'
@@ -29,7 +30,7 @@ export class LoginOauthUseCase {
     private readonly enviromentConfigService: EnvironmentConfigService,
   ) {}
 
-  async execute(payload: { email: string; name: string }) {
+  async execute(payload: IOauthLoginInput) {
     const urlfe = this.enviromentConfigService.getFEUrl()
     const user = await this.userRepository.getUserByEmail(payload.email)
     if (!user) {

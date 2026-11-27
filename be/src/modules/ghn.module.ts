@@ -5,8 +5,10 @@ import { GhnController } from '@adapters/controllers/shipping/ghn.controller'
 
 import { GhnService } from '@infrastructure/services/ghn/ghn.service'
 
+import { SePayModule } from './sepay.module'
+
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, SePayModule],
   controllers: [GhnController],
   providers: [GhnService],
   exports: [GhnService],

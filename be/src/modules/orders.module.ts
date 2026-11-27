@@ -9,6 +9,7 @@ import { STOCK_MOVEMENT_REPOSITORY } from '@domain/repositories/stock-movement.r
 
 import { AddOrderHistoryNoteUseCase } from '@use-cases/orders/add-order-history-note.use-case'
 import { CreateBookstoreOrderUseCase } from '@use-cases/orders/create-order.use-case'
+import { ExpirePendingPosOrdersService } from '@use-cases/orders/expire-pending-pos-orders.service'
 import { GetDetailBookstoreOrderUseCase } from '@use-cases/orders/get-detail-order.use-case'
 import { GetListOrderHistoriesUseCase } from '@use-cases/orders/get-list-order-histories.use-case'
 import { GetListBookstoreOrdersUseCase } from '@use-cases/orders/get-list-orders.use-case'
@@ -66,6 +67,7 @@ import { CaslModule } from '@infrastructure/services/casl/casl.module'
     },
     GetListBookstoreOrdersUseCase,
     CreateBookstoreOrderUseCase,
+    ExpirePendingPosOrdersService,
     GetDetailBookstoreOrderUseCase,
     UpdateBookstoreOrderStatusUseCase,
     UpdateBookstoreOrderPaymentUseCase,
@@ -74,6 +76,10 @@ import { CaslModule } from '@infrastructure/services/casl/casl.module'
     GetListOrderHistoriesUseCase,
     AddOrderHistoryNoteUseCase,
   ],
-  exports: [BOOKSTORE_ORDER_REPOSITORY, ORDER_HISTORY_REPOSITORY],
+  exports: [
+    BOOKSTORE_ORDER_REPOSITORY,
+    ORDER_HISTORY_REPOSITORY,
+    CreateBookstoreOrderUseCase,
+  ],
 })
 export class OrdersModule {}

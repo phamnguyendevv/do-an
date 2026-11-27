@@ -16,6 +16,7 @@ export interface GetSepayOrderStatusResult {
   payment: string
   status: string
   total?: number
+  expiresAt?: Date | null
 }
 
 @Injectable()
@@ -57,6 +58,7 @@ export class GetSepayOrderStatusUseCase {
       payment: String(order.payment),
       status: String(order.status),
       total: Number(order.total),
+      expiresAt: order.expiresAt ?? null,
     }
   }
 }

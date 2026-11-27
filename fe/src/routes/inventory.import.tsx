@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -21,8 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBooks } from "@/hooks/use-store";
-import { supplierApi, type SupplierApiItem } from "@/lib/supplier-api";
-import { inventoryService } from "@/services/inventory-service";
+import { inventoryApi } from "@/lib/inventory-api";
+import { supplierApi } from "@/lib/supplier-api";
+import { notificationService } from "@/services/notification-service";
+import type { Supplier } from "@/types";
 import { downloadInventoryImportTemplate, parseInventoryImportFile } from "@/lib/excel-service";
 import { formatCurrency, formatNumber } from "@/utils/format";
 
@@ -43,26 +45,29 @@ export const Route = createFileRoute("/inventory/import")({
 
 function ImportPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const books = useBooks();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<ProductLine[]>([{ bookId: "", quantity: 1, price: 0 }]);
+  const requestKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const excelInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: suppliersList = [] } = useQuery({
+  const { data: suppliersList = [] } = useQuery<Supplier[]>({
     queryKey: ["suppliers", "list-all"],
     queryFn: async () => {
-      try {
-        const res = await supplierApi.list({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return items as SupplierApiItem[];
-      } catch {
-        return [];
-      }
+      const response = await supplierApi.list({ size: 100 });
+      return response.data.map((item) => ({ ...item, id: String(item.id) }));
     },
     staleTime: 60_000,
   });
@@ -103,7 +108,7 @@ function ImportPage() {
           newLines.push({
             bookId: matched.id,
             quantity: row.quantity,
-            price: row.price > 0 ? row.price : matched.purchasePrice || matched.price * 0.7,
+            price: row.price > 0 ? row.price : matched.purchasePrice,
           });
         }
       }
@@ -128,26 +133,57 @@ function ImportPage() {
     }
 
     setError(null);
+    if (submitting) return;
     setSubmitting(true);
-    const res = await inventoryService.createImport({
-      supplier: selectedSupplier.name,
-      supplierId:
-        typeof selectedSupplier.id === "number"
-          ? selectedSupplier.id
-          : parseInt(String(selectedSupplier.id), 10),
-      date,
-      note,
-      lines,
-    });
-    setSubmitting(false);
-    if (!res.ok) {
-      setError(res.error ?? "Không thể tạo phiếu nhập.");
-      return;
+    try {
+      const payload = {
+        supplierId: Number(selectedSupplier.id),
+        supplierName: selectedSupplier.name,
+        importDate: date,
+        ...(note ? { note } : {}),
+        lines: lines.map((line) => ({
+          bookId: line.bookId,
+          quantity: line.quantity,
+          price: line.price,
+        })),
+      };
+      const fingerprint = JSON.stringify(payload);
+      if (requestKeyRef.current?.fingerprint !== fingerprint) {
+        requestKeyRef.current = { fingerprint, key: crypto.randomUUID() };
+      }
+      const receipt = await inventoryApi.createImport({
+        ...payload,
+        idempotencyKey: requestKeyRef.current.key,
+      });
+      try {
+        notificationService.push({
+          title: "Phiếu nhập kho đã tạo",
+          description: `Nhà cung cấp ${selectedSupplier.name} đã nhập ${receipt.totalItems} cuốn sách.`,
+          module: "Kho hàng",
+          tone: "success",
+          route: "/inventory",
+          showToast: false,
+        });
+      } catch (notificationError) {
+        console.error("Could not save import receipt notification:", notificationError);
+        toast.warning("Phiếu nhập đã tạo nhưng thông báo chưa lưu được.");
+      }
+      toast.success(
+        `Đã tạo phiếu nhập ${receipt.receiptCode} (${receipt.totalItems} cuốn) — tồn kho đã cập nhật!`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory", "imports"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory", "movements"] }),
+      ]);
+      navigate({ to: "/inventory" });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Không thể tạo phiếu nhập.");
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(
-      `Đã tạo phiếu nhập ${res.data!.id} (${res.data!.totalItems} cuốn) — tồn kho đã cập nhật!`,
-    );
-    navigate({ to: "/inventory" });
   };
 
   return (

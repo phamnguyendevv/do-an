@@ -38,6 +38,14 @@ export class GetListReceiptsDto {
   @IsString()
   reason?: string
 
+  @ApiPropertyOptional({
+    description: 'ID đơn hàng liên kết (chỉ áp dụng cho phiếu xuất)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  orderId?: number
+
   @ApiPropertyOptional({ description: 'Từ ngày (YYYY-MM-DD)' })
   @IsOptional()
   @IsString()

@@ -35,9 +35,9 @@ export function ExcelBookImportDialog({
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const queryClient = useQueryClient();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,8 +58,9 @@ export function ExcelBookImportDialog({
       } else {
         toast.success(`Đã nhận diện ${result.data.length} đầu sách từ file Excel.`);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Lỗi khi đọc file Excel");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi khi đọc file Excel";
+      toast.error(message);
     } finally {
       setIsParsing(false);
     }
@@ -72,42 +73,43 @@ export function ExcelBookImportDialog({
     }
 
     setIsImporting(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (let i = 0; i < parsedData.length; i++) {
-      const item = parsedData[i];
-      try {
-        await bookApi.create({
-          title: item.title,
-          author: item.author,
-          category: item.category,
-          purchasePrice: item.importPrice,
-          sellingPrice: item.price,
-          stock: item.stock,
-          minStock: item.minStock,
-          description: item.description,
-        });
-        successCount++;
-      } catch (e) {
-        console.warn(`Lỗi import sách "${item.title}":`, e);
-        failCount++;
+    let importedCount = 0;
+    try {
+      for (const [index, item] of parsedData.entries()) {
+        try {
+          await bookApi.create({
+            title: item.title,
+            author: item.author,
+            category: item.category,
+            purchasePrice: item.importPrice,
+            sellingPrice: item.price,
+            stock: item.stock,
+            minStock: item.minStock,
+            ...(item.description !== undefined ? { description: item.description } : {}),
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Nhập sách thất bại.";
+          setParsedData((remaining) => remaining.slice(importedCount));
+          toast.error(
+            importedCount > 0
+              ? `Đã nhập ${importedCount}/${parsedData.length} sách. Phần còn lại chưa được nhập: ${message}`
+              : message,
+          );
+          return;
+        }
+        importedCount += 1;
+        setProgress(Math.round((importedCount / parsedData.length) * 100));
       }
-      setProgress(Math.round(((i + 1) / parsedData.length) * 100));
-    }
 
-    setIsImporting(false);
-    await queryClient.invalidateQueries({ queryKey: ["books"] });
-    await queryClient.invalidateQueries({ queryKey: ["category-names"] });
-
-    if (successCount > 0) {
-      toast.success(`Đã nhập thành công ${successCount} cuốn sách vào hệ thống!`);
+      toast.success(`Đã nhập thành công ${importedCount} đầu sách vào hệ thống!`);
+      void queryClient.invalidateQueries({ queryKey: ["books"] });
+      void queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setOpen(false);
       setParsedData([]);
       setFileName(null);
       onSuccess?.();
-    } else {
-      toast.error(`Nhập thất bại. Vui lòng kiểm tra lại kết nối backend.`);
+    } finally {
+      setIsImporting(false);
     }
   };
 

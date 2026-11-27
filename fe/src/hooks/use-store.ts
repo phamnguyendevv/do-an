@@ -1,315 +1,260 @@
-import React, { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { store, type AppState } from "@/services/store";
-import { bookApi, type BookApiItem } from "@/lib/book-api";
 import { categoryApi } from "@/lib/category-api";
-import { orderApi, type OrderApiItem } from "@/lib/order-api";
-import {
-  inventoryApi,
-  type ImportReceiptApiItem,
-  type ExportReceiptApiItem,
+import { customerApi } from "@/lib/customer-api";
+import { inventoryApi } from "@/lib/inventory-api";
+import { mapOrderApiItem, orderApi } from "@/lib/order-api";
+import { fetchAllPages } from "@/lib/paginated-api";
+import { useLiveBooks } from "@/hooks/use-live-books";
+import { store, type AppState } from "@/services/store";
+import type {
+  ExportReceiptApiItem,
+  ImportReceiptApiItem,
+  StockAuditApiItem,
+  StockMovementApiItem,
 } from "@/lib/inventory-api";
 import type {
   Book,
+  Customer,
   ExportReceipt,
   ImportReceipt,
   Order,
-  OrderStatus,
-  PaymentStatus,
+  Shipping,
+  StockMovement,
+  Stocktake,
 } from "@/types";
-
-const mapApiBook = (book: BookApiItem): Book => {
-  const stock = Number(book?.stock ?? 0);
-  const minStock = Number(book?.minStock ?? 0);
-  const rawStatus =
-    (book?.status as any) ||
-    (stock === 0 ? "OUT_OF_STOCK" : stock <= minStock ? "LOW_STOCK" : "IN_STOCK");
-
-  return {
-    id: String(book?.id ?? ""),
-    title: String(book?.title ?? ""),
-    author: String(book?.author ?? ""),
-    category: String(book?.category ?? ""),
-    purchasePrice: Number(book?.purchasePrice ?? 0),
-    sellingPrice: Number(book?.sellingPrice ?? 0),
-    stock,
-    minStock,
-    status: rawStatus,
-    createdAt:
-      typeof book?.createdAt === "string"
-        ? book.createdAt
-        : new Date(book?.createdAt ?? Date.now()).toISOString(),
-  };
-};
-
-const mapApiOrder = (o: OrderApiItem): Order => {
-  return {
-    id: String(o.id),
-    orderCode: o.orderCode,
-    customerName: o.customerName,
-    customerPhone: o.customerPhone,
-    customerAddress: o.customerAddress,
-    provinceId: o.provinceId,
-    districtId: o.districtId,
-    wardCode: o.wardCode,
-    items: (o.items || []).map((it) => ({
-      bookId: String(it.bookId),
-      title: it.title,
-      quantity: it.quantity,
-      price: Number(it.price),
-    })),
-    subtotal: Number(o.subtotal),
-    discount: Number(o.discount),
-    shippingFee: Number(o.shippingFee),
-    total: Number(o.total),
-    payment: o.payment as PaymentStatus,
-    shippingMethod: o.shippingMethod,
-    trackingCode: o.trackingCode,
-    note: o.note,
-    status: o.status as OrderStatus,
-    createdAt:
-      typeof o.createdAt === "string"
-        ? o.createdAt
-        : new Date(o.createdAt ?? Date.now()).toISOString(),
-  };
-};
-
-const mapApiImport = (r: ImportReceiptApiItem): ImportReceipt => ({
-  id: r.receiptCode || `IMP-${r.id}`,
-  supplier: r.supplierName,
-  date: typeof r.importDate === "string" ? r.importDate : new Date(r.importDate).toISOString(),
-  totalItems: Number(r.totalItems),
-  totalValue: Number(r.totalValue),
-  note: r.note,
-});
-
-const mapApiExport = (r: ExportReceiptApiItem): ExportReceipt => ({
-  id: r.receiptCode || `EXP-${r.id}`,
-  orderId: r.orderId || "",
-  date: typeof r.exportDate === "string" ? r.exportDate : new Date(r.exportDate).toISOString(),
-  totalItems: Number(r.totalItems),
-  reason: r.reason,
-  note: r.note,
-});
 
 function useAppState(): AppState {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
 }
 
 export function useBooks(): Book[] {
-  const stateBooks = useAppState().books;
+  const query = useBooksQuery();
+  return query.data ?? [];
+}
 
-  const { data: apiBooks } = useQuery({
-    queryKey: ["books", "live-list"],
-    queryFn: async () => {
-      try {
-        const res = await bookApi.list({ size: 500 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return (items as BookApiItem[]).map(mapApiBook);
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 15_000,
-  });
-
-  useEffect(() => {
-    if (apiBooks && apiBooks.length > 0) {
-      store.setState({ books: apiBooks });
-    }
-  }, [apiBooks]);
-
-  if (apiBooks && apiBooks.length > 0) {
-    return apiBooks;
-  }
-
-  return stateBooks;
+export function useBooksQuery() {
+  return useLiveBooks();
 }
 
 export function useCategories(): Array<{ id: string; name: string }> {
-  const books = useBooks();
-  const { data: apiCategories } = useQuery({
-    queryKey: ["category-names"],
+  const query = useQuery({
+    queryKey: ["categories", "lookup"],
     queryFn: async () => {
-      try {
-        const res: any = await categoryApi.list({ size: 100 });
-        let items: any[] = [];
-        if (Array.isArray(res)) {
-          items = res;
-        } else if (Array.isArray(res?.data)) {
-          items = res.data;
-        } else if (Array.isArray(res?.data?.data)) {
-          items = res.data.data;
-        }
-
-        const mapped = items
-          .map((c: any) => {
-            if (typeof c === "string") return { id: c, name: c.trim() };
-            const name = String(c?.name || c?.title || c?.categoryName || c?.category || "").trim();
-            const id = String(c?.id || name || "");
-            return { id, name };
-          })
-          .filter((c) => Boolean(c.name && c.name.length > 0));
-
-        return mapped;
-      } catch {
-        return [];
-      }
+      const firstPage = await categoryApi.list({ page: 1, size: 100 });
+      const pageCount = Math.ceil(
+        firstPage.pagination.total / Math.max(1, firstPage.pagination.size),
+      );
+      const rest = await Promise.all(
+        Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) =>
+          categoryApi.list({ page: index + 2, size: firstPage.pagination.size || 100 }),
+        ),
+      );
+      return [firstPage, ...rest].flatMap((response) =>
+        response.data.map(({ id, name }) => ({ id: String(id), name })),
+      );
     },
-    staleTime: 60_000,
   });
-
-  if (apiCategories && apiCategories.length > 0) {
-    return apiCategories;
-  }
-
-  const uniqueNames = Array.from(
-    new Set(
-      books
-        .map((b) => (typeof b?.category === "string" ? b.category.trim() : ""))
-        .filter((cat) => Boolean(cat && cat.length > 0)),
-    ),
-  );
-
-  return uniqueNames.map((name) => ({ id: name, name }));
+  return query.data ?? [];
 }
 
 export function useOrders(): Order[] {
-  const stateOrders = useAppState().orders;
+  const query = useOrdersQuery();
+  return query.data ?? [];
+}
 
-  const { data: apiOrders } = useQuery({
-    queryKey: ["orders", "live-list"],
-    queryFn: async () => {
-      try {
-        const res = await orderApi.list({ size: 500 });
-        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        return (items as OrderApiItem[]).map(mapApiOrder);
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 10_000,
+export function useOrdersQuery() {
+  return useQuery({
+    queryKey: ["orders", "all"],
+    queryFn: async () =>
+      (await fetchAllPages((page, size) => orderApi.list({ page, size }))).map(mapOrderApiItem),
+    refetchInterval: 30_000,
   });
+}
 
-  useEffect(() => {
-    if (apiOrders && apiOrders.length > 0) {
-      store.setState({ orders: apiOrders });
-    }
-  }, [apiOrders]);
-
-  if (apiOrders && apiOrders.length > 0) {
-    return apiOrders;
-  }
-
-  return stateOrders;
+export function useCustomers(): Customer[] {
+  const query = useQuery({
+    queryKey: ["customers", "all"],
+    queryFn: async () => {
+      const customers = await fetchAllPages((page, size) => customerApi.list({ page, size }));
+      return customers.map((customer) => ({
+        ...customer,
+        id: String(customer.id),
+      }));
+    },
+  });
+  return query.data ?? [];
 }
 
 export function useImportReceipts(): ImportReceipt[] {
-  const stateImports = useAppState().imports;
+  const query = useImportReceiptsQuery();
+  return query.data ?? [];
+}
 
-  const { data: apiImports } = useQuery({
-    queryKey: ["inventory", "imports-list"],
-    queryFn: async () => {
-      try {
-        const res = await inventoryApi.listImports({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : [];
-        return items.map(mapApiImport);
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 15_000,
+export function useImportReceiptsQuery() {
+  return useQuery({
+    queryKey: ["inventory", "imports", "all"],
+    queryFn: async () =>
+      (await fetchAllPages((page, size) => inventoryApi.listImports({ page, size }))).map(
+        mapImportReceipt,
+      ),
   });
-
-  useEffect(() => {
-    if (apiImports && apiImports.length > 0) {
-      store.setState({ imports: apiImports });
-    }
-  }, [apiImports]);
-
-  if (apiImports && apiImports.length > 0) {
-    return apiImports;
-  }
-
-  return stateImports;
 }
 
 export function useExportReceipts(): ExportReceipt[] {
-  const stateExports = useAppState().exports;
-
-  const { data: apiExports } = useQuery({
-    queryKey: ["inventory", "exports-list"],
-    queryFn: async () => {
-      try {
-        const res = await inventoryApi.listExports({ size: 200 });
-        const items = Array.isArray(res?.data) ? res.data : [];
-        return items.map(mapApiExport);
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 15_000,
-  });
-
-  useEffect(() => {
-    if (apiExports && apiExports.length > 0) {
-      store.setState({ exports: apiExports });
-    }
-  }, [apiExports]);
-
-  if (apiExports && apiExports.length > 0) {
-    return apiExports;
-  }
-
-  return stateExports;
+  const query = useExportReceiptsQuery();
+  return query.data ?? [];
 }
 
-export function useShipments(): import("@/types").Shipping[] {
-  const stateShipments = useAppState().shipments;
-  const orders = useAppState().orders;
+export function useExportReceiptsQuery() {
+  return useQuery({
+    queryKey: ["inventory", "exports", "all"],
+    queryFn: async () =>
+      (await fetchAllPages((page, size) => inventoryApi.listExports({ page, size }))).map(
+        mapExportReceipt,
+      ),
+  });
+}
 
-  const mergedShipments = React.useMemo(() => {
-    const existing = new Map(stateShipments.map((s) => [s.orderId, s]));
-    const generated: import("@/types").Shipping[] = [];
+export function useShipments(): Shipping[] {
+  const orders = useOrders();
+  return orders
+    .filter((order) => Boolean(order.trackingCode))
+    .map((order) => ({
+      id: order.id,
+      orderId: order.orderCode ?? order.id,
+      customerName: order.customerName,
+      carrier: order.shippingMethod || "Giao hàng",
+      trackingNumber: order.trackingCode ?? "",
+      shippingFee: order.shippingFee,
+      expectedDelivery: "",
+      status: shippingStatusFromOrder(order.status),
+      address: order.customerAddress,
+    }));
+}
 
-    for (const order of orders) {
-      if (!existing.has(order.id) && !existing.has(order.orderCode ?? "")) {
-        generated.push({
-          id: `SHP-auto-${order.id}`,
-          orderId: order.id,
-          customerName: order.customerName,
-          carrier: order.shippingMethod || "Giao Hàng Nhanh (GHN)",
-          trackingNumber: order.trackingCode || "",
-          shippingFee: order.shippingFee || 0,
-          expectedDelivery: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-          status:
-            order.status === "DELIVERED"
-              ? "DELIVERED"
-              : order.status === "CANCELLED"
-                ? "RETURNED"
-                : order.status === "SHIPPING"
-                  ? "OUT_FOR_DELIVERY"
-                  : order.status === "PREPARING"
-                    ? "PICKED_UP"
-                    : "WAITING_PICKUP",
-          address: order.customerAddress,
-        });
-      }
-    }
+export function useStockMovements(): StockMovement[] {
+  const query = useQuery({
+    queryKey: ["inventory", "movements", "all"],
+    queryFn: async () =>
+      (await fetchAllPages((page, size) => inventoryApi.listMovements({ page, size }))).map(
+        mapStockMovement,
+      ),
+  });
+  return query.data ?? [];
+}
 
-    if (generated.length === 0) return stateShipments;
-    return [...generated, ...stateShipments];
-  }, [stateShipments, orders]);
+export function useNotifications() {
+  return useAppState().notifications;
+}
 
-  return mergedShipments;
+export function useUnreadNotificationCount() {
+  return useAppState().notificationsUnreadCount;
 }
 
 export function useInventorySummary() {
-  const books = useBooks();
+  const query = useQuery({
+    queryKey: ["inventory-summary"],
+    queryFn: () => inventoryApi.getSummary(),
+    refetchInterval: 30_000,
+  });
   return {
-    totalStock: books.reduce((s, b) => s + (b.stock || 0), 0),
-    lowStock: books.filter((b) => b.status === "LOW_STOCK").length,
-    outOfStock: books.filter((b) => b.status === "OUT_OF_STOCK").length,
-    inventoryValue: books.reduce((s, b) => s + (b.stock || 0) * (b.purchasePrice || 0), 0),
+    totalStock: query.data?.totalStock ?? 0,
+    lowStock: query.data?.lowStockCount ?? 0,
+    outOfStock: query.data?.outOfStockCount ?? 0,
+    inventoryValue: query.data?.inventoryValue ?? 0,
   };
+}
+
+function mapImportReceipt(item: ImportReceiptApiItem): ImportReceipt {
+  return {
+    id: item.receiptCode || String(item.id),
+    supplier: item.supplierName,
+    ...(item.supplierId !== undefined ? { supplierId: String(item.supplierId) } : {}),
+    date: item.importDate,
+    totalItems: Number(item.totalItems),
+    totalValue: Number(item.totalValue),
+    items: (item.items ?? []).map((line) => ({
+      bookId: String(line.bookId),
+      title: line.title,
+      quantity: Number(line.quantity),
+      price: Number(line.price),
+    })),
+    ...(item.note ? { note: item.note } : {}),
+  };
+}
+
+function mapExportReceipt(item: ExportReceiptApiItem): ExportReceipt {
+  return {
+    id: item.receiptCode || String(item.id),
+    orderId: item.orderId === undefined ? "" : String(item.orderId),
+    date: item.exportDate,
+    totalItems: Number(item.totalItems),
+    items: (item.items ?? []).map((line) => ({
+      bookId: String(line.bookId),
+      title: line.title,
+      quantity: Number(line.quantity),
+      price: Number(line.price ?? 0),
+    })),
+    reason: item.reason,
+    ...(item.note ? { note: item.note } : {}),
+  };
+}
+
+function mapStockMovement(item: StockMovementApiItem): StockMovement {
+  return {
+    id: String(item.id),
+    bookId: String(item.bookId),
+    bookTitle: item.bookTitle,
+    type: item.type,
+    quantity: Number(item.quantity),
+    beforeStock: Number(item.beforeStock),
+    afterStock: Number(item.afterStock),
+    ...(item.referenceCode ? { referenceCode: item.referenceCode } : {}),
+    ...(item.note ? { note: item.note } : {}),
+    ...(item.createdBy ? { createdBy: item.createdBy } : {}),
+    createdAt: item.createdAt,
+  };
+}
+
+export function mapStockAudit(item: StockAuditApiItem): Stocktake {
+  return {
+    id: String(item.id),
+    title: item.title,
+    auditDate: item.auditDate,
+    status: item.status,
+    items: item.items.map((line) => ({
+      ...line,
+      bookId: String(line.bookId),
+      systemStock: Number(line.systemStock),
+      actualStock: Number(line.actualStock),
+      diffQuantity: Number(line.diffQuantity),
+    })),
+    totalSystemStock: Number(item.totalSystemStock),
+    totalActualStock: Number(item.totalActualStock),
+    totalDiff: Number(item.totalDiff),
+    ...(item.note ? { note: item.note } : {}),
+    auditedBy: item.auditedBy,
+    ...(item.balancedAt ? { balancedAt: item.balancedAt } : {}),
+    createdAt: item.createdAt,
+  };
+}
+
+function shippingStatusFromOrder(status: Order["status"]): Shipping["status"] {
+  switch (status) {
+    case "PENDING":
+    case "CONFIRMED":
+    case "PREPARING":
+      return "WAITING_PICKUP";
+    case "SHIPPING":
+      return "IN_TRANSIT";
+    case "DELIVERED":
+      return "DELIVERED";
+    case "FAILED":
+      return "FAILED";
+    case "RETURNED":
+      return "RETURNED";
+    case "CANCELLED":
+      return "CANCELLED";
+  }
 }
